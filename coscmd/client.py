@@ -91,7 +91,7 @@ class MultiPartUpload(object):
 		      headers=rt.headers,
 		      text=rt.text))
 	      if rt.status_code == 200:
-	        logger.warn("upload {file} with {per}%".format(file=self._filename, per="{:5.2f}".format(i*100/float(parts_size))))
+	        logger.warn("upload {file} with {per}%".format(file=self._filename, per="{0:5.2f}".format(i*100/float(parts_size))))
 		break
 	    except Exception:
 	      logger.exception("upload part failed")
