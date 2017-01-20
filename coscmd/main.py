@@ -23,6 +23,7 @@ def config(args):
         cp.set('common', 'appid', args.appid)
         cp.set('common', 'bucket', args.bucket)
         cp.set('common', 'region', args.region)
+        cp.set('common', 'part_size', str(args.part_size))
         cp.write(f)
         logger.info("Created configuration file in {path}".format(path=conf_path))
 
@@ -39,12 +40,17 @@ def load_conf():
     with open(conf_path, 'r') as f:
         cp = SafeConfigParser()
         cp.readfp(fp=f)
+        if cp.has_option('common', 'part_size'):
+          part_size = cp.getint('common', 'part_size')
+        else:
+          part_size = 1
         conf = CosConfig(
             appid=cp.get('common', 'appid'),
             access_id=cp.get('common', 'access_id'),
             access_key=cp.get('common', 'secret_key'),
             region=cp.get('common', 'region'),
-            bucket=cp.get('common', 'bucket')
+            bucket=cp.get('common', 'bucket'),
+            part_size = part_size
         )
         return conf
 
@@ -93,6 +99,7 @@ def _main():
     parser_a.add_argument('-u', '--appid', help='specify your appid', type=str, required=True)
     parser_a.add_argument('-b', '--bucket', help='specify your bucket', type=str, required=True)
     parser_a.add_argument('-r', '--region', help='specify your bucket', type=str, required=True)
+    parser_a.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1) 
     parser_a.set_defaults(func=config)
 
     parser_b = sub_parser.add_parser("upload")
