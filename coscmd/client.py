@@ -57,17 +57,21 @@ class MultiPartUpload(object):
     def init_mp(self):
         url = self._conf.uri(path=self._object_name)
         logger.debug("init with : " + url)
-        rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
-        logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
-             code=rt.status_code,
-             headers=rt.headers,
-             text=rt.text))
-        root = etree.XML(rt.content)
-        self._upload_id = root.getchildren()[2].text
-        return rt.status_code == 200
+        try:
+            rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                 code=rt.status_code,
+                 headers=rt.headers,
+                 text=rt.text))
+            root = etree.XML(rt.content)
+            self._upload_id = root.getchildren()[2].text
+            return rt.status_code == 200
+        except Exception:
+            logger.warn("init upload part failed.")
+            return False
 
     def upload_parts(self):
-        
+      self._sha1 = [] 
       file_size = path.getsize(self._filename)
       # 50 parts, max chunk size 5 MB
       # chunk_size = 10 * 1024 * 1024 # 10 MB
@@ -98,8 +102,16 @@ class MultiPartUpload(object):
 		      headers=rt.headers,
 		      text=rt.text))
 	      if rt.status_code == 200:
-	        logger.warn("upload {file} with {per}%".format(file=self._filename, per="{0:5.2f}".format(i*100/float(parts_size))))
-		break
+                if 'Etag' in rt.headers:
+                    if rt.headers['Etag'] != '"%s"' % sha1_etag.hexdigest():
+                        logger.warn("upload file {file} response with error etag : {etag1}, {etag}".format(file=self._filename, etag=rt.headers['Etag'], etag1='%s' % sha1_etag.hexdigest()))
+                        continue
+                    else:
+	                logger.warn("upload {file} with {per}%".format(file=self._filename, per="{0:5.2f}".format(i*100/float(parts_size))))
+		        break
+                else:
+                   logger.warn("upload file {file} response with no etag ".format(file=self._filename))
+                   continue
               elif rt.status_code == 503:
                 time.sleep(2**j)
 	    except Exception:
@@ -127,10 +139,14 @@ class MultiPartUpload(object):
 	url = self._conf.uri(path=self._object_name)+"?uploadId={uploadid}".format(uploadid=self._upload_id)
 	logger.debug('complete url: ' + str(url))
 	logger.debug("complete data: " + str(data))
-	with closing(self._session.post(url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=data, stream=True)) as rt:
-	  logger.debug("complete status code: {code}".format(code=rt.status_code))
-	  logger.debug("complete headers: {headers}".format(headers=rt.headers))
-	return rt.status_code == 200
+        try:
+	    with closing(self._session.post(url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=data, stream=True)) as rt:
+	        logger.debug("complete status code: {code}".format(code=rt.status_code))
+	        logger.debug("complete headers: {headers}".format(headers=rt.headers))
+	    return rt.status_code == 200
+        except Exception:
+            logger.warn("complete upload part failed.")
+            return False
 
 
 class CosS3Client(object):
