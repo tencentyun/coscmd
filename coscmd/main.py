@@ -5,7 +5,9 @@ from coscmd.client import CosConfig, CosS3Client
 from argparse import ArgumentParser
 from ConfigParser import SafeConfigParser
 from os import path
+import random
 import sys
+import time
 import logging
 
 logger = logging.getLogger(__name__)
@@ -66,6 +68,9 @@ def upload(args):
     retry = 5
     
     for i in range(retry):
+      wait_time = random.randint(0, 20)
+      logger.debug("begin to init upload part after {second} second".format(second=wait_time))
+      time.sleep(wait_time)
       rt = mp.init_mp()
       if rt:
         break
@@ -82,6 +87,9 @@ def upload(args):
     logger.warn("multipart upload ok")
   
     for i in range(retry):
+      wait_time = random.randint(0, 5)
+      time.sleep(wait_time)
+      logger.debug("begin to complete upload part after {second} second".format(second=wait_time))
       rt = mp.complete_mp()
       if rt:
         logger.warn("complete multipart upload ok")
