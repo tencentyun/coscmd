@@ -5,3 +5,13 @@ dist
 *.tmp
 env
 *.rej
+*.txt
+
+.tox
+coscmd.egg-info
+coscmd/*.swk
+coscmd/*.swl
+coscmd/*.swm
+coscmd/*.swn
+coscmd/*.swo
+
