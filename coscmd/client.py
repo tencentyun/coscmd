@@ -73,6 +73,7 @@ class MultiPartUpload(object):
     def upload_parts(self):
       self._sha1 = [] 
       file_size = path.getsize(self._filename)
+      logger.info("file size: " + str(file_size))
       # 50 parts, max chunk size 5 MB
       # chunk_size = 10 * 1024 * 1024 # 10 MB
       chunk_size = 1024 * 1024 * self._conf._part_size
@@ -83,7 +84,8 @@ class MultiPartUpload(object):
       logger.info("chunk_size: " + str(chunk_size))
       logger.info("parts_size: " + str((file_size + chunk_size - 1)/chunk_size))
       
-      with open(self._filename, 'r') as f:     
+      # use binary mode to fix windows bug
+      with open(self._filename, 'rb') as f:     
 	# /ObjectName?partNumber=PartNumber&uploadId=UploadId
 	for i in range(parts_size):
 	  data = f.read(chunk_size)

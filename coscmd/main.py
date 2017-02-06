@@ -94,6 +94,7 @@ def upload(args):
       if rt:
         logger.warn("complete multipart upload ok")
         return 0
+    logger.warn("complete multipart upload failed")
     return -1
     
 def _main():
