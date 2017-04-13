@@ -17,7 +17,7 @@
 
 .. code::
  
- yum install libxml2-devel
+ yum install python-devel libxml2-devel
  pip install coscmd -U --nocache
 
 使用方法
