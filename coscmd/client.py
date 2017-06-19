@@ -42,12 +42,13 @@ class CosConfig(object):
 
 class MultiPartUpload(object):
 
-    def __init__(self, filename, object_name, conf, session=None):
+    def __init__(self, filename, object_name, conf, session=None, verify_etag=False):
         self._filename = filename
         self._object_name = object_name
         self._conf = conf
         self._upload_id = None
         self._sha1 = []
+        self._verify_etag = verify_etag
 
         if session is None:
           self._session = requests.session()
@@ -91,7 +92,7 @@ class MultiPartUpload(object):
 	  data = f.read(chunk_size)
 	  sha1_etag = sha1()
 	  sha1_etag.update(data)
-	  self._sha1.append(sha1_etag.hexdigest())
+          # self._sha1.append(sha1_etag.hexdigest())
           url = self._conf.uri(path=self._object_name)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=i+1, uploadid=self._upload_id)
 	  logger.debug("upload url: " + str(url))
 	  for j in range(5):
@@ -105,12 +106,13 @@ class MultiPartUpload(object):
 		      text=rt.text))
 	      if rt.status_code == 200:
                 if 'Etag' in rt.headers:
-                    if rt.headers['Etag'] != '"%s"' % sha1_etag.hexdigest():
-                        logger.warn("upload file {file} response with error etag : {etag1}, {etag}".format(file=self._filename, etag=rt.headers['Etag'], etag1='%s' % sha1_etag.hexdigest()))
-                        continue
+                    _etag = rt.headers['Etag']
+                    if self._verify_etag:
+                        assert 0 == "etag verify is not supported now!"
                     else:
+                        self._sha1.append(_etag)
 	                logger.warn("upload {file} with {per}%".format(file=self._filename, per="{0:5.2f}".format(i*100/float(parts_size))))
-		        break
+                        break
                 else:
                    logger.warn("upload file {file} response with no etag ".format(file=self._filename))
                    continue
@@ -132,7 +134,7 @@ class MultiPartUpload(object):
 	  t1.text = str(i+1)
 
 	  t2 = etree.Element("ETag")
-	  t2.text = '"{v}"'.format(v=v)
+	  t2.text = v
 
 	  t.append(t1)
 	  t.append(t2)

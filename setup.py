@@ -20,7 +20,7 @@ def long_description():
 
 setup(
     name='coscmd',
-    version='0.1.8',
+    version='0.1.9',
     url='https://www.qcloud.com/',
     packages=['coscmd'],
     license='MIT',
