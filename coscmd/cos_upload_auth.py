@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-from urlparse import urlparse
-import hashlib
 import hmac
 import time
 import urllib
-from urllib import quote
-import requests
-from requests.auth import AuthBase
+import hashlib
 import logging
+import requests
+from urllib import quote
+from urlparse import urlparse
+from requests.auth import AuthBase
 logger = logging.getLogger(__name__)
 
 
@@ -51,10 +51,11 @@ class CosS3Auth(AuthBase):
         # sign_time = "1480932292;1481012292"
         sha1 = hashlib.sha1()
         sha1.update(format_str)
-
+        
         str_to_sign = "sha1\n{time}\n{sha1}\n".format(time=sign_time, sha1=sha1.hexdigest())
         logger.debug('str_to_sign: ' + str(str_to_sign))
         sign_key = hmac.new(self._secret_key, sign_time, hashlib.sha1).hexdigest()
+        
         sign = hmac.new(sign_key, str_to_sign, hashlib.sha1).hexdigest()
         logger.debug('sign_key: ' + str(sign_key))
         logger.debug('sign: ' + str(sign))
@@ -71,15 +72,23 @@ class CosS3Auth(AuthBase):
         return r
 
 if __name__ == "__main__":
-    import logging
-    import sys
-    logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
-    resp = requests.head("http://sdktestgz-1252448703.cn-south.myqcloud.com/config.json", auth=CosS3Auth("AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00", "ciivKvnnrMvSvQpMAWuIz12pThGGlWRW"))
-    #resp = requests.get("http://testbucket-125000000.cn-north.myqcloud.com/testfile", headers={"Range": "bytes=0-3"}, auth=CosS3Auth("QmFzZTY0IGlzIGEgZ2VuZXJp", "AKIDZfbOA78asKUYBcXFrJD0a1ICvR98JM"))
-    print resp.status_code, resp.text
-    f = open("Client.py", "r")
-    print "UPLOAD"
-    t = requests.put("http://sdktestgz-1252448703.cn-south.myqcloud.com/client2.py", auth=CosS3Auth("AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00", "ciivKvnnrMvSvQpMAWuIz12pThGGlWRW"), data="helasdfasf")
-    print "UPLOAD"
-    print t.status_code, t.text
+    url = 'http://lewzylu01-1252448703.cn-south.myqcloud.com/a.txt'
+    
+    logger.debug("init with : " + url)
+    request = requests.session()
+    secret_id = 'AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00'
+    secret_key = 'ciivKvnnrMvSvQpMAWuIz12pThGGlWRW'
+    rt = request.get(url=url+"", auth=CosS3Auth(secret_id,secret_key))
+    print rt.content
+#     import logging
+#     import sys
+#     logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
+#     resp = requests.head("http://sdktestgz-1252448703.cn-south.myqcloud.com/config.json", auth=CosS3Auth("AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00", "ciivKvnnrMvSvQpMAWuIz12pThGGlWRW"))
+#     #resp = requests.get("http://testbucket-125000000.cn-north.myqcloud.com/testfile", headers={"Range": "bytes=0-3"}, auth=CosS3Auth("QmFzZTY0IGlzIGEgZ2VuZXJp", "AKIDZfbOA78asKUYBcXFrJD0a1ICvR98JM"))
+#     print resp.status_code, resp.text
+#     f = open("Client.py", "r")
+#     print "UPLOAD"
+#     t = requests.put("http://sdktestgz-1252448703.cn-south.myqcloud.com/client2.py", auth=CosS3Auth("AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00", "ciivKvnnrMvSvQpMAWuIz12pThGGlWRW"), data="helasdfasf")
+#     print "UPLOAD"
+#     print t.status_code, t.text
 

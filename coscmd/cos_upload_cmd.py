@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import absolute_import
-from coscmd.client import CosConfig, CosS3Client
-from argparse import ArgumentParser
+from cos_upload_client import CosConfig, CosS3Client
 from ConfigParser import SafeConfigParser
+from argparse import ArgumentParser
 from os import path
 import random
 import sys
@@ -25,6 +24,7 @@ def config(args):
         cp.set('common', 'appid', args.appid)
         cp.set('common', 'bucket', args.bucket)
         cp.set('common', 'region', args.region)
+        cp.set('common', 'max_thread', str(args.max_thread))
         cp.set('common', 'part_size', str(args.part_size))
         cp.write(f)
         logger.info("Created configuration file in {path}".format(path=conf_path))
@@ -46,13 +46,19 @@ def load_conf():
           part_size = cp.getint('common', 'part_size')
         else:
           part_size = 1
+          
+        if cp.has_option('common', 'max_thread'):
+          max_thread = cp.getint('common', 'max_thread')
+        else:
+          max_thread = 5
         conf = CosConfig(
             appid=cp.get('common', 'appid'),
             access_id=cp.get('common', 'access_id'),
             access_key=cp.get('common', 'secret_key'),
             region=cp.get('common', 'region'),
             bucket=cp.get('common', 'bucket'),
-            part_size = part_size
+            part_size = part_size,
+            max_thread = max_thread
         )
         return conf
 
@@ -61,44 +67,44 @@ def upload(args):
     conf = load_conf()
     client = CosS3Client(conf)
     while args.object_name.startswith('/'):
-      args.object_name = args.object_name[1:]
+        args.object_name = args.object_name[1:]
 
     mp = client.multipart_upload_from_filename(args.local_file, args.object_name)
 
     retry = 5
     
     for i in range(retry):
-      wait_time = random.randint(0, 20)
-      logger.debug("begin to init upload part after {second} second".format(second=wait_time))
-      time.sleep(wait_time)
-      rt = mp.init_mp()
-      if rt:
-        break
+        wait_time = random.randint(0, 20)
+        logger.debug("begin to init upload part after {second} second".format(second=wait_time))
+        time.sleep(wait_time)
+        rt = mp.init_mp()
+        if rt:
+            break
     else:
-      return -1
+        return -1
     logger.warn("Init multipart upload ok")
 
     for i in range(retry):
-      rt = mp.upload_parts()
-      if rt:
-        break
+        rt = mp.upload_parts()
+        if rt:
+            break
     else:
-      return -1
+        return -1
     logger.warn("multipart upload ok")
   
     for i in range(retry):
-      wait_time = random.randint(0, 5)
-      time.sleep(wait_time)
-      logger.debug("begin to complete upload part after {second} second".format(second=wait_time))
-      rt = mp.complete_mp()
-      if rt:
-        logger.warn("complete multipart upload ok")
-        return 0
+        wait_time = random.randint(0, 5)
+        time.sleep(wait_time)
+        logger.debug("begin to complete upload part after {second} second".format(second=wait_time))
+        rt = mp.complete_mp()
+        if rt:
+            logger.warn("complete multipart upload ok")
+            return 0
     logger.warn("complete multipart upload failed")
     return -1
     
 def _main():
-
+    
     parser = ArgumentParser()
     parser.add_argument('-v', '--verbose', help="verbose mode", action="store_true", default=False)
     sub_parser = parser.add_subparsers(help="config")
@@ -108,7 +114,9 @@ def _main():
     parser_a.add_argument('-u', '--appid', help='specify your appid', type=str, required=True)
     parser_a.add_argument('-b', '--bucket', help='specify your bucket', type=str, required=True)
     parser_a.add_argument('-r', '--region', help='specify your bucket', type=str, required=True)
+    parser_a.add_argument('-m', '--max_thread', help='specify the number of threads (default 5)', type=int, default=5) 
     parser_a.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1) 
+    
     parser_a.set_defaults(func=config)
 
     parser_b = sub_parser.add_parser("upload")
@@ -127,3 +135,4 @@ def _main():
 
 if __name__ == '__main__':
     _main()
+    
