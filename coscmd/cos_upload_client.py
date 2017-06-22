@@ -93,7 +93,10 @@ class MultiPartUpload(object):
         if file_size != 0:
             parts_num += 1
         self._sha1 = range(parts_num);
-        
+        #若分块太少，限制线程
+        if parts_num < self._conf._max_thread:
+            self._conf._max_thread = parts_num
+            
         pool = SimpleThreadPool(self._conf._max_thread)
         #单文件小于分块大小
         if chunk_size >= file_size:
@@ -221,7 +224,7 @@ if __name__ == "__main__":
                      access_id="AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00",
                      access_key="ciivKvnnrMvSvQpMAWuIz12pThGGlWRW",
                      part_size=1,
-                     max_thread=20                                            )
+                     max_thread=20                                           )
 
     client = CosS3Client(conf)
 
