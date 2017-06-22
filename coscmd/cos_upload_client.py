@@ -79,52 +79,65 @@ class MultiPartUpload(object):
     def upload_parts(self):
         # 50 parts, max chunk size 5 MB
         # chunk_size = 10 * 1024 * 1024 # 10 MB
-        data = "";
-        self._sha1 = [] 
+        offset = 0
         file_size = path.getsize(self._filename)
         logger.info("file size: " + str(file_size))
         chunk_size = 1024 * 1024 * self._conf._part_size
+        #防止分块太多
+        while file_size / chunk_size > 10000:
+            chunk_size = chunk_size * 10
+        #块的数量
+        parts_num = file_size / chunk_size
+        #最后一个块的大小
+        last_size = file_size - parts_num * chunk_size 
+        if file_size != 0:
+            parts_num += 1
+        self._sha1 = range(parts_num);
+        
+        pool = SimpleThreadPool(self._conf._max_thread)
         #单文件小于分块大小
         if chunk_size >= file_size:
             logger.info('upload file concurrently')
             with open(self._filename, 'rb') as f:
                     data = f.read(chunk_size)
                     url = self._conf.uri(path=self._object_name)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=1, uploadid=self._upload_id)
-                    self.upload_parts_data(url, data, 1)
+                    pool.add_task(self.upload_parts_data, url, self._filename, 0, file_size)
         #分块
         else:
-            while file_size / chunk_size > 10000:
-                chunk_size = chunk_size * 10 
             
-            parts_size = (file_size + chunk_size - 1) / chunk_size  
             logger.info("chunk_size: " +
                          str(chunk_size))
-            logger.info("parts_size: " + str((file_size + chunk_size - 1)/chunk_size))
             
             # use binary mode to fix windows bug
             logger.info('upload file concurrently')
-            pool = SimpleThreadPool(self._conf._max_thread)
-            with open(self._filename, 'rb') as f:     
-            # /ObjectName?partNumber=PartNumber&uploadId=UploadId
-                for i in range(parts_size):
-                    data = f.read(chunk_size)
+            for i in range(parts_num):
+                #最后一个不满的
+                if i+1 == parts_num:
                     url = self._conf.uri(path=self._object_name)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=i+1, uploadid=self._upload_id)
-                    pool.add_task(self.upload_parts_data, url, data, parts_size)
-
+                    pool.add_task(self.upload_parts_data, url, self._filename, offset, file_size-offset-1, parts_num, i)
+                else:
+                    url = self._conf.uri(path=self._object_name)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=i+1, uploadid=self._upload_id)
+                    pool.add_task(self.upload_parts_data, url, self._filename, offset, chunk_size, parts_num, i)
+                    offset+=chunk_size
+            
             pool.wait_completion()
             result = pool.get_result()
         logger.warn("upload {file} with 100.00%".format(file=self._filename));
         
-    def upload_parts_data(self, url ,data, parts_size,retry=5):
+    def upload_parts_data(self, url, filename, offset, len, parts_size, idx, retry=5):
         logger.info("upload url: " + str(url))
+        with open(filename, 'rb') as file:
+            file.seek(offset,0)
+            data = file.read(len);
         sha1_etag = sha1()
         sha1_etag.update(data)
-        self._sha1.append(sha1_etag.hexdigest())
+        self._sha1[idx]=sha1_etag.hexdigest()
         for j in range(retry):
             try:
                 rt = self._session.put(url=url,
                                        auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                                        data=data)
+                self._have_finished+=1
                 logger.info("multi part resul, code: {code}, headers: {headers}, text: {text}".format(
                     code=rt.status_code,
                     headers=rt.headers,
@@ -135,7 +148,7 @@ class MultiPartUpload(object):
                             logger.warn("upload file {file} response with error etag : {etag1}, {etag}".format(file=self._filename, etag=rt.headers['Etag'], etag1='%s' % sha1_etag.hexdigest()))
                             continue
                         else:
-                            self._have_finished+=1;
+
                             logger.warn("upload {file} with {per}%".format(file=self._filename, per="{0:5.2f}".format(self._have_finished*100/float(parts_size))))
                             break
                     else:
@@ -200,25 +213,25 @@ class CosS3Client(object):
 
 
 if __name__ == "__main__":
-    import time
-    start = time.asctime()
     
-    logging.basicConfig(level=logging.WARN, stream=sys.stdout, format="%(asctime)s - %(message)s")
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
     conf = CosConfig(appid="1252448703",
                      bucket="lewzylu01",
                      region="cn-south",
                      access_id="AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00",
                      access_key="ciivKvnnrMvSvQpMAWuIz12pThGGlWRW",
                      part_size=1,
-                     max_thread=5                                            )
+                     max_thread=20                                            )
 
     client = CosS3Client(conf)
 
-    mp = client.multipart_upload_from_filename("1.pdf", "1.pdf")
+    mp = client.multipart_upload_from_filename("1.txt", "1.txt")
     mp.init_mp()
     mp.upload_parts()
-    mp.complete_mp()
-    end = time.asctime()
-    
+    rt = mp.complete_mp()
+    if rt == True:
+        print ("Upload successfully.")
+    else:
+        print ("Upload fail")
 
 

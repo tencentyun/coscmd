@@ -4,6 +4,7 @@ from threading import Thread
 from logging import getLogger
 from Queue import Queue
 from threading import Lock
+import gc
 logger = getLogger(__name__)
 
 class WorkerThread(Thread):
@@ -16,7 +17,6 @@ class WorkerThread(Thread):
         self._ret = list()
 
     def run(self):
-
         while True:
             func, args, kwargs = self._task_queue.get()
 
@@ -83,10 +83,10 @@ if __name__ == '__main__':
     def raise_exception():
         raise ValueError("Pa! Exception!")
     for i in range(1000):
-        pool.add_task(task_sleep, 1)
+        pool.add_task(task_sleep, 0.001)
         print i
-    pool.add_task(task_sleep, 2)
-    pool.add_task(task_sleep, 3)
+    pool.add_task(task_sleep, 0)
+    pool.add_task(task_sleep, 0)
     #pool.add_task(raise_exception)
     #pool.add_task(raise_exception)
 
