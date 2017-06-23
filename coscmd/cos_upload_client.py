@@ -101,10 +101,7 @@ class MultiPartUpload(object):
         #单文件小于分块大小
         if chunk_size >= file_size:
             logger.info('upload file concurrently')
-            with open(self._filename, 'rb') as f:
-                    data = f.read(chunk_size)
-                    url = self._conf.uri(path=self._object_name)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=1, uploadid=self._upload_id)
-                    pool.add_task(self.upload_parts_data, url, self._filename, 0, file_size)
+            pool.add_task(self.upload_parts_data, self._filename, offset, file_size, 1, 0)
         #分块
         else:
             
@@ -116,18 +113,17 @@ class MultiPartUpload(object):
             for i in range(parts_num):
                 #最后一个不满的
                 if i+1 == parts_num:
-                    url = self._conf.uri(path=self._object_name)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=i+1, uploadid=self._upload_id)
-                    pool.add_task(self.upload_parts_data, url, self._filename, offset, file_size-offset-1, parts_num, i)
+                    pool.add_task(self.upload_parts_data, self._filename, offset, file_size-offset-1, parts_num, i)
                 else:
-                    url = self._conf.uri(path=self._object_name)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=i+1, uploadid=self._upload_id)
-                    pool.add_task(self.upload_parts_data, url, self._filename, offset, chunk_size, parts_num, i)
+                    pool.add_task(self.upload_parts_data, self._filename, offset, chunk_size, parts_num, i)
                     offset+=chunk_size
             
-            pool.wait_completion()
-            result = pool.get_result()
+        pool.wait_completion()
+        result = pool.get_result()
         logger.warn("upload {file} with 100.00%".format(file=self._filename));
         
-    def upload_parts_data(self, url, filename, offset, len, parts_size, idx, retry=5):
+    def upload_parts_data(self, filename, offset, len, parts_size, idx, retry=5):
+        url = self._conf.uri(path=self._object_name)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx+1, uploadid=self._upload_id)
         logger.info("upload url: " + str(url))
         with open(filename, 'rb') as file:
             file.seek(offset,0)
@@ -217,13 +213,13 @@ class CosS3Client(object):
 
 if __name__ == "__main__":
     
-    logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
+    logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format="%(asctime)s - %(message)s")
     conf = CosConfig(appid="1252448703",
                      bucket="lewzylu01",
                      region="cn-south",
                      access_id="AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00",
                      access_key="ciivKvnnrMvSvQpMAWuIz12pThGGlWRW",
-                     part_size=100,
+                     part_size=10,
                      max_thread=2,                                          )
 
     client = CosS3Client(conf)
