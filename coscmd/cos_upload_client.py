@@ -158,11 +158,11 @@ class MultiPartUpload(object):
                         continue
                 else:
                     time.sleep(2**j)
-                    
+                    continue;
+                if j+1 == retry:
+                    return False
             except Exception:
                 logger.exception("upload part failed")
-            else:
-                return False
         return True
         
     def complete_mp(self):
@@ -233,8 +233,8 @@ if __name__ == "__main__":
     mp.upload_parts()
     rt = mp.complete_mp()
     if rt == True:
-        print ("Upload successfully.")
+        print ("Upload Success!")
     else:
-        print ("Upload fail")
+        print ("Upload Fail!")
 
 
