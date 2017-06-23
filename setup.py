@@ -19,18 +19,18 @@ def long_description():
         return fileobj.read()
 
 setup(
-    name='coscmd',
+    name='cos_upload_cmd',
     version='0.1.9',
     url='https://www.qcloud.com/',
-    packages=['coscmd'],
+    packages=['cos_upload_cmd'],
     license='MIT',
-    author='liuchang',
-    author_email='liuchang0812@gmail.com',
-    description='simple command for cos',
+    author='lewzylu',
+    author_email='327874225@qq.com',
+    description='simple upload command for cos',
     long_description=long_description(),
     entry_points={
         'console_scripts': [
-            'coscmd=coscmd.main:_main'
+            'cos_upload_cmd=cos_upload_cmd.cos_upload_cmd.py:_main'
         ],
     },
     install_requires=requirements()

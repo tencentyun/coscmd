@@ -1,6 +1,3 @@
-
-
-
 使用文档
 ========
 
@@ -40,11 +37,14 @@
 
 .. code::
 
- coscmd upload ~/t.cpp t1/t.cpp 
+ coscmd upload ~/t.cpp t1/t.cpp -m max_thread -p parts_size
+
+ 请将参数替换为您所需要的本地文件路径，以及cos上存储路径
+ max_thread为多线程上传时的最大线程数(默认为2)
+ parts_size为分块上传的单块大小(单位为M)(默认为1M)
+
  2017-01-18 16:55:32,139 - Init multipart upload ok
  2017-01-18 16:55:32,184 - upload /home/liuchang/t.cpp with  0.00%
  2017-01-18 16:55:32,184 - upload /home/liuchang/t.cpp with 100.00%
  2017-01-18 16:55:32,185 - multipart upload ok
  2017-01-18 16:55:32,226 - complete multipart upload ok
- 
-如果上传成功，命令行会返回0
