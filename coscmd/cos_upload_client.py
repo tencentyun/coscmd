@@ -77,6 +77,7 @@ class MultiPartUpload(object):
         
         
     def upload_parts(self):
+        
         # 50 parts, max chunk size 5 MB
         # chunk_size = 10 * 1024 * 1024 # 10 MB
         offset = 0
@@ -98,18 +99,19 @@ class MultiPartUpload(object):
             self._conf._max_thread = parts_num
             
         pool = SimpleThreadPool(self._conf._max_thread)
+        logger.info("chunk_size: " +
+                         str(chunk_size))
+        logger.info('upload file concurrently')
+        
+        
+        logger.warn("upload {file} with 00.00%".format(file=self._filename));
         #单文件小于分块大小
         if chunk_size >= file_size:
-            logger.info('upload file concurrently')
             pool.add_task(self.upload_parts_data, self._filename, offset, file_size, 1, 0)
         #分块
         else:
             
-            logger.info("chunk_size: " +
-                         str(chunk_size))
             
-            # use binary mode to fix windows bug
-            logger.info('upload file concurrently')
             for i in range(parts_num):
                 #最后一个不满的
                 if i+1 == parts_num:
@@ -120,14 +122,13 @@ class MultiPartUpload(object):
             
         pool.wait_completion()
         result = pool.get_result()
-        logger.warn("upload {file} with 100.00%".format(file=self._filename));
         
     def upload_parts_data(self, filename, offset, len, parts_size, idx, retry=5):
-        url = self._conf.uri(path=self._object_name)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx+1, uploadid=self._upload_id)
-        logger.info("upload url: " + str(url))
         with open(filename, 'rb') as file:
             file.seek(offset,0)
             data = file.read(len);
+        url = self._conf.uri(path=self._object_name)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx+1, uploadid=self._upload_id)
+        logger.info("upload url: " + str(url))
         sha1_etag = sha1()
         sha1_etag.update(data)
         self._sha1[idx]=sha1_etag.hexdigest()
@@ -137,7 +138,9 @@ class MultiPartUpload(object):
                                        auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                                        data=data)
                 self._have_finished+=1
-                logger.info("multi part resul, code: {code}, headers: {headers}, text: {text}".format(
+                logger.info("multi part result: part{part}, round{round}, code: {code}, headers: {headers}, text: {text}".format(
+                    part = idx+1,
+                    round = j+1,
                     code=rt.status_code,
                     headers=rt.headers,
                     text=rt.text))            
@@ -155,6 +158,7 @@ class MultiPartUpload(object):
                         continue
                 elif rt.status_code == 503:
                     time.sleep(2**j)
+                    
             except Exception:
                 logger.exception("upload part failed")
             else:
@@ -213,14 +217,14 @@ class CosS3Client(object):
 
 if __name__ == "__main__":
     
-    logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format="%(asctime)s - %(message)s")
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
     conf = CosConfig(appid="1252448703",
                      bucket="lewzylu01",
                      region="cn-south",
                      access_id="AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00",
                      access_key="ciivKvnnrMvSvQpMAWuIz12pThGGlWRW",
-                     part_size=10,
-                     max_thread=2,                                          )
+                     part_size=1,
+                     max_thread=5,                                          )
 
     client = CosS3Client(conf)
 
