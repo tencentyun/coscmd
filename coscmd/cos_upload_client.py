@@ -91,7 +91,7 @@ class MultiPartUpload(object):
         parts_num = file_size / chunk_size
         #最后一个块的大小
         last_size = file_size - parts_num * chunk_size 
-        if file_size != 0:
+        if last_size != 0:
             parts_num += 1
         self._sha1 = range(parts_num);
         #若分块太少，限制线程
