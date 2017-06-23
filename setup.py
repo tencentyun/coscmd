@@ -30,8 +30,9 @@ setup(
     long_description=long_description(),
     entry_points={
         'console_scripts': [
-            'cos_upload_cmd=cos_upload_cmd.cos_upload_cmd.py:_main'
+            'cos_upload_cmd=cos_upload_cmd.cos_upload_cmd:_main'
         ],
     },
-    install_requires=requirements()
+    install_requires=requirements(),
+    py_modules=['cos_upload_cmd']
 )
