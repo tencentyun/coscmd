@@ -156,7 +156,7 @@ class MultiPartUpload(object):
                     else:
                         logger.warn("upload file {file} response with no etag ".format(file=self._filename))
                         continue
-                elif rt.status_code == 503:
+                else:
                     time.sleep(2**j)
                     
             except Exception:
