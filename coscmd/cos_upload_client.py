@@ -223,8 +223,8 @@ if __name__ == "__main__":
                      region="cn-south",
                      access_id="AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00",
                      access_key="ciivKvnnrMvSvQpMAWuIz12pThGGlWRW",
-                     part_size=1,
-                     max_thread=20                                           )
+                     part_size=100,
+                     max_thread=2,                                          )
 
     client = CosS3Client(conf)
 
