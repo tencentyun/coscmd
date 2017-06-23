@@ -113,8 +113,8 @@ def _main():
     parser_b = sub_parser.add_parser("upload")
     parser_b.add_argument('local_file', help="local file path as /tmp/a.txt", type=str)
     parser_b.add_argument("object_name", help="object name as a/b.txt", type=str)
-    parser_a.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1) 
-    parser_a.add_argument('-m', '--max_thread', help='specify the number of threads (default 2)', type=int, default=2) 
+    parser_b.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1) 
+    parser_b.add_argument('-m', '--max_thread', help='specify the number of threads (default 2)', type=int, default=2) 
     parser_b.add_argument("-t", "--type", help="storage class type: standard/nearline/coldline", type=str, choices=["standard", "nearline", "coldline"], default="standard")
     parser_b.set_defaults(func=upload)
 
