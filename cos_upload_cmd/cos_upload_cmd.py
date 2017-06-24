@@ -52,7 +52,6 @@ def load_conf():
           max_thread = cp.getint('common', 'max_thread')
         else:
           max_thread = 2
-        print maxs
         conf = CosConfig(
             appid=cp.get('common', 'appid'),
             access_id=cp.get('common', 'access_id'),
