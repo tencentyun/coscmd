@@ -51,14 +51,16 @@ def load_conf():
         if cp.has_option('common', 'max_thread'):
           max_thread = cp.getint('common', 'max_thread')
         else:
-          max_thread = 1
+          max_thread = 2
+        print maxs
         conf = CosConfig(
             appid=cp.get('common', 'appid'),
             access_id=cp.get('common', 'access_id'),
             access_key=cp.get('common', 'secret_key'),
             region=cp.get('common', 'region'),
             bucket=cp.get('common', 'bucket'),
-            part_size = part_size
+            part_size = part_size,
+            max_trhead = max_thread
         )
         return conf
 
