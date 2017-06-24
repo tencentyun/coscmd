@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import absolute_import
 from cos_upload_client import CosConfig, CosS3Client
 from argparse import ArgumentParser
 from ConfigParser import SafeConfigParser

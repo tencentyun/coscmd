@@ -1,5 +1,4 @@
 # -*- coding=utf-8
-from __future__ import absolute_import
 from cos_upload_auth import CosS3Auth
 from urllib import quote
 import time
