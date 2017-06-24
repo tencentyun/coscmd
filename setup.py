@@ -27,10 +27,10 @@ setup(
     author_email='327874225@qq.com',
     description='simple upload command for cos',
     long_description=long_description(),
-    #py_module=['cos_upload_cmd','cos_upload_auth','cos_upload_threadpool','cos_upload_client'],
+    py_module=['cos_upload_cmd','cos_upload_auth','cos_upload_threadpool','cos_upload_client'],
     packages=packages,
     install_requires=requirements(),
-     entry_points={
+    entry_points={
         'console_scripts': [
             'cos_upload_cmd=cos_upload_cmd.cos_upload_cmd:_main',
         ],
