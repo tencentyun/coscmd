@@ -26,6 +26,13 @@ class CosConfig(object):
         self._access_key = access_key
         self._part_size = part_size
         self._max_thread = max_thread
+        
+        logger.warn("config parameter:\nappid: {appid}, region: {region}, bucket: {bucket}, part_size: {part_size}, max_thread: {max_thread}".format(
+                 appid = appid,
+                 region = region,
+                 bucket = bucket,
+                 part_size = part_size,
+                 max_thread = max_thread))
     def uri(self, path=None):
         if path:
             return "http://{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
