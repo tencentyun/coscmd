@@ -18,7 +18,7 @@ def long_description():
     with open('README.rst', 'r') as fileobj:
         return fileobj.read()
 setup(
-    name='cos_upload_cmd',
+    name='coscmd',
     version='0.1.9',
     url='https://www.qcloud.com/',
     license='MIT',
@@ -30,7 +30,7 @@ setup(
     install_requires=requirements(),
     entry_points={
         'console_scripts': [
-            'cos_upload_cmd=cos_upload_cmd.cos_upload_cmd:_main',
+            'coscmd=coscmd.cos_upload_cmd:_main',
         ],
     }
 )
