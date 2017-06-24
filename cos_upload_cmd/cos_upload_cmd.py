@@ -59,7 +59,7 @@ def load_conf():
             region=cp.get('common', 'region'),
             bucket=cp.get('common', 'bucket'),
             part_size = part_size,
-            max_trhead = max_thread
+            max_thread = max_thread
         )
         return conf
 
