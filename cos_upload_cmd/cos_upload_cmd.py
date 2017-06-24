@@ -25,6 +25,7 @@ def config(args):
         cp.set('common', 'appid', args.appid)
         cp.set('common', 'bucket', args.bucket)
         cp.set('common', 'region', args.region)
+        cp.set('common', 'max_thread', str(args.max_thread))
         cp.set('common', 'part_size', str(args.part_size))
         cp.write(f)
         logger.info("Created configuration file in {path}".format(path=conf_path))
@@ -46,6 +47,11 @@ def load_conf():
           part_size = cp.getint('common', 'part_size')
         else:
           part_size = 1
+          
+        if cp.has_option('common', 'max_thread'):
+          max_thread = cp.getint('common', 'max_thread')
+        else:
+          max_thread = 1
         conf = CosConfig(
             appid=cp.get('common', 'appid'),
             access_id=cp.get('common', 'access_id'),
@@ -108,13 +114,14 @@ def _main():
     parser_a.add_argument('-u', '--appid', help='specify your appid', type=str, required=True)
     parser_a.add_argument('-b', '--bucket', help='specify your bucket', type=str, required=True)
     parser_a.add_argument('-r', '--region', help='specify your bucket', type=str, required=True)
+    parser_a.add_argument('-m', '--max_thread', help='specify the number of threads (default 2)', type=int, default=2) 
+    parser_a.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1) 
+    
     parser_a.set_defaults(func=config)
 
     parser_b = sub_parser.add_parser("upload")
     parser_b.add_argument('local_file', help="local file path as /tmp/a.txt", type=str)
     parser_b.add_argument("object_name", help="object name as a/b.txt", type=str)
-    parser_b.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1) 
-    parser_b.add_argument('-m', '--max_thread', help='specify the number of threads (default 2)', type=int, default=2) 
     parser_b.add_argument("-t", "--type", help="storage class type: standard/nearline/coldline", type=str, choices=["standard", "nearline", "coldline"], default="standard")
     parser_b.set_defaults(func=upload)
 
