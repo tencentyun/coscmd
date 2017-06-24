@@ -122,7 +122,7 @@ class MultiPartUpload(object):
         logger.info("chunk_size: " + str(chunk_size))
         logger.info('upload file concurrently')
         
-        logger.warn("upload {file} with 0.00%".format(file=self._filename));
+        logger.warn("upload {file} with  0.00%".format(file=self._filename));
         #单文件小于分块大小
         if chunk_size >= file_size:
             pool.add_task(self.upload_parts_data, self._filename, offset, file_size, 1, 0)
