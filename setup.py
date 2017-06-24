@@ -1,4 +1,4 @@
-from setuptools  import setup
+from setuptools  import setup, find_packages
 # from distutils.core import setup
 from platform import python_version_tuple
 
@@ -22,17 +22,13 @@ setup(
     name='cos_upload_cmd',
     version='0.1.9',
     url='https://www.qcloud.com/',
-    packages=['cos_upload_cmd'],
+    packages=find_packages(),
     license='MIT',
     author='lewzylu',
     author_email='327874225@qq.com',
     description='simple upload command for cos',
     long_description=long_description(),
-    entry_points={
-        'console_scripts': [
-            'cos_upload_cmd=cos_upload_cmd.cos_upload_cmd:_main'
-        ],
-    },
-    install_requires=requirements(),
-    py_modules=['cos_upload_cmd']
+    scripts=['cos_upload_cmd/cos_upload_cmd.py'],  
+    py_module=['cos_upload_cmd','cos_upload_auth','cos_upload_threadpool','cos_upload_client'],
+    install_requires=requirements()
 )
