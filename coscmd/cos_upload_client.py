@@ -243,7 +243,7 @@ if __name__ == "__main__":
     
     logging.basicConfig(level=logging.WARN, stream=sys.stdout, format="%(asctime)s - %(message)s")
     conf = CosConfig(appid="1252448703",
-                     bucket="lewzylu01",
+                     bucket="uploadtest",
                      region="cn-south",
                      access_id="AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00",
                      access_key="ciivKvnnrMvSvQpMAWuIz12pThGGlWRW",
