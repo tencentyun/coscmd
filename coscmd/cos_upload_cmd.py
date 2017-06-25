@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from cos_upload_client import CosConfig, CosS3Client
-from argparse import ArgumentParser
 from ConfigParser import SafeConfigParser
+from argparse import ArgumentParser
 from os import path
 import random
 import sys

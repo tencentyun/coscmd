@@ -1,14 +1,13 @@
 # -*- coding=utf-8
 from cos_upload_auth import CosS3Auth
+from cos_upload_threadpool import SimpleThreadPool
 from urllib import quote
 import time
 import requests
 from os import path
 from hashlib import sha1
 from contextlib import closing
-from oss2.defaults import part_size
 from xml.dom import minidom
-from cos_upload_threadpool import SimpleThreadPool
 import logging
 import time
 import sys
@@ -252,7 +251,7 @@ if __name__ == "__main__":
 
     client = CosS3Client(conf)
 
-    mp = client.multipart_upload_from_filename("3.txt", "1.txt")
+    mp = client.multipart_upload_from_filename("E:/ans.csv", "1.txt")
     rt_init = mp.init_mp()
     rt_part = mp.upload_parts()
     rt_mp = mp.complete_mp()
