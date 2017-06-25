@@ -50,7 +50,7 @@ def load_conf():
         if cp.has_option('common', 'max_thread'):
           max_thread = cp.getint('common', 'max_thread')
         else:
-          max_thread = 2
+          max_thread = 5
         conf = CosConfig(
             appid=cp.get('common', 'appid'),
             access_id=cp.get('common', 'access_id'),
@@ -114,7 +114,7 @@ def _main():
     parser_a.add_argument('-u', '--appid', help='specify your appid', type=str, required=True)
     parser_a.add_argument('-b', '--bucket', help='specify your bucket', type=str, required=True)
     parser_a.add_argument('-r', '--region', help='specify your bucket', type=str, required=True)
-    parser_a.add_argument('-m', '--max_thread', help='specify the number of threads (default 2)', type=int, default=2) 
+    parser_a.add_argument('-m', '--max_thread', help='specify the number of threads (default 5)', type=int, default=5) 
     parser_a.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1) 
     
     parser_a.set_defaults(func=config)

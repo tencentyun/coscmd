@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class CosConfig(object):
-    def __init__(self, appid, region, bucket, access_id, access_key, part_size=1, max_thread=2, *args, **kwargs):
+    def __init__(self, appid, region, bucket, access_id, access_key, part_size=1, max_thread=5, *args, **kwargs):
         self._appid = appid
         self._region = region
         self._bucket = bucket
