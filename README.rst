@@ -14,7 +14,7 @@
 
 .. code::
  
-sudo python setup.py install
+ sudo python setup.py install
 
 
 使用方法
@@ -22,7 +22,9 @@ sudo python setup.py install
 
 工具的使用前需要配置！你可以直接编辑~/.cos.conf，也可以通过如下命令来配置。
 
-#配置参数
+
+配置参数
+!!!!!!!!
 
 .. code::
 
@@ -40,8 +42,8 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 上传速度取决于parts_size * max_thread，但是上限是上行带宽和硬盘读写速度的最大值。
 
 
-
-#上传文件
+上传文件
+!!!!!!!!
 
 使用如下命令上传文件：
 
@@ -53,22 +55,25 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 请将参数替换为您所需要的本地文件路径(localpath)，以及cos上存储的路径(ospath)。
 
 
-#简单示例
+简单示例
+!!!!!!!!
 
 .. code::
 
-coscmd config -a AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00 -s ciivKvnnrMvSvQpMAWuIz12pThGGlWRW -u 1252448703 -b uploadtest -r cn-south -m 10 -p 5
+ coscmd config -a AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00 -s ciivKvnnrMvSvQpMAWuIz12pThGGlWRW -u 1252448703 -b uploadtest -r cn-south -m 10 -p 5
+ coscmd upload 1.txt  
 
-coscmd upload 1.txt  
+.. code::
+ 
+ 2017-06-25 09:51:19,138 - config parameter:
+ appid: 1252448703, region: cn-south, bucket: uploadtest, part_size: 1, max_thread: 5
+ 2017-06-25 09:51:39,207 - Init multipart upload ok
+ 2017-06-25 09:51:39,207 - upload ans.csv with 0.00%
+ 2017-06-25 09:51:41,223 - upload ans.csv with 25.00%
+ 2017-06-25 09:51:41,844 - upload ans.csv with 50.00%
+ 2017-06-25 09:51:42,016 - upload ans.csv with 75.00%
+ 2017-06-25 09:51:42,549 - upload ans.csv with 100.00%
+ 2017-06-25 09:51:42,549 - multipart upload ok
+ 2017-06-25 09:51:46,604 - complete multipart upload ok
 
 
-2017-06-25 09:51:19,138 - config parameter:
-appid: 1252448703, region: cn-south, bucket: uploadtest, part_size: 1, max_thread: 5
-2017-06-25 09:51:39,207 - Init multipart upload ok
-2017-06-25 09:51:39,207 - upload ans.csv with 0.00%
-2017-06-25 09:51:41,223 - upload ans.csv with 25.00%
-2017-06-25 09:51:41,844 - upload ans.csv with 50.00%
-2017-06-25 09:51:42,016 - upload ans.csv with 75.00%
-2017-06-25 09:51:42,549 - upload ans.csv with 100.00%
-2017-06-25 09:51:42,549 - multipart upload ok
-2017-06-25 09:51:46,604 - complete multipart upload ok
