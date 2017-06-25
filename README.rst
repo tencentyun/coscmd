@@ -28,7 +28,7 @@
 
 .. code::
 
- cos_upload_cmd config -a youraccessid -s yoursecretkey -u appid -b bucketname -r region -m max_thread -p parts_size
+ coscmd config -a youraccessid -s yoursecretkey -u appid -b bucketname -r region -m max_thread -p parts_size
 
 
 请将参数替换为您的真实id/key/appid/bucket和园区代号,园区(region)为cn-south或者cn-north。
