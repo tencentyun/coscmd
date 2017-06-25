@@ -1,7 +1,5 @@
 from setuptools  import setup,find_packages
-# from distutils.core import setup
 from platform import python_version_tuple
-
 
 def requirements():
 
