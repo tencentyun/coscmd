@@ -47,7 +47,7 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
  coscmd upload localpath cospath 
 
-请将参数替换为您所需要的本地文件路径(localpath)，以及cos上存储的路径(ospath)。
+请将参数替换为您所需要的本地文件路径(localpath)，以及cos上存储的路径(cospath)。
 
 
 简单示例
