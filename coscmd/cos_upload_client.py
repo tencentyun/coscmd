@@ -244,7 +244,7 @@ if __name__ == "__main__":
                      bucket="uploadtest",
                      region="cn-north",
                      access_id="AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00",
-                     access_key="ciivKvnnrMvSvQpMAWuIz12pThGGlWRW",
+                     access_key="*",
                      part_size=1,
                      max_thread=5,                                          )
 
