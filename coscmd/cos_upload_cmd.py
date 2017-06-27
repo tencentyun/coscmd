@@ -67,39 +67,39 @@ def upload(args):
     conf = load_conf()
     client = CosS3Client(conf)
     while args.object_name.startswith('/'):
-      args.object_name = args.object_name[1:]
+        args.object_name = args.object_name[1:]
 
     mp = client.multipart_upload_from_filename(args.local_file, args.object_name)
 
     retry = 5
     
     for i in range(retry):
-      wait_time = random.randint(0, 20)
-      logger.debug("begin to init upload part after {second} second".format(second=wait_time))
-      time.sleep(wait_time)
-      rt = mp.init_mp()
-      if rt:
-        break
+        wait_time = random.randint(0, 20)
+        logger.debug("begin to init upload part after {second} second".format(second=wait_time))
+        time.sleep(wait_time)
+        rt = mp.init_mp()
+        if rt:
+            break
     else:
-      return -1
+        return -1
     logger.warn("Init multipart upload ok")
 
     for i in range(retry):
-      rt = mp.upload_parts()
-      if rt:
-        break
+        rt = mp.upload_parts()
+        if rt:
+            break
     else:
-      return -1
+        return -1
     logger.warn("multipart upload ok")
   
     for i in range(retry):
-      wait_time = random.randint(0, 5)
-      time.sleep(wait_time)
-      logger.debug("begin to complete upload part after {second} second".format(second=wait_time))
-      rt = mp.complete_mp()
-      if rt:
-        logger.warn("complete multipart upload ok")
-        return 0
+        wait_time = random.randint(0, 5)
+        time.sleep(wait_time)
+        logger.debug("begin to complete upload part after {second} second".format(second=wait_time))
+        rt = mp.complete_mp()
+        if rt:
+            logger.warn("complete multipart upload ok")
+            return 0
     logger.warn("complete multipart upload failed")
     return -1
     

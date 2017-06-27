@@ -22,8 +22,8 @@ class CosConfig(object):
         self._bucket = bucket
         self._access_id = access_id
         self._access_key = access_key
-        self._part_size = part_size
-        self._max_thread = max_thread
+        self._part_size = min(part_size,10)
+        self._max_thread = min(max_thread,10)
         
         logger.warn("config parameter:\nappid: {appid}, region: {region}, bucket: {bucket}, part_size: {part_size}, max_thread: {max_thread}".format(
                  appid = appid,
@@ -120,8 +120,7 @@ class MultiPartUpload(object):
         
         logger.info("chunk_size: " + str(chunk_size))
         logger.info('upload file concurrently')
-        
-        logger.warn("upload {file} with  0.00%".format(file=self._filename));
+        logger.warn("upload {file} with {per}%".format(file=self._filename, per="{0:5.2f}".format(0.00)))
         #单文件小于分块大小
         if chunk_size >= file_size:
             pool.add_task(self.upload_parts_data, self._filename, offset, file_size, 1, 0)
@@ -251,7 +250,7 @@ if __name__ == "__main__":
 
     client = CosS3Client(conf)
 
-    mp = client.multipart_upload_from_filename("E:/ans.csv", "1.txt")
+    mp = client.multipart_upload_from_filename('timg.jpeg', "1")
     rt_init = mp.init_mp()
     rt_part = mp.upload_parts()
     rt_mp = mp.complete_mp()

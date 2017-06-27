@@ -51,10 +51,11 @@ class CosS3Auth(AuthBase):
         # sign_time = "1480932292;1481012292"
         sha1 = hashlib.sha1()
         sha1.update(format_str)
-
+        
         str_to_sign = "sha1\n{time}\n{sha1}\n".format(time=sign_time, sha1=sha1.hexdigest())
         logger.debug('str_to_sign: ' + str(str_to_sign))
         sign_key = hmac.new(self._secret_key, sign_time, hashlib.sha1).hexdigest()
+        
         sign = hmac.new(sign_key, str_to_sign, hashlib.sha1).hexdigest()
         logger.debug('sign_key: ' + str(sign_key))
         logger.debug('sign: ' + str(sign))

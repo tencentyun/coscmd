@@ -75,6 +75,6 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 注意事项
 !!!!!!!!
 
-请保证 parts_size * max_thread * 2 <= 你的内存大小，否则可能会导致内存溢出等内存错误。
-
-上传速度取决于parts_size * max_thread，但是上限是上行带宽和硬盘读写速度的最大值。
+该版本为测试版
+parts_size上限为10
+max_thread上限为10
