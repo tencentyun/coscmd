@@ -28,7 +28,7 @@
 
 .. code::
 
- coscmd config -a youraccessid -s yoursecretkey -u appid -b bucketname -r region -m max_thread -p parts_size
+ coscmd_upload config -a youraccessid -s yoursecretkey -u appid -b bucketname -r region -m max_thread -p parts_size
 
 
 请将参数替换为您的真实id/key/appid/bucket和园区代号,园区(region)为cn-south或者cn-north。
@@ -45,7 +45,7 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
 .. code::
 
- coscmd upload localpath cospath 
+ coscmd_upload upload localpath cospath 
 
 请将参数替换为您所需要的本地文件路径(localpath)，以及cos上存储的路径(cospath)。
 
@@ -55,8 +55,8 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
 .. code::
 
- coscmd config -a AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00 -s ciivKvnnrMvSvQpMAWuIz12pThGGlWRW -u 1252448703 -b uploadtest -r cn-south -m 10 -p 5
- coscmd upload 1.txt 1.txt
+ coscmd_upload config -a AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00 -s ciivKvnnrMvSvQpMAWuIz12pThGGlWRW -u 1252448703 -b uploadtest -r cn-north -m 10 -p 5
+ coscmd_upload upload 1.txt 1.txt
 
 .. code::
  

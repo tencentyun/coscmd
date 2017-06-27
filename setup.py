@@ -28,7 +28,7 @@ setup(
     install_requires=requirements(),
     entry_points={
         'console_scripts': [
-            'coscmd=coscmd.cos_upload_cmd:_main',
+            'coscmd_upload=coscmd.cos_upload_cmd:_main',
         ],
     }
 )
