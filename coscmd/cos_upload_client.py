@@ -5,7 +5,7 @@ from urllib import quote
 import time
 import requests
 from os import path
-from hashlib import sha1
+from hashlib import md5
 from contextlib import closing
 from xml.dom import minidom
 import logging
@@ -54,7 +54,7 @@ class MultiPartUpload(object):
         self._object_name = object_name
         self._conf = conf
         self._upload_id = None
-        self._sha1 = []
+        self._md5 = []
         self._have_finished = 0;
         self._err_tips = ''
         if session is None:
@@ -112,7 +112,7 @@ class MultiPartUpload(object):
         last_size = file_size - parts_num * chunk_size 
         if last_size != 0:
             parts_num += 1
-        self._sha1 = range(parts_num);
+        self._md5 = range(parts_num);
         #若分块太少，限制线程
         if parts_num < self._conf._max_thread:
             self._conf._max_thread = parts_num
@@ -147,9 +147,9 @@ class MultiPartUpload(object):
             data = file.read(len);
         url = self._conf.uri(path=self._object_name)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx+1, uploadid=self._upload_id)
         logger.info("upload url: " + str(url))
-        sha1_etag = sha1()
-        sha1_etag.update(data)
-        self._sha1[idx]=sha1_etag.hexdigest()
+        md5_etag = md5()
+        md5_etag.update(data)
+        self._md5[idx]=md5_etag.hexdigest()
         for j in range(retry):
             try:
                 rt = self._session.put(url=url,
@@ -162,9 +162,9 @@ class MultiPartUpload(object):
                     headers=rt.headers,
                     text=rt.text))            
                 if rt.status_code == 200:
-                    if 'Etag' in rt.headers:
-                        if rt.headers['Etag'] != '"%s"' % sha1_etag.hexdigest():
-                            logger.warn("upload file {file} response with error etag : {etag1}, {etag}".format(file=self._filename, etag=rt.headers['Etag'], etag1='%s' % sha1_etag.hexdigest()))
+                    if 'ETag' in rt.headers:
+                        if rt.headers['ETag'] != '"%s"' % md5_etag.hexdigest():
+                            logger.warn("upload file {file} response with error etag : {etag1}, {etag}".format(file=self._filename, etag=rt.headers['ETag'], etag1='%s' % md5_etag.hexdigest()))
                             continue
                         else:
                             self._have_finished+=1
@@ -191,7 +191,7 @@ class MultiPartUpload(object):
         doc = minidom.Document()
         root = doc.createElement("CompleteMultipartUpload")
         #root = etree.Element("CompleteMultipartUpload")
-        for i, v in enumerate(self._sha1):
+        for i, v in enumerate(self._md5):
             t = doc.createElement("Part")
             t1 = doc.createElement("PartNumber")
             t1.appendChild(doc.createTextNode(str(i+1)))
@@ -242,7 +242,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.WARN, stream=sys.stdout, format="%(asctime)s - %(message)s")
     conf = CosConfig(appid="1252448703",
                      bucket="uploadtest",
-                     region="cn-south",
+                     region="cn-north",
                      access_id="AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00",
                      access_key="ciivKvnnrMvSvQpMAWuIz12pThGGlWRW",
                      part_size=1,
@@ -250,7 +250,7 @@ if __name__ == "__main__":
 
     client = CosS3Client(conf)
 
-    mp = client.multipart_upload_from_filename('timg.jpeg', "1")
+    mp = client.multipart_upload_from_filename('1.txt', "1.txt")
     rt_init = mp.init_mp()
     rt_part = mp.upload_parts()
     rt_mp = mp.complete_mp()
