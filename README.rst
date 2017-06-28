@@ -1,5 +1,15 @@
-使用文档
+COSCMD使用文档
 ========
+
+更新
+--------
+1.1.0 增加上传文件夹功能
+
+1.1.1 修改上传部分失败的总结信息
+
+1.2.0 增加了文件夹上传进度条
+
+1.3.0 增加了下载文件的功能
 
 依赖
 --------
@@ -14,7 +24,7 @@
 
 .. code::
  
- sudo python setup.py install
+ python setup.py install
 
 
 使用方法
@@ -28,7 +38,7 @@
 
 .. code::
 
- coscmd_upload config -a youraccessid -s yoursecretkey -u appid -b bucketname -r region -m max_thread -p parts_size
+ coscmd config -a youraccessid -s yoursecretkey -u appid -b bucketname -r region -m max_thread -p parts_size
 
 
 请将参数替换为您的真实id/key/appid/bucket和园区代号,园区(region)为cn-south或者cn-north。
@@ -38,16 +48,30 @@ max_thread为多线程上传时的最大线程数(默认为5)
 parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
 
-上传文件
+上传文件(夹)
 !!!!!!!!
 
 使用如下命令上传文件：
 
 .. code::
 
- coscmd_upload upload localpath cospath 
+ coscmd upload localpath cospath 
 
 请将参数替换为您所需要的本地文件路径(localpath)，以及cos上存储的路径(cospath)。
+
+如果本地文件路径是一个文件夹，则会将文件夹以cospath的名字上传
+
+
+下载文件
+!!!!!!!!
+
+使用如下命令上传文件：
+
+.. code::
+
+ coscmd download localpath cospath 
+
+请将参数替换为您所需要的本地存储路径(localpath)，以及需要下载的cos上文件的路径(cospath)。
 
 
 简单示例
@@ -55,26 +79,22 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
 .. code::
 
- coscmd_upload config -a AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00 -s AWuIz12pThGGlWRWciivKvnnrMvSvQpM -u 1252448703 -b uploadtest -r cn-north -m 10 -p 5
- coscmd_upload upload 1.txt 1.txt
+ 设置属性
+ coscmd config -a AKKTZbAo6WhgcBqVls9SmuG0ID15IsskiBQ0 -s ciivKvnnrMvSvQpMAWuIz12pThGGlWRW -u 1252448703 -b uploadtest -r cn-south -m 10 -p 5
 
-.. code::
- 
- 2017-06-25 09:51:19,138 - config parameter:
- appid: 1252448703, region: cn-south, bucket: uploadtest, part_size: 1, max_thread: 5
- 2017-06-25 09:51:39,207 - Init multipart upload ok
- 2017-06-25 09:51:39,207 - upload ans.csv with 0.00%
- 2017-06-25 09:51:41,223 - upload ans.csv with 25.00%
- 2017-06-25 09:51:41,844 - upload ans.csv with 50.00%
- 2017-06-25 09:51:42,016 - upload ans.csv with 75.00%
- 2017-06-25 09:51:42,549 - upload ans.csv with 100.00%
- 2017-06-25 09:51:42,549 - multipart upload ok
- 2017-06-25 09:51:46,604 - complete multipart upload ok
+ 上传文件
+ coscmd upload file1 file2
+
+ 上传文件夹
+ coscmd upload folder1 folder2
+
+ 下载文件
+ coscmd download file1 file2
 
 
 注意事项
 !!!!!!!!
 
 该版本为测试版
-parts_size上限为10
-max_thread上限为10
+max_thread <= 10
+parts_size <= 10

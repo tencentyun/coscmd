@@ -1,20 +1,22 @@
 # -*- coding: utf-8 -*-
-
-from cos_upload_client import CosConfig, CosS3Client
+from cos_client import CosConfig, CosS3Client
 from ConfigParser import SafeConfigParser
 from argparse import ArgumentParser
-from os import path
 import random
 import sys
 import time
 import logging
-
+import os
 logger = logging.getLogger(__name__)
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
 
 def config(args):
     logger.debug("config: " + str(args))
 
-    conf_path = path.expanduser('~/.cos.conf')
+    conf_path = os.path.expanduser('~/.cos.conf')
 
     with open(conf_path, 'w+') as f:
         cp = SafeConfigParser()
@@ -32,8 +34,8 @@ def config(args):
 
 def load_conf():
 
-    conf_path = path.expanduser('~/.cos.conf')
-    if not path.exists(conf_path):
+    conf_path = os.path.expanduser('~/.cos.conf')
+    if not os.path.exists(conf_path):
         logger.warn("{conf} couldn't be found, please config tool!".format(conf=conf_path))
         raise IOError
     else:
@@ -62,47 +64,57 @@ def load_conf():
         )
         return conf
 
-
+#文件上传
 def upload(args):
     conf = load_conf()
     client = CosS3Client(conf)
     while args.object_name.startswith('/'):
-        args.object_name = args.object_name[1:]
-
-    mp = client.multipart_upload_from_filename(args.local_file, args.object_name)
-
-    retry = 5
+      args.object_name = args.object_name[1:]
+    Intface = client.obj_int()
     
-    for i in range(retry):
-        wait_time = random.randint(0, 20)
-        logger.debug("begin to init upload part after {second} second".format(second=wait_time))
-        time.sleep(wait_time)
-        rt = mp.init_mp()
-        if rt:
-            break
-    else:
-        return -1
-    logger.warn("Init multipart upload ok")
-
-    for i in range(retry):
-        rt = mp.upload_parts()
-        if rt:
-            break
-    else:
-        return -1
-    logger.warn("multipart upload ok")
-  
-    for i in range(retry):
-        wait_time = random.randint(0, 5)
-        time.sleep(wait_time)
-        logger.debug("begin to complete upload part after {second} second".format(second=wait_time))
-        rt = mp.complete_mp()
-        if rt:
-            logger.warn("complete multipart upload ok")
-            return 0
-    logger.warn("complete multipart upload failed")
-    return -1
+    if not isinstance(args.local_file, unicode):
+        args.local_file = args.local_file.decode('gbk')
+    if not isinstance(args.object_name, unicode):
+        args.object_name = args.object_name.decode('gbk')
+        
+    if not os.path.exists(args.local_file):
+        self._err_tips = 'local_folder %s not exist!' % local_path
+        return False
     
+    if not os.access(args.local_file, os.R_OK):
+        self._err_tips = 'local_folder %s is not readable!' % local_path
+        return False
+    if os.path.isdir(args.local_file):
+        Intface.upload_folder(args.local_file, args.object_name)
+        logger.info("upload {file} finished".format(file=args.local_file))
+        logger.info("totol of {folders} folders, {files} files".format(folders=Intface._folder_num, files=Intface._file_num))
+    elif os.path.isfile(args.local_file):
+        if Intface.upload_file(args.local_file, args.object_name) == True:
+            logger.info("upload {file} success".format(file=args.local_file))
+        else:
+            logger.info("upload {file} fail".format(file=args.local_file))
+    else:
+        logger.info("file or folder not exsist!")
+
+
+#文件下载
+def download(args):
+    conf = load_conf()
+    client = CosS3Client(conf)
+    while args.object_name.startswith('/'):
+      args.object_name = args.object_name[1:]
+    Intface = client.obj_int()
+    
+    if not isinstance(args.local_file, unicode): 
+        args.local_file = args.local_file.decode('gbk')
+    if not isinstance(args. object_name, unicode):
+        args.object_name = args.object_name.decode('gbk')
+    if Intface.download_file(args.local_file, args.object_name):
+        logger.info("download success!")
+    else:
+        logger.info("download fail!")
+    
+
 def _main():
     
     parser = ArgumentParser()
@@ -116,7 +128,6 @@ def _main():
     parser_a.add_argument('-r', '--region', help='specify your bucket', type=str, required=True)
     parser_a.add_argument('-m', '--max_thread', help='specify the number of threads (default 5)', type=int, default=5) 
     parser_a.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1) 
-    
     parser_a.set_defaults(func=config)
 
     parser_b = sub_parser.add_parser("upload")
@@ -124,12 +135,17 @@ def _main():
     parser_b.add_argument("object_name", help="object name as a/b.txt", type=str)
     parser_b.add_argument("-t", "--type", help="storage class type: standard/nearline/coldline", type=str, choices=["standard", "nearline", "coldline"], default="standard")
     parser_b.set_defaults(func=upload)
+    
+    parser_c = sub_parser.add_parser("download")
+    parser_c.add_argument('local_file', help="local file path as /tmp/a.txt", type=str)
+    parser_c.add_argument("object_name", help="object name as a/b.txt", type=str)
+    parser_c.set_defaults(func=download)
 
     args = parser.parse_args()
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format="%(asctime)s - %(message)s")
     else :
-        logging.basicConfig(level=logging.WARN, stream=sys.stdout, format="%(asctime)s - %(message)s")
+        logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
 
     return args.func(args)
 
