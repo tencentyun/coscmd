@@ -14,7 +14,15 @@ import time
 import sys
 import os
 logger = logging.getLogger(__name__)
+#进度条
+def view_bar(num,total):  
+    ret = 1.0*num / total 
+    ag = ret * 100 
+    ab = "\r [%-50s]%.2f%%" %( '='*int(ret*50),ag, )  
+    sys.stdout.write(ab)  
+    sys.stdout.flush()  
 
+#设置类
 class CosConfig(object):
     
     def __init__(self, appid, region, bucket, access_id, access_key, part_size=1, max_thread=5, *args, **kwargs):
@@ -45,7 +53,7 @@ class CosConfig(object):
                 uid=self._appid,
                 region=self._region
             )
-
+#对象接口
 class ObjectInterface(object):
 
     def __init__(self, conf, session=None):
@@ -187,7 +195,7 @@ class ObjectInterface(object):
                                     continue
                                 else:
                                     self._have_finished+=1
-                                    logger.warn("upload {file} with {per}%".format(file=local_path, per="{0:5.2f}".format(self._have_finished*100/float(parts_size))))
+                                    view_bar(self._have_finished,parts_size)
                                     break
                             else:
                                 logger.warn("upload file {file} response with no ETag ".format(file=self._filename))
@@ -207,6 +215,7 @@ class ObjectInterface(object):
                 return True
             
             #读文件的偏移量
+
             offset = 0
             file_size = path.getsize(local_path)
             logger.debug("file size: " + str(file_size))
@@ -227,7 +236,7 @@ class ObjectInterface(object):
             pool = SimpleThreadPool(self._conf._max_thread)
             logger.debug("chunk_size: " + str(chunk_size))
             logger.debug('upload file concurrently')
-            logger.info("upload {file} with {per}%".format(file=local_path, per="{0:5.2f}".format(0)))               
+            logger.info("uploading {file}".format(file=local_path))         
             #单文件小于分块大小
             if chunk_size >= file_size:
                 pool.add_task(multiupload_parts_data, local_path, offset, file_size, 1, 0)
@@ -243,6 +252,8 @@ class ObjectInterface(object):
             #等待结束
             pool.wait_completion()
             result = pool.get_result()
+            #进度条换行
+            print "";
             if result['success_all']:
                 return True
             else:

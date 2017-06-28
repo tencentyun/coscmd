@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-import sys
-reload(sys)
-sys.setdefaultencoding('utf-8')
 from cos_client import CosConfig, CosS3Client
 from ConfigParser import SafeConfigParser
 from argparse import ArgumentParser
@@ -11,6 +8,9 @@ import time
 import logging
 import os
 logger = logging.getLogger(__name__)
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
 
 
 def config(args):
