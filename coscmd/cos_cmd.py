@@ -89,11 +89,9 @@ def upload(args):
         self._err_tips = 'local_folder %s is not readable!' % local_path
         return False
     if os.path.isdir(args.local_file):
-        if Intface.upload_folder(args.local_file, args.object_name) == True:
-            logger.info("upload {file} success".format(file=args.local_file))
-            logger.info("totol of {folders} folders, {files} files".format(folders=Intface._folder_num, files=Intface._file_num))
-        else:
-            logger.info("upload {file} fail".format(file=args.local_file))
+        Intface.upload_folder(args.local_file, args.object_name)
+        logger.info("upload {file} finished".format(file=args.local_file))
+        logger.info("totol of {folders} folders, {files} files".format(folders=Intface._folder_num, files=Intface._file_num))
     elif os.path.isfile(args.local_file):
         if Intface.upload_file(args.local_file, args.object_name) == True:
             logger.info("upload {file} success".format(file=args.local_file))
