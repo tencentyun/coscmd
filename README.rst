@@ -7,6 +7,8 @@ COSCMD使用文档
 
 1.1.1 修改上传部分失败的总结信息
 
+1.2.0 增加了文件夹上传进度条
+
 依赖
 --------
 
@@ -62,21 +64,18 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
 .. code::
 
- coscmd config -a AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00 -s ciivKvnnrMvSvQpMAWuIz12pThGGlWRW -u 1252448703 -b uploadtest -r cn-south -m 10 -p 5
- coscmd upload 1.txt 1.txt
+ 设置属性
+ coscmd config -a AKKTZbAo6WhgcBqVls9SmuG0ID15IsskiBQ0 -s ciivKvnnrMvSvQpMAWuIz12pThGGlWRW -u 1252448703 -b uploadtest -r cn-south -m 10 -p 5
+
+ 上传文件
+ coscmd upload file1 file2
+
+ 上传文件夹
+ coscmd upload folder1 folder2
 
 .. code::
  
- 2017-06-25 09:51:19,138 - config parameter:
- appid: 1252448703, region: cn-south, bucket: uploadtest, part_size: 1, max_thread: 5
- 2017-06-25 09:51:39,207 - Init multipart upload ok
- 2017-06-25 09:51:39,207 - upload ans.csv with 0.00%
- 2017-06-25 09:51:41,223 - upload ans.csv with 25.00%
- 2017-06-25 09:51:41,844 - upload ans.csv with 50.00%
- 2017-06-25 09:51:42,016 - upload ans.csv with 75.00%
- 2017-06-25 09:51:42,549 - upload ans.csv with 100.00%
- 2017-06-25 09:51:42,549 - multipart upload ok
- 2017-06-25 09:51:46,604 - complete multipart upload ok
+
 
 
 注意事项
