@@ -1,4 +1,4 @@
-import cos_upload_cmd
-import cos_upload_auth
-import cos_upload_threadpool
-import cos_upload_client
+import cos_cmd
+import cos_auth
+import cos_threadpool
+import cos_client

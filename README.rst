@@ -1,5 +1,10 @@
-使用文档
+COSCMD使用文档
 ========
+
+更新
+--------
+1.1.0 增加上传文件夹功能
+1.1.1 修改上传部分失败的总结信息
 
 依赖
 --------
@@ -28,7 +33,7 @@
 
 .. code::
 
- coscmd_upload config -a youraccessid -s yoursecretkey -u appid -b bucketname -r region -m max_thread -p parts_size
+ coscmd config -a youraccessid -s yoursecretkey -u appid -b bucketname -r region -m max_thread -p parts_size
 
 
 请将参数替换为您的真实id/key/appid/bucket和园区代号,园区(region)为cn-south或者cn-north。
@@ -45,7 +50,7 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
 .. code::
 
- coscmd_upload upload localpath cospath 
+ coscmd upload localpath cospath 
 
 请将参数替换为您所需要的本地文件路径(localpath)，以及cos上存储的路径(cospath)。
 
@@ -55,8 +60,8 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
 .. code::
 
- coscmd_upload config -a AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00 -s AWuIz12pThGGlWRWciivKvnnrMvSvQpM -u 1252448703 -b uploadtest -r cn-north -m 10 -p 5
- coscmd_upload upload 1.txt 1.txt
+ coscmd config -a AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00 -s ciivKvnnrMvSvQpMAWuIz12pThGGlWRW -u 1252448703 -b uploadtest -r cn-south -m 10 -p 5
+ coscmd upload 1.txt 1.txt
 
 .. code::
  
@@ -76,5 +81,5 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 !!!!!!!!
 
 该版本为测试版
-parts_size上限为10
-max_thread上限为10
+max_thread <= 10
+parts_size <= 10

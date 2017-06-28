@@ -17,7 +17,7 @@ def long_description():
         return fileobj.read()
 setup(
     name='coscmd',
-    version='0.2.0',
+    version='1.1.0',
     url='https://www.qcloud.com/',
     license='MIT',
     author='lewzylu',
@@ -28,7 +28,7 @@ setup(
     install_requires=requirements(),
     entry_points={
         'console_scripts': [
-            'coscmd_upload=coscmd.cos_upload_cmd:_main',
+            'coscmd=coscmd.cos_cmd:_main',
         ],
     }
 )
