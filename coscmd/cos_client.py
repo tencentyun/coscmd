@@ -339,7 +339,7 @@ class ObjectInterface(object):
                     raise IOError("download failed with incomplete file")
             #如果下载失败，输出信息
             else:
-                logger.exception(rt.content)
+                logger.warn(rt.content)
             return rt.status_code == 200
         except Exception:
             logger.exception("Error!")
