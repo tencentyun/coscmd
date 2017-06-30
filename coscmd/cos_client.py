@@ -337,6 +337,9 @@ class ObjectInterface(object):
                     f.flush()
                 if file_len != content_len:
                     raise IOError("download failed with incomplete file")
+            #如果下载失败，输出信息
+            else:
+                logger.exception(rt.content)
             return rt.status_code == 200
         except Exception:
             logger.exception("Error!")

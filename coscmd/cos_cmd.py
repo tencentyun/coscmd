@@ -109,7 +109,10 @@ def download(args):
         args.local_file = args.local_file.decode('gbk')
     if not isinstance(args. object_name, unicode):
         args.object_name = args.object_name.decode('gbk')
-    print Intface.download_file(args.local_file, args.object_name)
+    if Intface.download_file(args.local_file, args.object_name):
+        logger.info("download success!")
+    else:
+        logger.info("download fail!")
     
 
 def _main():
