@@ -113,12 +113,28 @@ def download(args):
         logger.info("download success!")
     else:
         logger.info("download fail!")
+        
+#文件删除
+def delete(args):
+    conf = load_conf()
+    client = CosS3Client(conf)
+    while args.object_name.startswith('/'):
+      args.object_name = args.object_name[1:]
+    Intface = client.obj_int()
+    
+    if not isinstance(args. object_name, unicode):
+        args.object_name = args.object_name.decode('gbk')
+    if Intface.delete_file(args.object_name):
+        logger.info("delete success!")
+    else:
+        logger.info("delete fail!")
     
 
 def _main():
     
     parser = ArgumentParser()
     parser.add_argument('-v', '--verbose', help="verbose mode", action="store_true", default=False)
+    #初始化设置
     sub_parser = parser.add_subparsers(help="config")
     parser_a = sub_parser.add_parser("config")
     parser_a.add_argument('-a', '--access_id', help='specify your access id', type=str, required=True)
@@ -129,17 +145,24 @@ def _main():
     parser_a.add_argument('-m', '--max_thread', help='specify the number of threads (default 5)', type=int, default=5) 
     parser_a.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1) 
     parser_a.set_defaults(func=config)
-
+    
+    #上传
     parser_b = sub_parser.add_parser("upload")
     parser_b.add_argument('local_file', help="local file path as /tmp/a.txt", type=str)
     parser_b.add_argument("object_name", help="object name as a/b.txt", type=str)
     parser_b.add_argument("-t", "--type", help="storage class type: standard/nearline/coldline", type=str, choices=["standard", "nearline", "coldline"], default="standard")
     parser_b.set_defaults(func=upload)
     
+    #下载
     parser_c = sub_parser.add_parser("download")
     parser_c.add_argument('local_file', help="local file path as /tmp/a.txt", type=str)
     parser_c.add_argument("object_name", help="object name as a/b.txt", type=str)
     parser_c.set_defaults(func=download)
+
+    #删除
+    parser_d = sub_parser.add_parser("delete")
+    parser_d.add_argument("object_name", help="object name as a/b.txt", type=str)
+    parser_d.set_defaults(func=delete)
 
     args = parser.parse_args()
     if args.verbose:

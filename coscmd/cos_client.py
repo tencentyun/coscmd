@@ -316,7 +316,7 @@ class ObjectInterface(object):
     #文件下载
     def download_file(self, local_path, cos_path):
         url = self._conf.uri(path=cos_path)
-        logger.debug("download with : " + url)
+        logger.info("download with : " + url)
         try:
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             logger.debug("init resp, status code: {code}, headers: {headers}".format(
@@ -347,9 +347,9 @@ class ObjectInterface(object):
         return False
     
     #文件删除
-    def delete_file(self):
+    def delete_file(self, cos_path):
         url = self._conf.uri(path=cos_path)
-        logger.debug("delete with : " + url)
+        logger.info("delete with : " + url)
         try:
             rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             logger.debug("init resp, status code: {code}, headers: {headers}".format(
