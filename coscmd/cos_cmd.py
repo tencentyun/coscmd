@@ -72,13 +72,9 @@ def upload(args):
       args.object_name = args.object_name[1:]
     Intface = client.obj_int()
     
-    if isinstance(args.local_file, unicode):
-        pass
-    else:
+    if not isinstance(args.local_file, unicode):
         args.local_file = args.local_file.decode('gbk')
-    if isinstance(args.object_name, unicode):
-        pass
-    else:
+    if not isinstance(args.object_name, unicode):
         args.object_name = args.object_name.decode('gbk')
         
     if not os.path.exists(args.local_file):
@@ -121,6 +117,11 @@ def _main():
     parser_b.add_argument("object_name", help="object name as a/b.txt", type=str)
     parser_b.add_argument("-t", "--type", help="storage class type: standard/nearline/coldline", type=str, choices=["standard", "nearline", "coldline"], default="standard")
     parser_b.set_defaults(func=upload)
+    
+    parser_c = sub_parser.add_parser("download")
+    parser_c.add_argument('local_file', help="local file path as /tmp/a.txt", type=str)
+    parser_b.add_argument("object_name", help="object name as a/b.txt", type=str)
+    parser_b.set_defaults(func=download)
 
     args = parser.parse_args()
     if args.verbose:

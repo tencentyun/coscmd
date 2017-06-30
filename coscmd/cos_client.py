@@ -33,7 +33,7 @@ class CosConfig(object):
         self._access_key = access_key
         self._part_size = min(10,part_size)
         self._max_thread = min(10,max_thread)
-        logger.debug("config parameter-> appid: {appid}, region: {region}, bucket: {bucket}, part_size: {part_size}, max_thread: {max_thread}".format(
+        logger.info("config parameter-> appid: {appid}, region: {region}, bucket: {bucket}, part_size: {part_size}, max_thread: {max_thread}".format(
                  appid = appid,
                  region = region,
                  bucket = bucket,
@@ -69,30 +69,6 @@ class ObjectInterface(object):
             self._session = requests.session()
         else:
             self._session = session
-          
-    def check_local_file_valid(self, local_path):
-        if not os.path.exists(local_path):
-            self._err_tips = 'local_file %s not exist!' % local_path
-            return False
-        if not os.path.isfile(local_path):
-            self._err_tips = 'local_file %s is not regular file!' % local_path
-            return False
-        if not os.access(local_path, os.R_OK):
-            self._err_tips = 'local_file %s is not readable!' % local_path
-            return False
-        return True
-
-    def check_local_folder_valid(self, local_path):
-        if not os.path.exists(local_path):
-            self._err_tips = 'local_folder %s not exist!' % local_path
-            return False
-        if not os.path.isdir(local_path):
-            self._err_tips = 'local_folder %s is not regular file!' % local_path
-            return False
-        if not os.access(local_path, os.R_OK):
-            self._err_tips = 'local_folder %s is not readable!' % local_path
-            return False
-        return True
     
     #文件夹上传
     def upload_folder(self, local_path, cos_path):
@@ -162,11 +138,10 @@ class ObjectInterface(object):
                 return rt.status_code == 200
             except Exception:
                 return False
-            return True
+            return Tr     
         
-        #分块上传
-        def multiupload_parts():
-            
+        #分块部分
+        def multiupload_parts(): 
              #线程函数
             def multiupload_parts_data(local_path, offset, len, parts_size, idx):
                 with open(local_path, 'rb') as file:
@@ -338,7 +313,7 @@ class ObjectInterface(object):
             logger.warn("complete multipart upload failed")
             return False
     
-    #下载
+    #文件下载
     def download_file(self):
         url = self._conf.uri(path=cos_path)
         logger.debug("download with : " + url)
@@ -367,6 +342,7 @@ class ObjectInterface(object):
             return False
         return True
     
+    #文件删除
     def delete_file(self):
         url = self._conf.uri(path=cos_path)
         logger.debug("delete with : " + url)
