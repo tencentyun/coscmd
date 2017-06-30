@@ -110,10 +110,6 @@ def download(args):
     if not isinstance(args. object_name, unicode):
         args.object_name = args.object_name.decode('gbk')
     print Intface.download_file(args.local_file, args.object_name)
-#     if Intface.download_file(args.local_file, args.object_name):
-#         logger.info("download success!")
-#     else:
-#         logger.info("download fail!")
     
 
 def _main():
@@ -129,7 +125,6 @@ def _main():
     parser_a.add_argument('-r', '--region', help='specify your bucket', type=str, required=True)
     parser_a.add_argument('-m', '--max_thread', help='specify the number of threads (default 5)', type=int, default=5) 
     parser_a.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1) 
-    
     parser_a.set_defaults(func=config)
 
     parser_b = sub_parser.add_parser("upload")
