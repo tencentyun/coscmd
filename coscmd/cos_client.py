@@ -314,7 +314,7 @@ class ObjectInterface(object):
             return False
     
     #文件下载
-    def download_file(self):
+    def download_file(self, local_path, cos_path):
         url = self._conf.uri(path=cos_path)
         logger.debug("download with : " + url)
         try:
@@ -327,20 +327,21 @@ class ObjectInterface(object):
                 content_len = int(rt.headers['Content-Length'])
             else:
                 raise IOError("download failed without Content-Length header")
-            file_len = 0
-            with open(local_path, 'wb') as f:
-                for chunk in rt.iter_content(chunk_size=1024):
-                    if chunk:
-                        file_len += len(chunk)
-                        f.write(chunk)
-                f.flush()
-            if file_len != content_len:
-                raise IOError("download failed with incomplete file")
+            if rt.status_code == 200:
+                file_len = 0
+                with open(local_path, 'wb') as f:
+                    for chunk in rt.iter_content(chunk_size=1024):
+                        if chunk:
+                            file_len += len(chunk)
+                            f.write(chunk)
+                    f.flush()
+                if file_len != content_len:
+                    raise IOError("download failed with incomplete file")
             return rt.status_code == 200
         except Exception:
             logger.exception("Error!")
             return False
-        return True
+        return False
     
     #文件删除
     def delete_file(self):
@@ -355,7 +356,7 @@ class ObjectInterface(object):
         except Exception:
             logger.exception("Error!")
             return False
-        return True
+        return False
     
 class BucketInterface(object):
 

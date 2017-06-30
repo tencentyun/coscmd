@@ -96,6 +96,26 @@ def upload(args):
     else:
         logger.info("file or folder not exsist!")
 
+
+#文件下载
+def download(args):
+    conf = load_conf()
+    client = CosS3Client(conf)
+    while args.object_name.startswith('/'):
+      args.object_name = args.object_name[1:]
+    Intface = client.obj_int()
+    
+    if not isinstance(args.local_file, unicode): 
+        args.local_file = args.local_file.decode('gbk')
+    if not isinstance(args. object_name, unicode):
+        args.object_name = args.object_name.decode('gbk')
+    print Intface.download_file(args.local_file, args.object_name)
+#     if Intface.download_file(args.local_file, args.object_name):
+#         logger.info("download success!")
+#     else:
+#         logger.info("download fail!")
+    
+
 def _main():
     
     parser = ArgumentParser()
@@ -120,8 +140,8 @@ def _main():
     
     parser_c = sub_parser.add_parser("download")
     parser_c.add_argument('local_file', help="local file path as /tmp/a.txt", type=str)
-    parser_b.add_argument("object_name", help="object name as a/b.txt", type=str)
-    parser_b.set_defaults(func=download)
+    parser_c.add_argument("object_name", help="object name as a/b.txt", type=str)
+    parser_c.set_defaults(func=download)
 
     args = parser.parse_args()
     if args.verbose:
