@@ -158,7 +158,7 @@ class BucketOp(object):
     def list(args):
         conf = load_conf()
         client = CosS3Client(conf)
-        Intface = client.buc_put()
+        Intface = client.buc_int()
         if Intface.create_bucket():
             logger.info("list success!")
         else:
