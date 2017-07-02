@@ -426,20 +426,16 @@ class BucketInterface(object):
                  code=rt.status_code,
                  headers=rt.headers,
                  text=rt.text))
-            print rt.content
-            
-            root = minidom.parseString(rt.content).documentElement
-            for file in root.getElementsByTagName('Contents'):
-                #print "%{Key},%s,%s,%s".format();
-                print file.getElementsByTagName('Key')[0].childNodes[0].nodeValue
-                print file.getElementsByTagName('LastModified')[0].childNodes[0].nodeValue
-                print file.getElementsByTagName('ETag')[0].childNodes[0].nodeValue
-                print file.getElementsByTagName('Size')[0].childNodes[0].nodeValue
-                print file.getElementsByTagName('ID')[0].childNodes[0].nodeValue
-#             for obj in root.getElementsByTagName("Contents"):
-#                 for tmp in obj.childNode:
-#                     print tmp
-            return rt.status_code == 200
+            logger.info(rt.content)
+            if rt.status_code == 200:
+                with open('tmp.txt', 'wb') as f:
+                    for chunk in rt.iter_content(chunk_size=1024):
+                        if chunk:
+                            f.write(chunk)
+                    f.flush()
+                return True
+            else:
+                return False
         except Exception:
             logger.exception("Error!")
             return False

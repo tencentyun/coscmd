@@ -133,22 +133,36 @@ class FileOp(object):
     
 class BucketOp(object):
     #创建bucket
+    @staticmethod
     def create(args):
         conf = load_conf()
         client = CosS3Client(conf)
+        Intface = client.buc_int()
         if Intface.create_bucket():
             logger.info("create success!")
         else:
             logger.info("create fail!")
         
     #删除bucket     
+    @staticmethod
     def delete(args):
         conf = load_conf()
         client = CosS3Client(conf)
+        Intface = client.buc_int()
         if Intface.delete_bucket():
             logger.info("delete success!")
         else:
-            logger.info("delete fail!")
+            logger.info("delete fail!")#删除bucket  
+  
+    @staticmethod
+    def list(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        Intface = client.buc_put()
+        if Intface.create_bucket():
+            logger.info("list success!")
+        else:
+            logger.info("list fail!")
         
 def _main():
     
@@ -166,23 +180,33 @@ def _main():
     parser_a.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1) 
     parser_a.set_defaults(func=config)
     
-    #上传
+    #上传文件
     parser_b = sub_parser.add_parser("upload")
     parser_b.add_argument('local_file', help="local file path as /tmp/a.txt", type=str)
     parser_b.add_argument("object_name", help="object name as a/b.txt", type=str)
     parser_b.add_argument("-t", "--type", help="storage class type: standard/nearline/coldline", type=str, choices=["standard", "nearline", "coldline"], default="standard")
     parser_b.set_defaults(func=FileOp.upload)
     
-    #下载
+    #下载文件
     parser_c = sub_parser.add_parser("download")
     parser_c.add_argument('local_file', help="local file path as /tmp/a.txt", type=str)
     parser_c.add_argument("object_name", help="object name as a/b.txt", type=str)
     parser_c.set_defaults(func=FileOp.download)
 
-    #删除
+    #删除文件
     parser_d = sub_parser.add_parser("delete")
     parser_d.add_argument("object_name", help="object name as a/b.txt", type=str)
     parser_d.set_defaults(func=FileOp.delete)
+    
+    #
+    parser_e = sub_parser.add_parser("create")
+    parser_e.set_defaults(func=BucketOp.create)
+    
+    parser_f = sub_parser.add_parser("delete")
+    parser_f.set_defaults(func=BucketOp.delete)
+    
+    parser_f = sub_parser.add_parser("list")
+    parser_f.set_defaults(func=BucketOp)
 
     args = parser.parse_args()
     if args.verbose:
