@@ -63,73 +63,90 @@ def load_conf():
             max_thread = max_thread
         )
         return conf
-
-#文件上传
-def upload(args):
-    conf = load_conf()
-    client = CosS3Client(conf)
-    while args.object_name.startswith('/'):
-      args.object_name = args.object_name[1:]
-    Intface = client.obj_int()
-    
-    if not isinstance(args.local_file, unicode):
-        args.local_file = args.local_file.decode('gbk')
-    if not isinstance(args.object_name, unicode):
-        args.object_name = args.object_name.decode('gbk')
+class FileOP(object):
+    #文件上传
+    def upload(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        while args.object_name.startswith('/'):
+          args.object_name = args.object_name[1:]
+        Intface = client.obj_int()
         
-    if not os.path.exists(args.local_file):
-        self._err_tips = 'local_folder %s not exist!' % local_path
-        return False
-    
-    if not os.access(args.local_file, os.R_OK):
-        self._err_tips = 'local_folder %s is not readable!' % local_path
-        return False
-    if os.path.isdir(args.local_file):
-        Intface.upload_folder(args.local_file, args.object_name)
-        logger.info("upload {file} finished".format(file=args.local_file))
-        logger.info("totol of {folders} folders, {files} files".format(folders=Intface._folder_num, files=Intface._file_num))
-    elif os.path.isfile(args.local_file):
-        if Intface.upload_file(args.local_file, args.object_name) == True:
-            logger.info("upload {file} success".format(file=args.local_file))
+        if not isinstance(args.local_file, unicode):
+            args.local_file = args.local_file.decode('gbk')
+        if not isinstance(args.object_name, unicode):
+            args.object_name = args.object_name.decode('gbk')
+            
+        if not os.path.exists(args.local_file):
+            self._err_tips = 'local_folder %s not exist!' % local_path
+            return False
+        
+        if not os.access(args.local_file, os.R_OK):
+            self._err_tips = 'local_folder %s is not readable!' % local_path
+            return False
+        if os.path.isdir(args.local_file):
+            Intface.upload_folder(args.local_file, args.object_name)
+            logger.info("upload {file} finished".format(file=args.local_file))
+            logger.info("totol of {folders} folders, {files} files".format(folders=Intface._folder_num, files=Intface._file_num))
+        elif os.path.isfile(args.local_file):
+            if Intface.upload_file(args.local_file, args.object_name) == True:
+                logger.info("upload {file} success".format(file=args.local_file))
+            else:
+                logger.info("upload {file} fail".format(file=args.local_file))
         else:
-            logger.info("upload {file} fail".format(file=args.local_file))
-    else:
-        logger.info("file or folder not exsist!")
-
-
-#文件下载
-def download(args):
-    conf = load_conf()
-    client = CosS3Client(conf)
-    while args.object_name.startswith('/'):
-      args.object_name = args.object_name[1:]
-    Intface = client.obj_int()
+            logger.info("file or folder not exsist!")
     
-    if not isinstance(args.local_file, unicode): 
-        args.local_file = args.local_file.decode('gbk')
-    if not isinstance(args. object_name, unicode):
-        args.object_name = args.object_name.decode('gbk')
-    if Intface.download_file(args.local_file, args.object_name):
-        logger.info("download success!")
-    else:
-        logger.info("download fail!")
+    #文件下载
+    def download(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        while args.object_name.startswith('/'):
+          args.object_name = args.object_name[1:]
+        Intface = client.obj_int()
         
-#文件删除
-def delete(args):
-    conf = load_conf()
-    client = CosS3Client(conf)
-    while args.object_name.startswith('/'):
-      args.object_name = args.object_name[1:]
-    Intface = client.obj_int()
+        if not isinstance(args.local_file, unicode): 
+            args.local_file = args.local_file.decode('gbk')
+        if not isinstance(args. object_name, unicode):
+            args.object_name = args.object_name.decode('gbk')
+        if Intface.download_file(args.local_file, args.object_name):
+            logger.info("download success!")
+        else:
+            logger.info("download fail!")
+            
+    #文件删除
+    def delete(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        while args.object_name.startswith('/'):
+          args.object_name = args.object_name[1:]
+        Intface = client.obj_int()
+        
+        if not isinstance(args. object_name, unicode):
+            args.object_name = args.object_name.decode('gbk')
+        if Intface.delete_file(args.object_name):
+            logger.info("delete success!")
+        else:
+            logger.info("delete fail!")
     
-    if not isinstance(args. object_name, unicode):
-        args.object_name = args.object_name.decode('gbk')
-    if Intface.delete_file(args.object_name):
-        logger.info("delete success!")
-    else:
-        logger.info("delete fail!")
-    
-
+class BucketOP(object):
+    #创建bucket
+    def create(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        if Intface.create_bucket():
+            logger.info("create success!")
+        else:
+            logger.info("create fail!")
+        
+    #删除bucket
+    def delete(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        if Intface.delete_bucket():
+            logger.info("delete success!")
+        else:
+            logger.info("delete fail!")
+        
 def _main():
     
     parser = ArgumentParser()
