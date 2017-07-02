@@ -11,6 +11,8 @@ COSCMD使用文档
 
 1.3.0 增加了下载文件的功能
 
+1.4.0 增加了bucket创建、删除、查看的功能；增加了文件删除的功能
+
 依赖
 --------
 
@@ -74,6 +76,55 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 请将参数替换为您所需要的本地存储路径(localpath)，以及需要下载的cos上文件的路径(cospath)。
 
 
+删除文件
+!!!!!!!!
+
+使用如下命令删除文件：
+
+.. code::
+
+ coscmd delete cospath 
+
+请将参数替换为您所需要删除的cos上文件的路径(cospath)。
+
+
+新建bucket
+!!!!!!!!
+
+使用如下命令新建bucket：
+
+.. code::
+
+ coscmd create
+
+输入以下命令会根据在conf设置的信息新建一个对应的bucket
+
+
+删除bucket
+!!!!!!!!
+
+使用如下命令创建bucket：
+
+.. code::
+
+ coscmd delete
+
+输入以下命令会根据在conf设置的信息删除对应的bucket
+
+
+遍历bucket
+!!!!!!!!
+
+使用如下命令遍历bucket中的文件：
+
+.. code::
+
+ coscmd list
+
+输入以下命令会根据在conf设置的信息查看对应的bucket内的文件信息
+而且会在当前目录下生成一个名为tmp.xml的文件，包含该bucket下所有文件的信息。
+
+
 简单示例
 !!!!!!!!
 
@@ -91,6 +142,18 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
  下载文件
  coscmd download file1 file2
 
+ 删除文件
+ coscmd delete file1
+
+ 新建bucket
+ coscmd create
+
+ 删除bucket
+ coscmd delete
+
+ 遍历bucket
+ coscmd list
+
 
 注意事项
 !!!!!!!!
@@ -98,3 +161,6 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 该版本为测试版
 max_thread <= 10
 parts_size <= 10
+list命令最多只能得到1000个文件的信息
+不能删除和下载文件夹
+不能删除非空bucket
