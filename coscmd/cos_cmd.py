@@ -161,6 +161,7 @@ class BucketOp(object):
         Intface = client.buc_int()
         if Intface.get_bucket():
             logger.info("list success!")
+            logger.info("save as tmp.xml in the current directory！")
         else:
             logger.info("list fail!")
         

@@ -428,7 +428,7 @@ class BucketInterface(object):
                  text=rt.text))
             logger.info(rt.content)
             if rt.status_code == 200:
-                with open('tmp.txt', 'wb') as f:
+                with open('tmp.xml', 'wb') as f:
                     for chunk in rt.iter_content(chunk_size=1024):
                         if chunk:
                             f.write(chunk)
