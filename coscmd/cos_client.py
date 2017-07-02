@@ -47,18 +47,19 @@ class CosConfig(object):
                  max_thread = max_thread))
     def uri(self, path=None):
         if path:
-            return "http://{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
+            url = "http://{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
                 bucket=self._bucket,
                 uid=self._appid,
                 region=self._region,
                 path=path
             )
         else:
-            return "http://{bucket}-{uid}.{region}.myqcloud.com".format(
+            url = "http://{bucket}-{uid}.{region}.myqcloud.com".format(
                 bucket=self._bucket,
                 uid=self._appid,
                 region=self._region
             )
+        return url
 #对象接口
 class ObjectInterface(object):
 
@@ -159,40 +160,29 @@ class ObjectInterface(object):
                 md5_ETag.update(data)
                 self._md5[idx]=md5_ETag.hexdigest()
                 for j in range(self._retry):
-                    try:
-                        rt = self._session.put(url=url,
-                                               auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                                               data=data)
-                        logger.debug("multi part result: part{part}, round{round}, code: {code}, headers: {headers}, text: {text}".format(
-                            part = idx+1,
-                            round = j+1,
-                            code=rt.status_code,
-                            headers=rt.headers,
-                            text=rt.text))            
-                        if rt.status_code == 200:
-                            if 'ETag' in rt.headers:
-                                if rt.headers['ETag'] != '"%s"' % md5_ETag.hexdigest():
-                                    logger.warn("upload file {file} response with error ETag : {ETag1}, {ETag}".format(file=self._filename, ETag=rt.headers['ETag'], ETag1='%s' % md5_ETag.hexdigest()))
-                                    continue
-                                else:
-                                    self._have_finished+=1
-                                    view_bar(self._have_finished,parts_size)
-                                    break
-                            else:
-                                logger.warn("upload file {file} response with no ETag ".format(file=self._filename))
-                                continue
-                        else:
-                            time.sleep(2**j)
-                            continue;
-                        if j+1 == retry:
-                            logger.exception("upload part failed: part{part}, round{round}, code: {code}".format(
-                            part = idx+1,
-                            round = j+1,
-                            code=rt.status_code))
-                            return False
-                        
-                    except Exception:
-                        logger.exception("upload part failed")
+                    rt = self._session.put(url=url,
+                                           auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                                           data=data)
+                    logger.debug("multi part result: part{part}, round{round}, code: {code}, headers: {headers}, text: {text}".format(
+                        part = idx+1,
+                        round = j+1,
+                        code=rt.status_code,
+                        headers=rt.headers,
+                        text=rt.text))            
+                    if rt.status_code == 200:
+                        self._have_finished+=1
+                        view_bar(self._have_finished,parts_size)
+                        break
+                    else:
+                        time.sleep(2**j)
+                        continue;
+                    if j+1 == retry:
+                        logger.exception("upload part failed: part{part}, round{round}, code: {code}".format(
+                        part = idx+1,
+                        round = j+1,
+                        code=rt.status_code))
+                        return False
+                    
                 return True
             
             #读文件的偏移量
@@ -292,9 +282,6 @@ class ObjectInterface(object):
                 rt = init_multiupload()
                 if rt:
                     break
-                wait_time = random.randint(0, 1)
-                logger.debug("begin to init upload part after {second} second".format(second=wait_time))
-                time.sleep(wait_time)
             else:
                 return False
             logger.debug("Init multipart upload ok")
@@ -313,44 +300,91 @@ class ObjectInterface(object):
                 if rt:
                     logger.debug("complete multipart upload ok")
                     return True
-                wait_time = random.randint(0, 1)
-                time.sleep(wait_time)
-                logger.debug("begin to complete upload part after {second} second".format(second=wait_time))
             logger.warn("complete multipart upload failed")
             return False
     
     #文件下载
     def download_file(self, local_path, cos_path):
-        url = self._conf.uri(path=cos_path)
-        logger.info("download with : " + url)
-        try:
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
-            logger.debug("init resp, status code: {code}, headers: {headers}".format(
-                 code=rt.status_code,
-                 headers=rt.headers))
+        
+        #cos协议下载
+        if cos_path[0:6]=="cos://":
+            cos_path = cos_path.split("cos://")[1]
+            bucket_name = cos_path.split('-')[0]
+            cos_path = cos_path[len(bucket_name)+1:]
+            app_id= cos_path.split('.')[0]
+            cos_path = cos_path[len(app_id)+1:]
+            region = cos_path.split(".")[0]
+            cos_path = cos_path[len(region+".myqcloud.com/"):]
             
-            if 'Content-Length' in rt.headers:
-                content_len = int(rt.headers['Content-Length'])
-            else:
-                raise IOError("download failed without Content-Length header")
-            if rt.status_code == 200:
-                file_len = 0
-                with open(local_path, 'wb') as f:
-                    for chunk in rt.iter_content(chunk_size=1024):
-                        if chunk:
-                            file_len += len(chunk)
-                            f.write(chunk)
-                    f.flush()
-                if file_len != content_len:
-                    raise IOError("download failed with incomplete file")
-            #如果下载失败，输出信息
-            else:
-                logger.warn(rt.content)
-            return rt.status_code == 200
-        except Exception:
-            logger.exception("Error!")
+            try:
+                tmp = self._conf
+                self._conf._bucket = bucket_name
+                self._conf._appid = app_id
+                self._conf._region = region
+                url = self._conf.uri(path=cos_path)
+                logger.info("download with : " + url)
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+                logger.debug("init resp, status code: {code}, headers: {headers}".format(
+                     code=rt.status_code,
+                     headers=rt.headers))
+                self._conf = tmp
+                if 'Content-Length' in rt.headers:
+                    content_len = int(rt.headers['Content-Length'])
+                else:
+                    raise IOError("download failed without Content-Length header")
+                if rt.status_code == 200:
+                    
+                    file_len = 0
+                    with open(local_path, 'wb') as f:
+                        for chunk in rt.iter_content(chunk_size=1024):
+                            if chunk:
+                                file_len += len(chunk)
+                                f.write(chunk)
+                        f.flush()
+                    if file_len != content_len:
+                        raise IOError("download failed with incomplete file")
+                    return True;
+                else:
+                    logger.warn(rt.content)
+                    return False
+            except Exception:
+                self._conf = tmp
+                logger.exception("Error!")
+                return False
             return False
-        return False
+        #常规方式下载
+        else:
+            url = self._conf.uri(path=cos_path)
+            logger.info("download with : " + url)
+            try:
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+                logger.debug("init resp, status code: {code}, headers: {headers}".format(
+                     code=rt.status_code,
+                     headers=rt.headers))
+                
+                if 'Content-Length' in rt.headers:
+                    content_len = int(rt.headers['Content-Length'])
+                else:
+                    raise IOError("download failed without Content-Length header")
+                if rt.status_code == 200:
+                    file_len = 0
+                    with open(local_path, 'wb') as f:
+                        for chunk in rt.iter_content(chunk_size=1024):
+                            if chunk:
+                                file_len += len(chunk)
+                                f.write(chunk)
+                        f.flush()
+                    if file_len != content_len:
+                        raise IOError("download failed with incomplete file")
+                    return True;
+                #如果下载失败，输出信息
+                else:
+                    logger.warn(rt.content)
+                    return False
+            except Exception:
+                logger.exception("Error!")
+                return False
+            return False
     
     #文件删除
     def delete_file(self, cos_path):
@@ -408,7 +442,7 @@ class BucketInterface(object):
                  code=rt.status_code,
                  headers=rt.headers,
                  text=rt.text))
-            return rt.status_code == 204
+            return rt.status_code == 200
         except Exception:
             logger.exception("Error!")
             return False
@@ -416,34 +450,41 @@ class BucketInterface(object):
     
     #查看bucket内的文件
     def get_bucket(self):
+        NextMarker = ""
+        IsTruncated = "true"
+        pagecount = 0;
+        filecount = 0;
+        sizecount = 0;
+        with open('tmp.xml', 'wb') as f:
+            while IsTruncated == "true":
+                pagecount += 1
+                logger.info("get bucket with page {page}".format(page=pagecount))
+                url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}'.format(nextmarker=NextMarker))
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+                
+                if rt.status_code == 200:
+                    root = minidom.parseString(rt.content).documentElement
+                    IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data;
+                    if IsTruncated == 'true':
+                        NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data;
         
-        url = self._conf.uri(path='')
-        self._have_finished = 0;
-        logger.debug("get with : " + url)
-        try:
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
-            logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                 code=rt.status_code,
-                 headers=rt.headers,
-                 text=rt.text))
-            print rt.content
+                    logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                         code=rt.status_code,
+                         headers=rt.headers,
+                         text=rt.text))
+                    contentset = root.getElementsByTagName("Contents")     
+                    for content in contentset:
+                        filecount += 1
+                        sizecount += int(content.getElementsByTagName("Size")[0].childNodes[0].data);
+                        f.write(content.toxml())
+                else:
+                    logger.debug("get bucket error")
+                    return False
             
-            root = minidom.parseString(rt.content).documentElement
-            for file in root.getElementsByTagName('Contents'):
-                #print "%{Key},%s,%s,%s".format();
-                print file.getElementsByTagName('Key')[0].childNodes[0].nodeValue
-                print file.getElementsByTagName('LastModified')[0].childNodes[0].nodeValue
-                print file.getElementsByTagName('ETag')[0].childNodes[0].nodeValue
-                print file.getElementsByTagName('Size')[0].childNodes[0].nodeValue
-                print file.getElementsByTagName('ID')[0].childNodes[0].nodeValue
-#             for obj in root.getElementsByTagName("Contents"):
-#                 for tmp in obj.childNode:
-#                     print tmp
-            return rt.status_code == 200
-        except Exception:
-            logger.exception("Error!")
-            return False
-        return True
+        logger.info("filecount: %d"%filecount)
+        logger.info("sizecount: %d"%sizecount)
+        logger.debug("get bucket success")
+        return True;
    
 class CosS3Client(object):
 

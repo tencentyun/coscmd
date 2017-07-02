@@ -69,86 +69,116 @@ class FileOp(object):
     def upload(args):
         conf = load_conf()
         client = CosS3Client(conf)
-        while args.object_name.startswith('/'):
-          args.object_name = args.object_name[1:]
+        while args.cos_path.startswith('/'):
+          args.cos_path = args.cos_path[1:]
         Intface = client.obj_int()
         
-        if not isinstance(args.local_file, unicode):
-            args.local_file = args.local_file.decode('gbk')
-        if not isinstance(args.object_name, unicode):
-            args.object_name = args.object_name.decode('gbk')
+        if not isinstance(args.local_path, unicode):
+            args.local_path = args.local_path.decode('gbk')
+        if not isinstance(args.cos_path, unicode):
+            args.cos_path = args.cos_path.decode('gbk')
             
-        if not os.path.exists(args.local_file):
-            self._err_tips = 'local_folder %s not exist!' % local_path
-            return False
+        if not os.path.exists(args.local_path):
+            logger.info('local_path %s not exist!' % args.local_path)
+            return -1
         
-        if not os.access(args.local_file, os.R_OK):
-            self._err_tips = 'local_folder %s is not readable!' % local_path
-            return False
-        if os.path.isdir(args.local_file):
-            Intface.upload_folder(args.local_file, args.object_name)
-            logger.info("upload {file} finished".format(file=args.local_file))
+        if not os.access(args.local_path, os.R_OK):
+            logger.info('local_path %s is not readable!' % args.local_path)
+            return -1
+        if os.path.isdir(args.local_path):
+            rt = Intface.upload_folder(args.local_path, args.cos_path)
+            logger.info("upload {file} finished".format(file=args.local_path))
             logger.info("totol of {folders} folders, {files} files".format(folders=Intface._folder_num, files=Intface._file_num))
-        elif os.path.isfile(args.local_file):
-            if Intface.upload_file(args.local_file, args.object_name) == True:
-                logger.info("upload {file} success".format(file=args.local_file))
+            if rt:
+                return 0
             else:
-                logger.info("upload {file} fail".format(file=args.local_file))
+                return -1
+        elif os.path.isfile(args.local_path):
+            if Intface.upload_file(args.local_path, args.cos_path) == True:
+                logger.info("upload {file} success".format(file=args.local_path))
+                return 0
+            else:
+                logger.info("upload {file} fail".format(file=args.local_path))
+                return -1;
         else:
             logger.info("file or folder not exsist!")
-    
+            return -1
+        return -1
     #文件下载
     @staticmethod
     def download(args):
         conf = load_conf()
         client = CosS3Client(conf)
-        while args.object_name.startswith('/'):
-          args.object_name = args.object_name[1:]
+        while args.cos_path.startswith('/'):
+          args.cos_path = args.cos_path[1:]
         Intface = client.obj_int()
         
-        if not isinstance(args.local_file, unicode): 
-            args.local_file = args.local_file.decode('gbk')
-        if not isinstance(args. object_name, unicode):
-            args.object_name = args.object_name.decode('gbk')
-        if Intface.download_file(args.local_file, args.object_name):
+        if not isinstance(args.local_path, unicode): 
+            args.local_path = args.local_path.decode('gbk')
+        if not isinstance(args. cos_path, unicode):
+            args.cos_path = args.cos_path.decode('gbk')
+        if Intface.download_file(args.local_path, args.cos_path):
             logger.info("download success!")
+            return 0
         else:
             logger.info("download fail!")
-            
+            return -1
     #文件删除
     @staticmethod
     def delete(args):
         conf = load_conf()
         client = CosS3Client(conf)
-        while args.object_name.startswith('/'):
-          args.object_name = args.object_name[1:]
+        while args.cos_path.startswith('/'):
+          args.cos_path = args.cos_path[1:]
         Intface = client.obj_int()
         
-        if not isinstance(args. object_name, unicode):
-            args.object_name = args.object_name.decode('gbk')
-        if Intface.delete_file(args.object_name):
+        if not isinstance(args. cos_path, unicode):
+            args.cos_path = args.cos_path.decode('gbk')
+        if Intface.delete_file(args.cos_path):
             logger.info("delete success!")
+            return 0
         else:
             logger.info("delete fail!")
+            return -1
     
 class BucketOp(object):
     #创建bucket
+    @staticmethod
     def create(args):
         conf = load_conf()
         client = CosS3Client(conf)
+        Intface = client.buc_int()
         if Intface.create_bucket():
             logger.info("create success!")
+            return 0
         else:
             logger.info("create fail!")
-        
+            return -1
     #删除bucket     
+    @staticmethod
     def delete(args):
         conf = load_conf()
         client = CosS3Client(conf)
+        Intface = client.buc_int()
         if Intface.delete_bucket():
             logger.info("delete success!")
+            return 0
         else:
-            logger.info("delete fail!")
+            logger.info("delete fail!")#删除bucket  
+            return -1
+  
+    @staticmethod
+    def list(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        Intface = client.buc_int()
+        if Intface.get_bucket():
+            logger.info("save as tmp.xml in the current directory！")
+            logger.info("list success!")
+            return 0
+        else:
+            logger.info("list fail!")
+            return -1
         
 def _main():
     
@@ -166,23 +196,33 @@ def _main():
     parser_a.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1) 
     parser_a.set_defaults(func=config)
     
-    #上传
+    #上传文件
     parser_b = sub_parser.add_parser("upload")
-    parser_b.add_argument('local_file', help="local file path as /tmp/a.txt", type=str)
-    parser_b.add_argument("object_name", help="object name as a/b.txt", type=str)
+    parser_b.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
+    parser_b.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_b.add_argument("-t", "--type", help="storage class type: standard/nearline/coldline", type=str, choices=["standard", "nearline", "coldline"], default="standard")
     parser_b.set_defaults(func=FileOp.upload)
     
-    #下载
+    #下载文件
     parser_c = sub_parser.add_parser("download")
-    parser_c.add_argument('local_file', help="local file path as /tmp/a.txt", type=str)
-    parser_c.add_argument("object_name", help="object name as a/b.txt", type=str)
+    parser_c.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
+    parser_c.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_c.set_defaults(func=FileOp.download)
 
-    #删除
+    #删除文件
     parser_d = sub_parser.add_parser("delete")
-    parser_d.add_argument("object_name", help="object name as a/b.txt", type=str)
+    parser_d.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_d.set_defaults(func=FileOp.delete)
+    
+    #
+    parser_e = sub_parser.add_parser("createbucket")
+    parser_e.set_defaults(func=BucketOp.create)
+    
+    parser_f = sub_parser.add_parser("deletebucket")
+    parser_f.set_defaults(func=BucketOp.delete)
+    
+    parser_f = sub_parser.add_parser("listbucket")
+    parser_f.set_defaults(func=BucketOp.list)
 
     args = parser.parse_args()
     if args.verbose:

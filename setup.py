@@ -17,12 +17,12 @@ def long_description():
         return fileobj.read()
 setup(
     name='coscmd',
-    version='1.3.0',
+    version='1.4.6',
     url='https://www.qcloud.com/',
     license='MIT',
     author='lewzylu',
     author_email='327874225@qq.com',
-    description='simple upload command for cos',
+    description='simple command for cos',
     long_description=long_description(),
     packages=find_packages(),
     install_requires=requirements(),

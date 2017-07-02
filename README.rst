@@ -3,13 +3,7 @@ COSCMD使用文档
 
 更新
 --------
-1.1.0 增加上传文件夹功能
-
-1.1.1 修改上传部分失败的总结信息
-
-1.2.0 增加了文件夹上传进度条
-
-1.3.0 增加了下载文件的功能
+1.4.6 支持cos协议下载方式
 
 依赖
 --------
@@ -73,6 +67,57 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
 请将参数替换为您所需要的本地存储路径(localpath)，以及需要下载的cos上文件的路径(cospath)。
 
+cospath支持使用cos协议路径(cos://<bucket>-<appid>.<region>.myqcloud.com/<cospath>)，填写的参数可以与config中不同。
+
+
+删除文件
+!!!!!!!!
+
+使用如下命令删除文件：
+
+.. code::
+
+ coscmd delete cospath 
+
+请将参数替换为您所需要删除的cos上文件的路径(cospath)。
+
+
+新建bucket
+!!!!!!!!
+
+使用如下命令新建bucket：
+
+.. code::
+
+ coscmd createbucket
+
+输入以下命令会根据在conf设置的信息新建一个对应的bucket
+
+
+删除bucket
+!!!!!!!!
+
+使用如下命令创建bucket：
+
+.. code::
+
+ coscmd deletebucket
+
+输入以下命令会根据在conf设置的信息删除对应的bucket
+
+
+遍历bucket
+!!!!!!!!
+
+使用如下命令遍历bucket中的文件：
+
+.. code::
+
+ coscmd listbucket
+
+输入以下命令会根据在conf设置的信息查看对应的bucket内的文件信息
+而且会在当前目录下生成一个名为tmp.xml的文件，包含该bucket下所有文件的信息。
+
 
 简单示例
 !!!!!!!!
@@ -80,7 +125,7 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 .. code::
 
  设置属性
- coscmd config -a AKKTZbAo6WhgcBqVls9SmuG0ID15IsskiBQ0 -s ciivKvnnrMvSvQpMAWuIz12pThGGlWRW -u 1252448703 -b uploadtest -r cn-south -m 10 -p 5
+ coscmd config -a AKKTZbAo6WhgcBqVl3213ID15IsskiBQ0 -s cii213fdfaWuIz12pThGGlWRW -u 1252448703 -b uploadtest -r cn-south -m 10 -p 5
 
  上传文件
  coscmd upload file1 file2
@@ -91,10 +136,32 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
  下载文件
  coscmd download file1 file2
 
+ 删除文件
+ coscmd delete file1
+
+ 新建bucket
+ coscmd createbucket
+
+ 删除bucket
+ coscmd deletebucket
+
+ 遍历bucket
+ coscmd listbucket
+
 
 注意事项
 !!!!!!!!
 
 该版本为测试版
+
+目前仅适用于华北园区
+
 max_thread <= 10
+
 parts_size <= 10
+
+不能删除和下载文件夹
+
+不能删除非空bucket
+
+
