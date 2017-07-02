@@ -131,7 +131,7 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 .. code::
 
  设置属性
- coscmd config -a AKKTZbAo6WhgcBqVls9SmuG0ID15IsskiBQ0 -s ciivKvnnrMvSvQpMAWuIz12pThGGlWRW -u 1252448703 -b uploadtest -r cn-south -m 10 -p 5
+ coscmd config -a AKKTZbAo6WhgcBqVl3213ID15IsskiBQ0 -s cii213fdfaWuIz12pThGGlWRW -u 1252448703 -b uploadtest -r cn-south -m 10 -p 5
 
  上传文件
  coscmd upload file1 file2
