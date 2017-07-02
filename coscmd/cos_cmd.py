@@ -159,7 +159,7 @@ class BucketOp(object):
         conf = load_conf()
         client = CosS3Client(conf)
         Intface = client.buc_int()
-        if Intface.create_bucket():
+        if Intface.get_bucket():
             logger.info("list success!")
         else:
             logger.info("list fail!")
@@ -206,7 +206,7 @@ def _main():
     parser_f.set_defaults(func=BucketOp.delete)
     
     parser_f = sub_parser.add_parser("list")
-    parser_f.set_defaults(func=BucketOp)
+    parser_f.set_defaults(func=BucketOp.list)
 
     args = parser.parse_args()
     if args.verbose:
