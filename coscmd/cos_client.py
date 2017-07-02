@@ -21,7 +21,13 @@ def view_bar(num,total):
     ab = "\r [%-50s]%.2f%%" %( '='*int(ret*50),ag, )  
     sys.stdout.write(ab)  
     sys.stdout.flush()  
-
+    
+def getTagText(root, tag):
+    node = root.getElementsByTagName(tag)[0]
+    rc = ""
+    for node in node.childNodes:
+        if node.nodeType in ( node.TEXT_NODE, node.CDATA_SECTION_NODE):
+            rc = rc + node.data
 #设置类
 class CosConfig(object):
     
@@ -374,7 +380,41 @@ class BucketInterface(object):
         else:
             self._session = session
           
+    #创建bucket
+    def create_bucket(self):
+        url = self._conf.uri(path='')
+        self._have_finished = 0;
+        logger.debug("create bucket with : " + url)
+        try:
+            rt = self._session.put(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            logger.debug("put resp, status code: {code}, headers: {headers}, text: {text}".format(
+                 code=rt.status_code,
+                 headers=rt.headers,
+                 text=rt.text))
+            return rt.status_code == 200
+        except Exception:
+            logger.exception("Error!")
+            return False
+        return True
     
+    #删除bucket
+    def delete_bucket(self):
+        url = self._conf.uri(path='')
+        self._have_finished = 0;
+        logger.debug("delete bucket with : " + url)
+        try:
+            rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            logger.debug("put resp, status code: {code}, headers: {headers}, text: {text}".format(
+                 code=rt.status_code,
+                 headers=rt.headers,
+                 text=rt.text))
+            return rt.status_code == 204
+        except Exception:
+            logger.exception("Error!")
+            return False
+        return True
+    
+    #查看bucket内的文件
     def get_bucket(self):
         
         url = self._conf.uri(path='')
@@ -387,7 +427,15 @@ class BucketInterface(object):
                  headers=rt.headers,
                  text=rt.text))
             print rt.content
+            
             root = minidom.parseString(rt.content).documentElement
+            for file in root.getElementsByTagName('Contents'):
+                #print "%{Key},%s,%s,%s".format();
+                print file.getElementsByTagName('Key')[0].childNodes[0].nodeValue
+                print file.getElementsByTagName('LastModified')[0].childNodes[0].nodeValue
+                print file.getElementsByTagName('ETag')[0].childNodes[0].nodeValue
+                print file.getElementsByTagName('Size')[0].childNodes[0].nodeValue
+                print file.getElementsByTagName('ID')[0].childNodes[0].nodeValue
 #             for obj in root.getElementsByTagName("Contents"):
 #                 for tmp in obj.childNode:
 #                     print tmp
@@ -409,7 +457,6 @@ class CosS3Client(object):
     def buc_int(self):
         return BucketInterface(conf=self._conf, session=self._session)
     
-
-if __name__ == "__main__":
     
+if __name__ == "__main__":
     pass
