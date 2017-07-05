@@ -68,40 +68,40 @@ def load_conf():
 def upload(args):
     conf = load_conf()
     client = CosS3Client(conf)
-    while args.object_name.startswith('/'):
-      args.object_name = args.object_name[1:]
+    while args.cos_path.startswith('/'):
+      args.cos_path = args.cos_path[1:]
     Intface = client.obj_int()
     
-    if isinstance(args.local_file, unicode):
+    if isinstance(args.local_path, unicode):
         pass
     else:
-        args.local_file = args.local_file.decode('gbk')
-    if isinstance(args.object_name, unicode):
+        args.local_path = args.local_path.decode('gbk')
+    if isinstance(args.cos_path, unicode):
         pass
     else:
-        args.object_name = args.object_name.decode('gbk')
+        args.cos_path = args.cos_path.decode('gbk')
         
-    if not os.path.exists(args.local_file):
-        self._err_tips = 'local_folder %s not exist!' % local_path
+    if not os.path.exists(args.local_path):
+        logger.info('local_folder %s not exist!' % args.local_path)
         return -1
     
-    if not os.access(args.local_file, os.R_OK):
-        self._err_tips = 'local_folder %s is not readable!' % local_path
+    if not os.access(args.local_path, os.R_OK):
+        logger.info('local_folder %s is not readable!' % args.local_path)
         return -1
-    if os.path.isdir(args.local_file):
-        rt = Intface.upload_folder(args.local_file, args.object_name)
-        logger.info("upload {file} finished".format(file=args.local_file))
+    if os.path.isdir(args.local_path):
+        rt = Intface.upload_folder(args.local_path, args.cos_path)
+        logger.info("upload {file} finished".format(file=args.local_path))
         logger.info("totol of {folders} folders, {files} files".format(folders=Intface._folder_num, files=Intface._file_num))
         if rt:
             return 0
         else:
             return -1;
-    elif os.path.isfile(args.local_file):
-        if Intface.upload_file(args.local_file, args.object_name):
-            logger.info("upload {file} success".format(file=args.local_file))
+    elif os.path.isfile(args.local_path):
+        if Intface.upload_file(args.local_path, args.cos_path):
+            logger.info("upload {file} success".format(file=args.local_path))
             return 0;
         else:
-            logger.info("upload {file} fail".format(file=args.local_file))
+            logger.info("upload {file} fail".format(file=args.local_path))
             return -1;
     else:
         logger.info("file or folder not exsist!")
@@ -125,8 +125,8 @@ def _main():
     parser_a.set_defaults(func=config)
 
     parser_b = sub_parser.add_parser("upload")
-    parser_b.add_argument('local_file', help="local file path as /tmp/a.txt", type=str)
-    parser_b.add_argument("object_name", help="object name as a/b.txt", type=str)
+    parser_b.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
+    parser_b.add_argument("cos_path", help="object path as a/b.txt", type=str)
     parser_b.add_argument("-t", "--type", help="storage class type: standard/nearline/coldline", type=str, choices=["standard", "nearline", "coldline"], default="standard")
     parser_b.set_defaults(func=upload)
 
