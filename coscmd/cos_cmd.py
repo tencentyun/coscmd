@@ -83,22 +83,26 @@ def upload(args):
         
     if not os.path.exists(args.local_file):
         self._err_tips = 'local_folder %s not exist!' % local_path
-        return False
+        return -1
     
     if not os.access(args.local_file, os.R_OK):
         self._err_tips = 'local_folder %s is not readable!' % local_path
-        return False
+        return -1
     if os.path.isdir(args.local_file):
         Intface.upload_folder(args.local_file, args.object_name)
         logger.info("upload {file} finished".format(file=args.local_file))
         logger.info("totol of {folders} folders, {files} files".format(folders=Intface._folder_num, files=Intface._file_num))
     elif os.path.isfile(args.local_file):
-        if Intface.upload_file(args.local_file, args.object_name) == True:
+        if Intface.upload_file(args.local_file, args.object_name):
             logger.info("upload {file} success".format(file=args.local_file))
+            return 0;
         else:
             logger.info("upload {file} fail".format(file=args.local_file))
+            return -1;
     else:
         logger.info("file or folder not exsist!")
+        return -1
+    return -1;
 
 def _main():
     
@@ -131,5 +135,5 @@ def _main():
     return args.func(args)
 
 if __name__ == '__main__':
-    _main()
+    print _main()
     
