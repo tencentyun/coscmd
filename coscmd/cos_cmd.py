@@ -139,5 +139,5 @@ def _main():
     return args.func(args)
 
 if __name__ == '__main__':
-    return _main()
+    _main()
     
