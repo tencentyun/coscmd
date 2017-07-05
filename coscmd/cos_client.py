@@ -421,7 +421,11 @@ class BucketInterface(object):
         self._have_finished = 0;
         logger.debug("get with : " + url)
         try:
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            http_header = dict()
+            http_header['max-keys'] = '1.1'
+            #http_header['delimiter'] = ''
+            http_header['marker'] = 'VS2013/Common7/IDE/es/Microsoft.VisualStudio.Data.Tools.Design.XmlCore.resources.dll'
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key),headers=http_header)
             logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
                  headers=rt.headers,
