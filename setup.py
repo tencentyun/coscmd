@@ -17,7 +17,7 @@ def long_description():
         return fileobj.read()
 setup(
     name='coscmd',
-    version='1.2.0',
+    version='1.2.1',
     url='https://www.qcloud.com/',
     license='MIT',
     author='lewzylu',
