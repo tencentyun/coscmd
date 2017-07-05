@@ -82,11 +82,11 @@ def upload(args):
         args.cos_path = args.cos_path.decode('gbk')
         
     if not os.path.exists(args.local_path):
-        logger.info('local_folder %s not exist!' % args.local_path)
+        logger.info('local_path %s not exist!' % args.local_path)
         return -1
     
     if not os.access(args.local_path, os.R_OK):
-        logger.info('local_folder %s is not readable!' % args.local_path)
+        logger.info('local_path %s is not readable!' % args.local_path)
         return -1
     if os.path.isdir(args.local_path):
         rt = Intface.upload_folder(args.local_path, args.cos_path)
