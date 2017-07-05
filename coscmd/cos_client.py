@@ -96,6 +96,7 @@ class ObjectInterface(object):
     
     #文件夹上传
     def upload_folder(self, local_path, cos_path):
+        rt = True
         local_path = local_path.decode('utf-8')
         cos_path = cos_path.decode('utf-8')
         filelist = os.listdir(local_path)
@@ -111,10 +112,11 @@ class ObjectInterface(object):
                 logger.debug(str(filepath)+" " + str(cos_path)+'/'+str(filename))
                 if self.upload_file(local_path=filepath, cos_path=cos_path+'/'+filename) == False:
                     logger.info("upload {file} fail".format(file=filepath))
+                    rt = False;
                 else:
                     self._file_num += 1
                     logger.debug("upload {file} success".format(file=filepath))
-    
+        return rt;
     #文件上传
     def upload_file(self, local_path, cos_path):
         
