@@ -47,18 +47,19 @@ class CosConfig(object):
                  max_thread = max_thread))
     def uri(self, path=None):
         if path:
-            return "http://{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
+            url = "http://{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
                 bucket=self._bucket,
                 uid=self._appid,
                 region=self._region,
                 path=path
             )
         else:
-            return "http://{bucket}-{uid}.{region}.myqcloud.com".format(
+            url = "http://{bucket}-{uid}.{region}.myqcloud.com".format(
                 bucket=self._bucket,
                 uid=self._appid,
                 region=self._region
             )
+        return url
 #对象接口
 class ObjectInterface(object):
 
@@ -417,15 +418,11 @@ class BucketInterface(object):
     #查看bucket内的文件
     def get_bucket(self):
         
-        url = self._conf.uri(path='')
+        url = self._conf.uri(path='?max-keys=1&marker=1.txt')
         self._have_finished = 0;
         logger.debug("get with : " + url)
         try:
-            http_header = dict()
-            http_header['max-keys'] = '1.1'
-            #http_header['delimiter'] = ''
-            http_header['marker'] = 'VS2013/Common7/IDE/es/Microsoft.VisualStudio.Data.Tools.Design.XmlCore.resources.dll'
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key),headers=http_header)
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
                  headers=rt.headers,
