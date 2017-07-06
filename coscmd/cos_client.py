@@ -417,30 +417,37 @@ class BucketInterface(object):
     
     #查看bucket内的文件
     def get_bucket(self):
-        
-        url = self._conf.uri(path='?max-keys=1&marker=1.txt')
-        self._have_finished = 0;
-        logger.debug("get with : " + url)
-        try:
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
-            logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                 code=rt.status_code,
-                 headers=rt.headers,
-                 text=rt.text))
-            logger.info(rt.content)
-            if rt.status_code == 200:
-                with open('tmp.xml', 'wb') as f:
-                    for chunk in rt.iter_content(chunk_size=1024):
-                        if chunk:
-                            f.write(chunk)
-                    f.flush()
-                return True
-            else:
-                return False
-        except Exception:
-            logger.exception("Error!")
-            return False
-        return True
+        NextMarker = ""
+        IsTruncated = "true"
+        page = 0;
+        with open('tmp.xml', 'wb') as f:
+            while IsTruncated == "true":
+                page += 1
+                logger.info("get bucket with page {page}".format(page=page))
+                url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}'.format(nextmarker=NextMarker))
+                
+                self._have_finished = 0;
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+                root = minidom.parseString(rt.content).documentElement
+                IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data;
+                if IsTruncated == 'true':
+                    NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data;
+
+                logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                     code=rt.status_code,
+                     headers=rt.headers,
+                     text=rt.text))
+                if rt.status_code == 200:
+                    contentset = root.getElementsByTagName("Contents")
+                    for content in contentset:
+                        f.write(content.toxml())
+                else:
+                    logger.debug("get bucket error")
+                    return False
+        logger.debug("get bucket success")
+        return True;
+               ##logger.info(rt.content)
+                    
    
 class CosS3Client(object):
 
