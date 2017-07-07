@@ -20,8 +20,8 @@ class CosS3Auth(AuthBase):
 
     def __call__(self, r):
         method = r.method.lower()
-        r.url =r.url.split('?')[0]
         uri = urllib.unquote(r.url)
+        uri = uri.split('?')[0]
         rt = urlparse(uri)
         logger.debug("url parse: " + str(rt))
         if rt.query != "" and ("&" in rt.query or '=' in rt.query):
