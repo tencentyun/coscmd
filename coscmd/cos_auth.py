@@ -20,6 +20,7 @@ class CosS3Auth(AuthBase):
 
     def __call__(self, r):
         method = r.method.lower()
+        r.url =r.url.split('?')[0]
         uri = urllib.unquote(r.url)
         rt = urlparse(uri)
         logger.debug("url parse: " + str(rt))
@@ -33,7 +34,6 @@ class CosS3Auth(AuthBase):
 #         del r.headers["accept-encoding"]
 #         del r.headers["connection"]
 #         del r.headers["user-agent"]
-        
         r.headers={}
         r.headers['Host'] = rt.netloc 
         headers = dict([(k.lower(), quote(v).lower()) for k, v in r.headers.items()])

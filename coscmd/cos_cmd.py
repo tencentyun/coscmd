@@ -173,8 +173,8 @@ class BucketOp(object):
         client = CosS3Client(conf)
         Intface = client.buc_int()
         if Intface.get_bucket():
-            logger.info("list success!")
             logger.info("save as tmp.xml in the current directory！")
+            logger.info("list success!")
             return 0
         else:
             logger.info("list fail!")

@@ -420,6 +420,8 @@ class BucketInterface(object):
         NextMarker = ""
         IsTruncated = "true"
         page = 0;
+        filecount = 0;
+        sizecount = 0;
         with open('tmp.xml', 'wb') as f:
             while IsTruncated == "true":
                 page += 1
@@ -428,6 +430,7 @@ class BucketInterface(object):
                 
                 self._have_finished = 0;
                 rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+                
                 root = minidom.parseString(rt.content).documentElement
                 IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data;
                 if IsTruncated == 'true':
@@ -439,11 +442,19 @@ class BucketInterface(object):
                      text=rt.text))
                 if rt.status_code == 200:
                     contentset = root.getElementsByTagName("Contents")
+                     
                     for content in contentset:
+                        filecount += 1
+                        sizecount += int(content.getElementsByTagName("Size")[0].childNodes[0].data);
                         f.write(content.toxml())
                 else:
                     logger.debug("get bucket error")
                     return False
+                logger.info("filecount: %d"%filecount)
+                logger.info("sizecount: %d"%sizecount)
+        
+        logger.info("filecount: %d"%filecount)
+        logger.info("sizecount: %d"%sizecount)
         logger.debug("get bucket success")
         return True;
                ##logger.info(rt.content)
