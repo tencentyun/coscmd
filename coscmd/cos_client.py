@@ -425,20 +425,20 @@ class BucketInterface(object):
         with open('tmp.xml', 'wb') as f:
             while IsTruncated == "true":
                 pagecount += 1
-                logger.info("get bucket with page {page}".format(page=page))
+                logger.info("get bucket with page {page}".format(page=pagecount))
                 url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}'.format(nextmarker=NextMarker))
                 rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
                 
-                root = minidom.parseString(rt.content).documentElement
-                IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data;
-                if IsTruncated == 'true':
-                    NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data;
-    
-                logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                     code=rt.status_code,
-                     headers=rt.headers,
-                     text=rt.text))
                 if rt.status_code == 200:
+                    root = minidom.parseString(rt.content).documentElement
+                    IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data;
+                    if IsTruncated == 'true':
+                        NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data;
+        
+                    logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                         code=rt.status_code,
+                         headers=rt.headers,
+                         text=rt.text))
                     contentset = root.getElementsByTagName("Contents")     
                     for content in contentset:
                         filecount += 1
