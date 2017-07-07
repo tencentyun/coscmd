@@ -419,30 +419,27 @@ class BucketInterface(object):
     def get_bucket(self):
         NextMarker = ""
         IsTruncated = "true"
-        page = 0;
+        pagecount = 0;
         filecount = 0;
         sizecount = 0;
         with open('tmp.xml', 'wb') as f:
             while IsTruncated == "true":
-                page += 1
+                pagecount += 1
                 logger.info("get bucket with page {page}".format(page=page))
                 url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}'.format(nextmarker=NextMarker))
-                
-                self._have_finished = 0;
                 rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
                 
                 root = minidom.parseString(rt.content).documentElement
                 IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data;
                 if IsTruncated == 'true':
                     NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data;
-
+    
                 logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
                      code=rt.status_code,
                      headers=rt.headers,
                      text=rt.text))
                 if rt.status_code == 200:
-                    contentset = root.getElementsByTagName("Contents")
-                     
+                    contentset = root.getElementsByTagName("Contents")     
                     for content in contentset:
                         filecount += 1
                         sizecount += int(content.getElementsByTagName("Size")[0].childNodes[0].data);
@@ -450,15 +447,11 @@ class BucketInterface(object):
                 else:
                     logger.debug("get bucket error")
                     return False
-                logger.info("filecount: %d"%filecount)
-                logger.info("sizecount: %d"%sizecount)
-        
+            
         logger.info("filecount: %d"%filecount)
         logger.info("sizecount: %d"%sizecount)
         logger.debug("get bucket success")
         return True;
-               ##logger.info(rt.content)
-                    
    
 class CosS3Client(object):
 
