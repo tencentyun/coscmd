@@ -3,7 +3,7 @@ COSCMD使用文档
 
 更新
 --------
-1.4.5 删除ETAG验证
+1.4.6 支持cos协议下载方式
 
 依赖
 --------
@@ -66,6 +66,8 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
  coscmd download localpath cospath 
 
 请将参数替换为您所需要的本地存储路径(localpath)，以及需要下载的cos上文件的路径(cospath)。
+
+cospath支持使用cos协议路径(cos://<bucket>-<appid>.<region>.myqcloud.com/<cospath>)，填写的参数可以与config中不同。
 
 
 删除文件
