@@ -215,13 +215,13 @@ def _main():
     parser_d.set_defaults(func=FileOp.delete)
     
     #
-    parser_e = sub_parser.add_parser("create")
+    parser_e = sub_parser.add_parser("createbucket")
     parser_e.set_defaults(func=BucketOp.create)
     
-    parser_f = sub_parser.add_parser("delete")
+    parser_f = sub_parser.add_parser("deletebucket")
     parser_f.set_defaults(func=BucketOp.delete)
     
-    parser_f = sub_parser.add_parser("list")
+    parser_f = sub_parser.add_parser("listbucket")
     parser_f.set_defaults(func=BucketOp.list)
 
     args = parser.parse_args()
