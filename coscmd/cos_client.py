@@ -160,32 +160,29 @@ class ObjectInterface(object):
                 md5_ETag.update(data)
                 self._md5[idx]=md5_ETag.hexdigest()
                 for j in range(self._retry):
-                    try:
-                        rt = self._session.put(url=url,
-                                               auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                                               data=data)
-                        logger.debug("multi part result: part{part}, round{round}, code: {code}, headers: {headers}, text: {text}".format(
-                            part = idx+1,
-                            round = j+1,
-                            code=rt.status_code,
-                            headers=rt.headers,
-                            text=rt.text))            
-                        if rt.status_code == 200:
-                            self._have_finished+=1
-                            view_bar(self._have_finished,parts_size)
-                            break
-                        else:
-                            time.sleep(2**j)
-                            continue;
-                        if j+1 == retry:
-                            logger.exception("upload part failed: part{part}, round{round}, code: {code}".format(
-                            part = idx+1,
-                            round = j+1,
-                            code=rt.status_code))
-                            return False
-                        
-                    except Exception:
-                        logger.exception("upload part failed")
+                    rt = self._session.put(url=url,
+                                           auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                                           data=data)
+                    logger.debug("multi part result: part{part}, round{round}, code: {code}, headers: {headers}, text: {text}".format(
+                        part = idx+1,
+                        round = j+1,
+                        code=rt.status_code,
+                        headers=rt.headers,
+                        text=rt.text))            
+                    if rt.status_code == 200:
+                        self._have_finished+=1
+                        view_bar(self._have_finished,parts_size)
+                        break
+                    else:
+                        time.sleep(2**j)
+                        continue;
+                    if j+1 == retry:
+                        logger.exception("upload part failed: part{part}, round{round}, code: {code}".format(
+                        part = idx+1,
+                        round = j+1,
+                        code=rt.status_code))
+                        return False
+                    
                 return True
             
             #读文件的偏移量
