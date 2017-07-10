@@ -293,9 +293,6 @@ class ObjectInterface(object):
                 rt = init_multiupload()
                 if rt:
                     break
-                wait_time = random.randint(0, 1)
-                logger.debug("begin to init upload part after {second} second".format(second=wait_time))
-                time.sleep(wait_time)
             else:
                 return False
             logger.debug("Init multipart upload ok")
@@ -314,9 +311,6 @@ class ObjectInterface(object):
                 if rt:
                     logger.debug("complete multipart upload ok")
                     return True
-                wait_time = random.randint(0, 1)
-                time.sleep(wait_time)
-                logger.debug("begin to complete upload part after {second} second".format(second=wait_time))
             logger.warn("complete multipart upload failed")
             return False
     
