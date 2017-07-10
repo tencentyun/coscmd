@@ -3,7 +3,7 @@ COSCMD使用文档
 
 更新
 --------
-1.4.3 修正deletebucket返回值的问题
+1.4.4 修改bucket操作的命令，防止与文件操作冲突
 
 依赖
 --------
@@ -87,7 +87,7 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
 .. code::
 
- coscmd create
+ coscmd createbucket
 
 输入以下命令会根据在conf设置的信息新建一个对应的bucket
 
@@ -99,7 +99,7 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
 .. code::
 
- coscmd delete
+ coscmd deletebucket
 
 输入以下命令会根据在conf设置的信息删除对应的bucket
 
@@ -111,7 +111,7 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
 .. code::
 
- coscmd list
+ coscmd listbucket
 
 输入以下命令会根据在conf设置的信息查看对应的bucket内的文件信息
 而且会在当前目录下生成一个名为tmp.xml的文件，包含该bucket下所有文件的信息。
@@ -138,13 +138,13 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
  coscmd delete file1
 
  新建bucket
- coscmd create
+ coscmd createbucket
 
  删除bucket
- coscmd delete
+ coscmd deletebucket
 
  遍历bucket
- coscmd list
+ coscmd listbucket
 
 
 注意事项
