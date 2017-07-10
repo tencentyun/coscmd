@@ -18,7 +18,7 @@ COSCMD使用文档
 
 .. code::
  
- python setup.py install
+ pip install coscmd
 
 
 使用方法

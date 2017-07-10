@@ -14,7 +14,3 @@ coscmd/*.swl
 coscmd/*.swm
 coscmd/*.swn
 coscmd/*.swo
-
-/MANIFEST.in
-/.pydevproject
-/.project
