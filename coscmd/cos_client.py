@@ -403,7 +403,7 @@ class BucketInterface(object):
                  code=rt.status_code,
                  headers=rt.headers,
                  text=rt.text))
-            return rt.status_code == 204
+            return rt.status_code == 200
         except Exception:
             logger.exception("Error!")
             return False
