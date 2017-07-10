@@ -171,17 +171,9 @@ class ObjectInterface(object):
                             headers=rt.headers,
                             text=rt.text))            
                         if rt.status_code == 200:
-                            if 'ETag' in rt.headers:
-                                if rt.headers['ETag'] != '"%s"' % md5_ETag.hexdigest():
-                                    logger.warn("upload file {file} response with error ETag : {ETag1}, {ETag}".format(file=self._filename, ETag=rt.headers['ETag'], ETag1='%s' % md5_ETag.hexdigest()))
-                                    continue
-                                else:
-                                    self._have_finished+=1
-                                    view_bar(self._have_finished,parts_size)
-                                    break
-                            else:
-                                logger.warn("upload file {file} response with no ETag ".format(file=self._filename))
-                                continue
+                            self._have_finished+=1
+                            view_bar(self._have_finished,parts_size)
+                            break
                         else:
                             time.sleep(2**j)
                             continue;
