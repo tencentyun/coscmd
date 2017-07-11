@@ -76,9 +76,9 @@ class FileOp(object):
         Intface = client.obj_int()
 
         if not isinstance(args.local_path, unicode):
-            args.local_path = args.local_path.decode('gbk')
+            args.local_path = args.local_path.decode('utf-8')
         if not isinstance(args.cos_path, unicode):
-            args.cos_path = args.cos_path.decode('gbk')
+            args.cos_path = args.cos_path.decode('utf-8')
 
         if not os.path.exists(args.local_path):
             logger.info('local_path %s not exist!' % args.local_path)
@@ -117,10 +117,10 @@ class FileOp(object):
 
         # (TODO): it should be utf-8 or sys.getdefaultencoding()
         if not isinstance(args.local_path, unicode):
-            args.local_path = args.local_path.decode('gbk')
+            args.local_path = args.local_path.decode('utf-8')
 
         if not isinstance(args. cos_path, unicode):
-            args.cos_path = args.cos_path.decode('gbk')
+            args.cos_path = args.cos_path.decode('utf-8')
 
         if Intface.download_file(args.local_path, args.cos_path):
             logger.info("download success!")
@@ -138,7 +138,7 @@ class FileOp(object):
         Intface = client.obj_int()
 
         if not isinstance(args. cos_path, unicode):
-            args.cos_path = args.cos_path.decode('gbk')
+            args.cos_path = args.cos_path.decode('utf-8')
         if Intface.delete_file(args.cos_path):
             logger.info("delete success!")
             return 0
