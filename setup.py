@@ -1,5 +1,6 @@
-from setuptools  import setup,find_packages
+from setuptools import setup, find_packages
 from platform import python_version_tuple
+
 
 def requirements():
 
@@ -12,9 +13,12 @@ def requirements():
             requirements.append("argparse==1.4.0")
         return requirements
 
+
 def long_description():
     with open('README.rst', 'r') as fileobj:
         return fileobj.read()
+
+
 setup(
     name='coscmd',
     version='1.4.6',

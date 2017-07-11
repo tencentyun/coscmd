@@ -10,5 +10,5 @@ install:
     - pip install pep8
 
 script:
-    - pep8 --max-line-length=140
+    - pep8 --max-line-length=180
     - tox

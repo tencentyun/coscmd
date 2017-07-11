@@ -7,6 +7,7 @@ from threading import Lock
 import gc
 logger = getLogger(__name__)
 
+
 class WorkerThread(Thread):
     def __init__(self, task_queue, *args, **kwargs):
         super(WorkerThread, self).__init__(*args, **kwargs)
@@ -24,7 +25,7 @@ class WorkerThread(Thread):
                 ret = func(*args, **kwargs)
                 self._succ_task_num += 1
                 self._ret.append(ret)
-    
+
             except Exception as e:
                 logger.warn(str(e))
                 self._fail_task_num += 1
@@ -32,7 +33,8 @@ class WorkerThread(Thread):
             finally:
                 self._task_queue.task_done()
             if self._task_queue.empty():
-                break  
+                break
+
     def get_result(self):
             return self._succ_task_num, self._fail_task_num, self._ret
 
@@ -87,8 +89,8 @@ if __name__ == '__main__':
         print i
     pool.add_task(task_sleep, 0)
     pool.add_task(task_sleep, 0)
-    #pool.add_task(raise_exception)
-    #pool.add_task(raise_exception)
+    # pool.add_task(raise_exception)
+    # pool.add_task(raise_exception)
 
     pool.wait_completion()
     print pool.get_result()
