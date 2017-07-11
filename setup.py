@@ -1,5 +1,4 @@
-from setuptools  import setup
-# from distutils.core import setup
+from setuptools import setup, find_packages
 from platform import python_version_tuple
 
 
@@ -14,24 +13,26 @@ def requirements():
             requirements.append("argparse==1.4.0")
         return requirements
 
+
 def long_description():
     with open('README.rst', 'r') as fileobj:
         return fileobj.read()
 
+
 setup(
     name='coscmd',
-    version='0.1.9',
+    version='1.4.6',
     url='https://www.qcloud.com/',
-    packages=['coscmd'],
     license='MIT',
-    author='liuchang',
-    author_email='liuchang0812@gmail.com',
+    author='lewzylu',
+    author_email='327874225@qq.com',
     description='simple command for cos',
     long_description=long_description(),
+    packages=find_packages(),
+    install_requires=requirements(),
     entry_points={
         'console_scripts': [
-            'coscmd=coscmd.main:_main'
+            'coscmd=coscmd.cos_cmd:_main',
         ],
-    },
-    install_requires=requirements()
+    }
 )

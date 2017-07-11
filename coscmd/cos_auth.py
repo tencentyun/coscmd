@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-from urlparse import urlparse
-import hashlib
 import hmac
 import time
 import urllib
-from urllib import quote
-import requests
-from requests.auth import AuthBase
+import hashlib
 import logging
+import requests
+from urllib import quote, urlencode
+from urlparse import urlparse
+from requests.auth import AuthBase
 logger = logging.getLogger(__name__)
 
 
@@ -20,8 +20,8 @@ class CosS3Auth(AuthBase):
 
     def __call__(self, r):
         method = r.method.lower()
-        uri = r.url
-
+        uri = urllib.unquote(r.url)
+        uri = uri.split('?')[0]
         rt = urlparse(uri)
         logger.debug("url parse: " + str(rt))
         if rt.query != "" and ("&" in rt.query or '=' in rt.query):
@@ -30,25 +30,24 @@ class CosS3Auth(AuthBase):
             uri_params = {rt.query: ""}
         else:
             uri_params = {}
-        del r.headers["accept"]
-        del r.headers["accept-encoding"]
-        del r.headers["connection"]
-        del r.headers["user-agent"]
-
+        # del r.headers["accept"]
+        # del r.headers["accept-encoding"]
+        # del r.headers["connection"]
+        # del r.headers["user-agent"]
+        r.headers = {}
         r.headers['Host'] = rt.netloc
         headers = dict([(k.lower(), quote(v).lower()) for k, v in r.headers.items()])
-
         format_str = "{method}\n{host}\n{params}\n{headers}\n".format(
             method=method.lower(),
             host=rt.path,
             params=urllib.urlencode(uri_params),
-            headers='&'.join(map(lambda (x,y): "%s=%s"%(x,y), sorted(headers.items())))
+            headers='&'.join(map(lambda (x, y): "%s=%s" % (x, y), sorted(headers.items())))
         )
         logger.debug("format str: " + format_str)
 
         start_sign_time = int(time.time())
         sign_time = "{bg_time};{ed_time}".format(bg_time=start_sign_time-60, ed_time=start_sign_time + self._expire)
-        # sign_time = "1480932292;1481012292"
+        # sign_time = "1480932292;1981012292"
         sha1 = hashlib.sha1()
         sha1.update(format_str)
 
@@ -59,6 +58,7 @@ class CosS3Auth(AuthBase):
         logger.debug('sign_key: ' + str(sign_key))
         logger.debug('sign: ' + str(sign))
         sign_tpl = "q-sign-algorithm=sha1&q-ak={ak}&q-sign-time={sign_time}&q-key-time={key_time}&q-header-list={headers}&q-url-param-list={params}&q-signature={sign}"
+
         r.headers['Authorization'] = sign_tpl.format(
             ak=self._access_id,
             sign_time=sign_time,
@@ -67,19 +67,17 @@ class CosS3Auth(AuthBase):
             headers=';'.join(sorted(headers.keys())),
             sign=sign
         )
+        logger.debug("sign_key" + str(sign_key))
+        logger.debug(r.headers['Authorization'])
+
         logger.debug("request headers: " + str(r.headers))
         return r
 
 if __name__ == "__main__":
-    import logging
-    import sys
-    logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
-    resp = requests.head("http://sdktestgz-1252448703.cn-south.myqcloud.com/config.json", auth=CosS3Auth("AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00", "ciivKvnnrMvSvQpMAWuIz12pThGGlWRW"))
-    #resp = requests.get("http://testbucket-125000000.cn-north.myqcloud.com/testfile", headers={"Range": "bytes=0-3"}, auth=CosS3Auth("QmFzZTY0IGlzIGEgZ2VuZXJp", "AKIDZfbOA78asKUYBcXFrJD0a1ICvR98JM"))
-    print resp.status_code, resp.text
-    f = open("Client.py", "r")
-    print "UPLOAD"
-    t = requests.put("http://sdktestgz-1252448703.cn-south.myqcloud.com/client2.py", auth=CosS3Auth("AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00", "ciivKvnnrMvSvQpMAWuIz12pThGGlWRW"), data="helasdfasf")
-    print "UPLOAD"
-    print t.status_code, t.text
-
+    url = 'http://lewzylu01-1252448703.cn-south.myqcloud.com/a.txt'
+    logger.debug("init with : " + url)
+    request = requests.session()
+    secret_id = 'AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00'
+    secret_key = 'ciivKvnnrMvSvQpMAWuIz12pThGGlWRW'
+    rt = request.get(url=url+"", auth=CosS3Auth(secret_id, secret_key))
+    print rt.content
