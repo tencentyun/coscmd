@@ -13,7 +13,23 @@ import random
 import time
 import sys
 import os
+
 logger = logging.getLogger(__name__)
+fs_coding = sys.getfilesystemencoding()
+
+
+def to_unicode(s):
+    if isinstance(s, unicode):
+        return s
+    else:
+        return s.decode(fs_coding)
+
+
+def to_printable_str(s):
+    if isinstance(s, unicode):
+        return s.encode(fs_coding)
+    else:
+        return s
 
 
 def view_bar(num, total):
@@ -51,14 +67,14 @@ class CosConfig(object):
 
     def uri(self, path=None):
         if path:
-            url = "http://{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
+            url = u"http://{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
                 bucket=self._bucket,
                 uid=self._appid,
                 region=self._region,
-                path=path
+                path=to_unicode(path)
             )
         else:
-            url = "http://{bucket}-{uid}.{region}.myqcloud.com".format(
+            url = u"http://{bucket}-{uid}.{region}.myqcloud.com".format(
                 bucket=self._bucket,
                 uid=self._appid,
                 region=self._region
@@ -83,8 +99,8 @@ class ObjectInterface(object):
             self._session = session
 
     def upload_folder(self, local_path, cos_path):
-        local_path = local_path.decode('utf-8')
-        cos_path = cos_path.decode('utf-8')
+        local_path = to_unicode(local_path)
+        cos_path = to_unicode(cos_path)
         filelist = os.listdir(local_path)
         self._folder_num += 1
         if len(filelist) == 0:
@@ -95,12 +111,11 @@ class ObjectInterface(object):
             if os.path.isdir(filepath):
                 self.upload_folder(filepath, cos_path+'/'+filename)
             else:
-                logger.debug(str(filepath)+" " + str(cos_path)+'/'+str(filename))
                 if self.upload_file(local_path=filepath, cos_path=cos_path+'/'+filename) is False:
-                    logger.info("upload {file} fail".format(file=filepath))
+                    logger.info("upload {file} fail".format(file=to_printable_str(filepath)))
                 else:
                     self._file_num += 1
-                    logger.debug("upload {file} success".format(file=filepath))
+                    logger.debug("upload {file} success".format(file=to_printable_str(filepath)))
 
     def upload_file(self, local_path, cos_path):
 
@@ -117,7 +132,7 @@ class ObjectInterface(object):
                                            auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=data)
                     if rt.status_code == 200:
                         if local_path != '':
-                            logger.warn("upload {file} with {per}%".format(file=local_path, per="{0:5.2f}".format(100)))
+                            logger.warn("upload {file} with {per}%".format(file=to_printable_str(local_path), per="{0:5.2f}".format(100)))
                         return True
                     else:
                         time.sleep(2**j)
@@ -197,7 +212,7 @@ class ObjectInterface(object):
             pool = SimpleThreadPool(self._conf._max_thread)
             logger.debug("chunk_size: " + str(chunk_size))
             logger.debug('upload file concurrently')
-            logger.info("uploading {file}".format(file=local_path))
+            logger.info("uploading {file}".format(file=to_printable_str(local_path)))
             if chunk_size >= file_size:
                 pool.add_task(multiupload_parts_data, local_path, offset, file_size, 1, 0)
             else:
@@ -242,13 +257,10 @@ class ObjectInterface(object):
                 return False
             return True
 
-        logger.debug("file_path-> local_path: {local_path}, cos_path: {cos_path}".format(
-               local_path=local_path.encode('utf-8').encode('gbk'),
-               cos_path=cos_path))
         if local_path == "":
             file_size = 0
         else:
-            file_size = os.path.getsize(local_path.decode('utf-8'))
+            file_size = os.path.getsize(local_path)
         if file_size < 5*1024*1024:
             for i in range(self._retry):
                 if single_upload() is True:
@@ -442,12 +454,12 @@ class BucketInterface(object):
                     logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
                          code=rt.status_code,
                          headers=rt.headers,
-                         text=rt.text))
+                         text=to_printable_str(rt.text)))
                     contentset = root.getElementsByTagName("Contents")
                     for content in contentset:
                         filecount += 1
                         sizecount += int(content.getElementsByTagName("Size")[0].childNodes[0].data)
-                        f.write(content.toxml())
+                        f.write(to_printable_str(content.toxml()))
                 else:
                     logger.debug("get bucket error")
                     return False

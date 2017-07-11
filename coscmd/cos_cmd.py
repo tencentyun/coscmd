@@ -8,10 +8,17 @@ import time
 import logging
 import os
 import sys
-reload(sys)
-sys.setdefaultencoding('utf-8')
 
 logger = logging.getLogger(__name__)
+
+fs_coding = sys.getfilesystemencoding()
+
+
+def to_printable_str(s):
+    if isinstance(s, unicode):
+        return s.encode(fs_coding)
+    else:
+        return s
 
 
 def config(args):
@@ -30,17 +37,17 @@ def config(args):
         cp.set('common', 'max_thread', str(args.max_thread))
         cp.set('common', 'part_size', str(args.part_size))
         cp.write(f)
-        logger.info("Created configuration file in {path}".format(path=conf_path))
+        logger.info("Created configuration file in {path}".format(path=to_printable_str(conf_path)))
 
 
 def load_conf():
 
     conf_path = os.path.expanduser('~/.cos.conf')
     if not os.path.exists(conf_path):
-        logger.warn("{conf} couldn't be found, please config tool!".format(conf=conf_path))
+        logger.warn("{conf} couldn't be found, please config tool!".format(conf=to_printable_str(conf_path)))
         raise IOError
     else:
-        logger.info('{conf} is found.'.format(conf=conf_path))
+        logger.info('{conf} is found.'.format(conf=to_printable_str(conf_path)))
 
     with open(conf_path, 'r') as f:
         cp = SafeConfigParser()
@@ -76,20 +83,20 @@ class FileOp(object):
         Intface = client.obj_int()
 
         if not isinstance(args.local_path, unicode):
-            args.local_path = args.local_path.decode('utf-8')
+            args.local_path = args.local_path.decode(fs_coding)
         if not isinstance(args.cos_path, unicode):
-            args.cos_path = args.cos_path.decode('utf-8')
+            args.cos_path = args.cos_path.decode(fs_coding)
 
         if not os.path.exists(args.local_path):
-            logger.info('local_path %s not exist!' % args.local_path)
+            logger.info('local_path %s not exist!' % to_printable_str(args.local_path))
             return -1
 
         if not os.access(args.local_path, os.R_OK):
-            logger.info('local_path %s is not readable!' % args.local_path)
+            logger.info('local_path %s is not readable!' % to_printable_str(args.local_path))
             return -1
         if os.path.isdir(args.local_path):
             rt = Intface.upload_folder(args.local_path, args.cos_path)
-            logger.info("upload {file} finished".format(file=args.local_path))
+            logger.info("upload {file} finished".format(file=to_printable_str(args.local_path)))
             logger.info("totol of {folders} folders, {files} files".format(folders=Intface._folder_num, files=Intface._file_num))
             if rt:
                 return 0
@@ -97,10 +104,10 @@ class FileOp(object):
                 return -1
         elif os.path.isfile(args.local_path):
             if Intface.upload_file(args.local_path, args.cos_path) is True:
-                logger.info("upload {file} success".format(file=args.local_path))
+                logger.info("upload {file} success".format(file=to_printable_str(args.local_path)))
                 return 0
             else:
-                logger.info("upload {file} fail".format(file=args.local_path))
+                logger.info("upload {file} fail".format(file=to_printable_str(args.local_path)))
                 return -1
         else:
             logger.info("file or folder not exsist!")
@@ -115,12 +122,11 @@ class FileOp(object):
             args.cos_path = args.cos_path[1:]
         Intface = client.obj_int()
 
-        # (TODO): it should be utf-8 or sys.getdefaultencoding()
         if not isinstance(args.local_path, unicode):
-            args.local_path = args.local_path.decode('utf-8')
+            args.local_path = args.local_path.decode(fs_coding)
 
         if not isinstance(args. cos_path, unicode):
-            args.cos_path = args.cos_path.decode('utf-8')
+            args.cos_path = args.cos_path.decode(fs_coding)
 
         if Intface.download_file(args.local_path, args.cos_path):
             logger.info("download success!")
@@ -138,7 +144,7 @@ class FileOp(object):
         Intface = client.obj_int()
 
         if not isinstance(args. cos_path, unicode):
-            args.cos_path = args.cos_path.decode('utf-8')
+            args.cos_path = args.cos_path.decode(fs_coding)
         if Intface.delete_file(args.cos_path):
             logger.info("delete success!")
             return 0

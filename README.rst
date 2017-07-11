@@ -3,6 +3,8 @@ COSCMD使用文档
 
 更新
 --------
+1.4.8 fix nitts
+1.4.7 fix bug about encoding
 1.4.6 支持cos协议下载方式
 
 依赖
@@ -28,7 +30,7 @@ COSCMD使用文档
 
 
 配置参数
-!!!!!!!!
+^^^^^^^^
 
 .. code::
 
@@ -43,7 +45,7 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
 
 上传文件(夹)
-!!!!!!!!
+^^^^^^^^
 
 使用如下命令上传文件：
 
@@ -57,7 +59,7 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
 
 下载文件
-!!!!!!!!
+^^^^^^^^
 
 使用如下命令上传文件：
 
@@ -71,7 +73,7 @@ cospath支持使用cos协议路径(cos://<bucket>-<appid>.<region>.myqcloud.com/
 
 
 删除文件
-!!!!!!!!
+^^^^^^^^
 
 使用如下命令删除文件：
 
@@ -83,7 +85,7 @@ cospath支持使用cos协议路径(cos://<bucket>-<appid>.<region>.myqcloud.com/
 
 
 新建bucket
-!!!!!!!!
+^^^^^^^^
 
 使用如下命令新建bucket：
 
@@ -95,7 +97,7 @@ cospath支持使用cos协议路径(cos://<bucket>-<appid>.<region>.myqcloud.com/
 
 
 删除bucket
-!!!!!!!!
+^^^^^^^^
 
 使用如下命令创建bucket：
 
@@ -107,7 +109,7 @@ cospath支持使用cos协议路径(cos://<bucket>-<appid>.<region>.myqcloud.com/
 
 
 遍历bucket
-!!!!!!!!
+^^^^^^^^
 
 使用如下命令遍历bucket中的文件：
 
@@ -120,7 +122,7 @@ cospath支持使用cos协议路径(cos://<bucket>-<appid>.<region>.myqcloud.com/
 
 
 简单示例
-!!!!!!!!
+^^^^^^^^
 
 .. code::
 
@@ -150,7 +152,7 @@ cospath支持使用cos协议路径(cos://<bucket>-<appid>.<region>.myqcloud.com/
 
 
 注意事项
-!!!!!!!!
+^^^^^^^^
 
 该版本为测试版
 
