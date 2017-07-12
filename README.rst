@@ -3,6 +3,8 @@ COSCMD使用文档
 
 更新
 --------
+
+1.4.9 ignore etag
 1.4.8 fix nitts
 1.4.7 fix bug about encoding
 1.4.6 支持cos协议下载方式
