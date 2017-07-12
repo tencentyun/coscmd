@@ -47,6 +47,7 @@ def getTagText(root, tag):
         if node.nodeType in (node.TEXT_NODE, node.CDATA_SECTION_NODE):
             rc = rc + node.data
 
+
 class CosConfig(object):
 
     def __init__(self, appid, region, bucket, access_id, access_key, part_size=1, max_thread=5, *args, **kwargs):
@@ -99,16 +100,15 @@ class ObjectInterface(object):
             self._session = session
 
     def upload_folder(self, local_path, cos_path):
-        
+
         local_path = to_unicode(local_path)
         cos_path = to_unicode(cos_path)
         filelist = os.listdir(local_path)
         if cos_path[-1] != '/':
             cos_path += '/'
         if local_path[-1] != '/':
-            local_path += '/'   
+            local_path += '/'
         self._folder_num += 1
-        
         if len(filelist) == 0:
             logger.debug(cos_path+'tmp/')
             self.upload_file(local_path="", cos_path=cos_path+"tmp/")
