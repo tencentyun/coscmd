@@ -4,6 +4,7 @@ COSCMD使用文档
 更新
 --------
 
+1.4.10 fix bug
 1.4.9 ignore etag
 1.4.8 fix nitts
 1.4.7 fix bug about encoding
