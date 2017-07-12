@@ -157,10 +157,13 @@ cospath支持使用cos协议路径(cos://<bucket>-<appid>.<region>.myqcloud.com/
 ^^^^^^^^
 
 配置项建议：
-    max_thread <= 10
-    parts_size <= 10
 
-不能删除和下载文件夹
-不能删除非空bucket
+#. max_thread <= 10
+#. parts_size <= 10
+
+暂时不支持的功能：
+
+#. 不能删除和下载文件夹
+#. 不能删除非空bucket
 
 
