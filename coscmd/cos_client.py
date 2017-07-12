@@ -93,6 +93,7 @@ class ObjectInterface(object):
         self._retry = 2
         self._file_num = 0
         self._folder_num = 0
+        self._etag = 'ETag'
         if session is None:
             self._session = requests.session()
         else:
@@ -169,9 +170,6 @@ class ObjectInterface(object):
                     data = file.read(len)
                 url = self._conf.uri(path=cos_path)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx+1, uploadid=self._upload_id)
                 logger.debug("upload url: " + str(url))
-                md5_ETag = md5()
-                md5_ETag.update(data)
-                self._md5[idx] = md5_ETag.hexdigest()
                 for j in range(self._retry):
                     rt = self._session.put(url=url,
                                            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
@@ -182,6 +180,14 @@ class ObjectInterface(object):
                         code=rt.status_code,
                         headers=rt.headers,
                         text=rt.text))
+                    if 'ETag' in rt.headers:
+                        self._etag = 'ETag'
+                    elif 'Etag' in rt.headers:
+                        self._etag = 'Etag'
+                    else:
+                        logger.exception("ETag Error!")
+                        continue
+                    self._md5[idx] = rt.headers[self._etag][1:-1]
                     if rt.status_code == 200:
                         self._have_finished += 1
                         view_bar(self._have_finished, parts_size)
@@ -192,7 +198,6 @@ class ObjectInterface(object):
                     if j+1 == retry:
                         logger.exception("upload part failed: part{part}, round{round}, code: {code}".format(part=idx+1, round=j+1, code=rt.status_code))
                         return False
-
                 return True
 
             offset = 0
@@ -237,10 +242,8 @@ class ObjectInterface(object):
                 t = doc.createElement("Part")
                 t1 = doc.createElement("PartNumber")
                 t1.appendChild(doc.createTextNode(str(i+1)))
-
-                t2 = doc.createElement("ETag")
+                t2 = doc.createElement(self._etag)
                 t2.appendChild(doc.createTextNode('"{v}"'.format(v=v)))
-
                 t.appendChild(t1)
                 t.appendChild(t2)
                 root.appendChild(t)
@@ -283,9 +286,7 @@ class ObjectInterface(object):
             else:
                 return False
             logger.debug("multipart upload ok")
-
             for i in range(self._retry):
-
                 rt = complete_multiupload()
                 if rt:
                     logger.debug("complete multipart upload ok")
