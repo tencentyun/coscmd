@@ -180,14 +180,13 @@ class ObjectInterface(object):
                         code=rt.status_code,
                         headers=rt.headers,
                         text=rt.text))
-                    
                     if 'ETag' in rt.headers:
                         self._etag = 'ETag'
                     elif 'Etag' in rt.headers:
                         self._etag = 'Etag'
                     else:
                         logger.exception("ETag Error!")
-                        continue;
+                        continue
                     self._md5[idx] = rt.headers[self._etag][1:-1]
                     if rt.status_code == 200:
                         self._have_finished += 1
@@ -243,10 +242,8 @@ class ObjectInterface(object):
                 t = doc.createElement("Part")
                 t1 = doc.createElement("PartNumber")
                 t1.appendChild(doc.createTextNode(str(i+1)))
-
                 t2 = doc.createElement(self._etag)
                 t2.appendChild(doc.createTextNode('"{v}"'.format(v=v)))
-
                 t.appendChild(t1)
                 t.appendChild(t2)
                 root.appendChild(t)
@@ -289,9 +286,7 @@ class ObjectInterface(object):
             else:
                 return False
             logger.debug("multipart upload ok")
-
             for i in range(self._retry):
-
                 rt = complete_multiupload()
                 if rt:
                     logger.debug("complete multipart upload ok")
