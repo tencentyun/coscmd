@@ -47,20 +47,6 @@ def getTagText(root, tag):
         if node.nodeType in (node.TEXT_NODE, node.CDATA_SECTION_NODE):
             rc = rc + node.data
 
-class CosPath(object):
-    
-    def __init__(self, cos_path):
-        if cos_path[0:6] == "cos://":
-            print 
-        cos_path = cos_path.split("cos://")[1]
-        self._bucket_name = cos_path.split('-')[0]
-        cos_path = cos_path[len(bucket_name)+1:]
-        self._app_id = cos_path.split('.')[0]
-        cos_path = cos_path[len(app_id)+1:]
-        self._region = cos_path.split(".")[0]
-        cos_path = cos_path[len(region+".myqcloud.com/"):]
-    
-
 class CosConfig(object):
 
     def __init__(self, appid, region, bucket, access_id, access_key, part_size=1, max_thread=5, *args, **kwargs):
