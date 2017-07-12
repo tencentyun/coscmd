@@ -315,82 +315,36 @@ class ObjectInterface(object):
 
     def download_file(self, local_path, cos_path):
 
-        if cos_path.startswith("cos://"):
-            cos_path = cos_path.split("cos://")[1]
-            bucket_name = cos_path.split('-')[0]
-            cos_path = cos_path[len(bucket_name)+1:]
-            app_id = cos_path.split('.')[0]
-            cos_path = cos_path[len(app_id)+1:]
-            region = cos_path.split(".")[0]
-            cos_path = cos_path[len(region+".myqcloud.com/"):]
+        url = self._conf.uri(path=cos_path)
+        logger.info("download with : " + url)
+        try:
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            logger.debug("init resp, status code: {code}, headers: {headers}".format(
+                 code=rt.status_code,
+                 headers=rt.headers))
 
-            try:
-                tmp = self._conf
-                self._conf._bucket = bucket_name
-                self._conf._appid = app_id
-                self._conf._region = region
-                url = self._conf.uri(path=cos_path)
-                logger.info("download with : " + url)
-                rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
-                logger.debug("init resp, status code: {code}, headers: {headers}".format(
-                     code=rt.status_code,
-                     headers=rt.headers))
-                self._conf = tmp
-                if 'Content-Length' in rt.headers:
-                    content_len = int(rt.headers['Content-Length'])
-                else:
-                    raise IOError("download failed without Content-Length header")
-                if rt.status_code == 200:
-
-                    file_len = 0
-                    with open(local_path, 'wb') as f:
-                        for chunk in rt.iter_content(chunk_size=1024):
-                            if chunk:
-                                file_len += len(chunk)
-                                f.write(chunk)
-                        f.flush()
-                    if file_len != content_len:
-                        raise IOError("download failed with incomplete file")
-                    return True
-                else:
-                    logger.warn(rt.content)
-                    return False
-            except Exception:
-                self._conf = tmp
-                logger.exception("Error!")
+            if 'Content-Length' in rt.headers:
+                content_len = int(rt.headers['Content-Length'])
+            else:
+                raise IOError("download failed without Content-Length header")
+            if rt.status_code == 200:
+                file_len = 0
+                with open(local_path, 'wb') as f:
+                    for chunk in rt.iter_content(chunk_size=1024):
+                        if chunk:
+                            file_len += len(chunk)
+                            f.write(chunk)
+                    f.flush()
+                if file_len != content_len:
+                    raise IOError("download failed with incomplete file")
+                return True
+            else:
+                logger.warn(rt.content)
                 return False
+        except Exception:
+            logger.exception("Error!")
             return False
-        else:
-            url = self._conf.uri(path=cos_path)
-            logger.info("download with : " + url)
-            try:
-                rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
-                logger.debug("init resp, status code: {code}, headers: {headers}".format(
-                     code=rt.status_code,
-                     headers=rt.headers))
-
-                if 'Content-Length' in rt.headers:
-                    content_len = int(rt.headers['Content-Length'])
-                else:
-                    raise IOError("download failed without Content-Length header")
-                if rt.status_code == 200:
-                    file_len = 0
-                    with open(local_path, 'wb') as f:
-                        for chunk in rt.iter_content(chunk_size=1024):
-                            if chunk:
-                                file_len += len(chunk)
-                                f.write(chunk)
-                        f.flush()
-                    if file_len != content_len:
-                        raise IOError("download failed with incomplete file")
-                    return True
-                else:
-                    logger.warn(rt.content)
-                    return False
-            except Exception:
-                logger.exception("Error!")
-                return False
-            return False
+        return False
 
     def delete_file(self, cos_path):
         url = self._conf.uri(path=cos_path)
