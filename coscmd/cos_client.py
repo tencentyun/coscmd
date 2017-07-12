@@ -47,6 +47,19 @@ def getTagText(root, tag):
         if node.nodeType in (node.TEXT_NODE, node.CDATA_SECTION_NODE):
             rc = rc + node.data
 
+class CosPath(object):
+    
+    def __init__(self, cos_path):
+        if cos_path[0:6] == "cos://":
+            print 
+        cos_path = cos_path.split("cos://")[1]
+        self._bucket_name = cos_path.split('-')[0]
+        cos_path = cos_path[len(bucket_name)+1:]
+        self._app_id = cos_path.split('.')[0]
+        cos_path = cos_path[len(app_id)+1:]
+        self._region = cos_path.split(".")[0]
+        cos_path = cos_path[len(region+".myqcloud.com/"):]
+    
 
 class CosConfig(object):
 
@@ -100,19 +113,25 @@ class ObjectInterface(object):
             self._session = session
 
     def upload_folder(self, local_path, cos_path):
+        
         local_path = to_unicode(local_path)
         cos_path = to_unicode(cos_path)
         filelist = os.listdir(local_path)
+        if cos_path[-1] != '/':
+            cos_path += '/'
+        if local_path[-1] != '/':
+            local_path += '/'   
         self._folder_num += 1
+        
         if len(filelist) == 0:
-            logger.debug(cos_path+'/'+'tmp/')
-            self.upload_file(local_path="", cos_path=cos_path+'/'+"tmp/")
+            logger.debug(cos_path+'tmp/')
+            self.upload_file(local_path="", cos_path=cos_path+"tmp/")
         for filename in filelist:
             filepath = os.path.join(local_path, filename)
             if os.path.isdir(filepath):
-                self.upload_folder(filepath, cos_path+'/'+filename)
+                self.upload_folder(filepath, cos_path+filename)
             else:
-                if self.upload_file(local_path=filepath, cos_path=cos_path+'/'+filename) is False:
+                if self.upload_file(local_path=filepath, cos_path=cos_path+filename) is False:
                     logger.info("upload {file} fail".format(file=to_printable_str(filepath)))
                 else:
                     self._file_num += 1
