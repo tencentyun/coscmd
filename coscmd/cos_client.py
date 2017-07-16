@@ -146,7 +146,7 @@ class ObjectInterface(object):
                     if j+1 == self._retry:
                         return False
                 except Exception:
-                    logger.exception("upload file failed")
+                    logger.warn("upload file failed")
             return False
 
         def init_multiupload():
@@ -189,9 +189,6 @@ class ObjectInterface(object):
                         self._etag = 'ETag'
                     elif 'Etag' in rt.headers:
                         self._etag = 'Etag'
-                    else:
-                        logger.exception("ETag Error!")
-                        continue
                     self._md5[idx] = rt.headers[self._etag][1:-1]
                     if rt.status_code == 200:
                         self._have_finished += 1
@@ -201,7 +198,7 @@ class ObjectInterface(object):
                         time.sleep(2**j)
                         continue
                     if j+1 == retry:
-                        logger.exception("upload part failed: part{part}, round{round}, code: {code}".format(part=idx+1, round=j+1, code=rt.status_code))
+                        logger.warn("upload part failed: part{part}, round{round}, code: {code}".format(part=idx+1, round=j+1, code=rt.status_code))
                         return False
                 return True
 
@@ -216,6 +213,8 @@ class ObjectInterface(object):
             last_size = file_size - parts_num * chunk_size
             if last_size != 0:
                 parts_num += 1
+
+            print file_size,chunk_size,parts_num,last_size
             self._md5 = range(parts_num)
             if parts_num < self._conf._max_thread:
                 self._conf._max_thread = parts_num
@@ -228,7 +227,7 @@ class ObjectInterface(object):
             else:
                 for i in range(parts_num):
                     if i+1 == parts_num:
-                        pool.add_task(multiupload_parts_data, local_path, offset, file_size-offset-1, parts_num, i)
+                        pool.add_task(multiupload_parts_data, local_path, offset, file_size-offset, parts_num, i)
                     else:
                         pool.add_task(multiupload_parts_data, local_path, offset, chunk_size, parts_num, i)
                         offset += chunk_size
@@ -328,7 +327,7 @@ class ObjectInterface(object):
                 logger.warn(rt.content)
                 return False
         except Exception:
-            logger.exception("Error!")
+            logger.warn("Error!")
             return False
         return False
 
@@ -342,7 +341,7 @@ class ObjectInterface(object):
                  headers=rt.headers))
             return rt.status_code == 204
         except Exception:
-            logger.exception("Error!")
+            logger.warn("Error!")
             return False
         return False
 
@@ -372,7 +371,7 @@ class BucketInterface(object):
                  text=rt.text))
             return rt.status_code == 200
         except Exception:
-            logger.exception("Error!")
+            logger.warn("Error!")
             return False
         return True
 
@@ -388,7 +387,7 @@ class BucketInterface(object):
                  text=rt.text))
             return rt.status_code == 200
         except Exception:
-            logger.exception("Error!")
+            logger.warn("Error!")
             return False
         return True
 

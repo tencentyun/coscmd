@@ -121,7 +121,6 @@ class FileOp(object):
         while args.cos_path.startswith('/'):
             args.cos_path = args.cos_path[1:]
         Intface = client.obj_int()
-
         if not isinstance(args.local_path, unicode):
             args.local_path = args.local_path.decode(fs_coding)
 
