@@ -208,13 +208,10 @@ class ObjectInterface(object):
             chunk_size = 1024 * 1024 * self._conf._part_size
             while file_size / chunk_size > 10000:
                 chunk_size = chunk_size * 10
-
             parts_num = file_size / chunk_size
             last_size = file_size - parts_num * chunk_size
             if last_size != 0:
                 parts_num += 1
-
-            print file_size,chunk_size,parts_num,last_size
             self._md5 = range(parts_num)
             if parts_num < self._conf._max_thread:
                 self._conf._max_thread = parts_num
