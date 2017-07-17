@@ -16,4 +16,4 @@ coscmd/*.swn
 coscmd/*.swo
 *.project
 *.pydevproject
-.settings/
+.settings /tmp* /tmp/*
