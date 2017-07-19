@@ -8,7 +8,7 @@ import os
 reload(sys)
 sys.setdefaultencoding('utf-8')
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
+logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format="%(asctime)s - %(message)s")
 access_id = "AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00"
 access_key = "ciivKvnnrMvSvQpMAWuIz12pThGGlWRW"
 file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
@@ -97,7 +97,7 @@ def Test_put_object_acl():
     rt = obj_int.upload_file('tmp', 'tmp')
     assert rt
     os.remove('tmp')
-    rt = obj_int.put_object_acl("327874225", "4532,54351,anyone", "123451", "tmp")
+    rt = obj_int.put_object_acl("327874225", "3210232098/345725437,54351,anyone", "123451", "tmp")
     assert rt
 
 
@@ -111,7 +111,7 @@ def Test_get_object_acl():
 def Test_put_bucket_acl():
     print "Test put bucket acl"
     global buc_int
-    rt = buc_int.put_bucket_acl("327874225", "4532,54351,anyone", "123451")
+    rt = buc_int.put_bucket_acl("327874225", "3210232098/345725437", "123451")
     assert rt
 
 
@@ -145,6 +145,7 @@ def Test_delete_bucket():
 
 if __name__ == "__main__":
     setUp()
+    Test_delete_bucket()
     Test_put_object_acl()
     Test_get_object_acl()
     Test_create_bucket()

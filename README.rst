@@ -114,6 +114,21 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 而且会在当前目录下生成一个名为tmp.xml的文件，包含该bucket下所有文件的信息。
 
 
+ACL相关功能
+^^^^^^^^
+
+四个与ACL相关的命令
+
+.. code::
+
+ coscmd putobjectacl --grant-read --grant-write --grant-full-control cospath
+ coscmd putbucketacl --grant-read --grant-write --grant-full-control
+ coscmd getobjectacl cospath
+ coscmd getbucket
+
+可在--grant-read --grant-write --grant-full-control这三个权限指令后面输入用户id或者anyone来给对应用户赋权，同一类型的权限用逗号隔开，如果需要给子账户赋权，则参照一下格式rootid/subid。具体详见实例。
+
+
 简单示例
 ^^^^^^^^
 
@@ -140,8 +155,23 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
  删除bucket
  coscmd deletebucket
 
+ 删除非空bucket
+ coscmd deletebucket -f
+
  遍历bucket
  coscmd listbucket
+
+ putobjectacl
+ coscmd putobjectacl --grant-read 3210232098/345725437,anyone,327874225 --grant-write 3210232098/345725437,anyone,32787422 --grant-full-control 3210232098/345725437,anyone,32787422 cospath
+
+ getobjectacl
+ coscmd getobjectacl
+
+ putbucketacl
+ coscmd putbucketacl --grant-read 3210232098/345725437,anyone,327874225 --grant-write 3210232098/345725437,anyone,32787422 --grant-full-control 3210232098/345725437,anyone,32787422
+
+ getbucketacl
+ coscmd getbucketacl
 
 
 注意事项
