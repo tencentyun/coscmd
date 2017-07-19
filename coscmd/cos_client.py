@@ -511,6 +511,96 @@ class BucketInterface(object):
         logger.debug("get bucket success")
         return True
 
+    def put_bucket_acl(self, grant_read, grant_write, grant_full_control):
+        acl = []
+        for i in grant_read.split(","):
+            if len(i) > 0:
+                acl.append([i, "READ"])
+        for i in grant_write.split(","):
+            if len(i) > 0:
+                acl.append([i, "WRITE"])
+        for i in grant_full_control.split(","):
+            if len(i) > 0:
+                acl.append([i, "FULL_CONTROL"])
+        url = self._conf.uri("?acl")
+        logger.info("put with : " + url)
+        try:
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            if rt.status_code != 200:
+                logger.warn(rt.content)
+                return False
+            root = minidom.parseString(rt.content).documentElement
+            owner_id = root.getElementsByTagName("ID")[0].childNodes[0].data
+            grants = ''
+            subid = ''
+            rootid = ''
+            for id, type in acl:
+                if len(id.split("/")) == 1:
+                    accounttype = "RootAccount"
+                    rootid = id.split("/")[0]
+                    subid = id.split("/")[0]
+                elif len(id.split("/")) == 2:
+                    accounttype = "SubAccount"
+                    rootid = id.split("/")[0]
+                    subid = id.split("/")[1]
+                else:
+                    logger.warn("ID format error!")
+                    return False
+                if subid != "anyone":
+                    subid = "uin/"+subid
+                    rootid = "uin/"+rootid
+                grants += '''
+        <Grant>
+            <Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="{accounttype}">
+                <ID>qcs::cam::{rootid}:{subid}</ID>
+            </Grantee>
+            <Permission>{permissiontype}</Permission>
+        </Grant>'''.format(rootid=rootid, subid=subid, accounttype=accounttype, permissiontype=type)
+            data = '''<AccessControlPolicy>
+    <Owner>
+        <ID>{id}</ID>
+    </Owner>
+    <AccessControlList>'''.format(id=owner_id)+grants+'''
+    </AccessControlList>
+</AccessControlPolicy>
+'''
+            logger.debug(data)
+            rt = self._session.put(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=data)
+            logger.debug("put resp, status code: {code}, headers: {headers}".format(
+                code=rt.status_code,
+                headers=rt.headers))
+            if rt.status_code == 200:
+                return True
+            else:
+                logger.warn(rt.content)
+                return False
+        except Exception:
+            logger.warn("Error!")
+            return False
+        return False
+
+    def get_object_acl(self):
+        url = self._conf.uri("?acl")
+        logger.info("get with : " + url)
+        try:
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            logger.debug("get resp, status code: {code}, headers: {headers}".format(
+                 code=rt.status_code,
+                 headers=rt.headers))
+            root = minidom.parseString(rt.content).documentElement
+            grants = root.getElementsByTagName("Grant")
+            for grant in grants:
+                logger.info("%s => %s" % (grant.getElementsByTagName("ID")[0].childNodes[0].data, grant.getElementsByTagName("Permission")[0].childNodes[0].data))
+            if rt.status_code == 200:
+                return True
+            else:
+                logger.warn(rt.content)
+                return False
+        except Exception:
+            logger.warn("Error!")
+            return False
+        return False
+
 
 class CosS3Client(object):
 

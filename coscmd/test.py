@@ -108,6 +108,20 @@ def Test_get_object_acl():
     assert rt
 
 
+def Test_put_bucket_acl():
+    print "Test put bucket acl"
+    global buc_int
+    rt = obj_int.put_object_acl("327874225", "4532,54351,anyone", "123451", "tmp")
+    assert rt
+
+
+def Test_get_bucket_acl():
+    print "Test get bucket acl"
+    global buc_int
+    rt = buc_int.get_object_acl()
+    assert rt
+
+
 def Test_create_bucket():
     print "Test create bucket"
     global buc_int
@@ -133,3 +147,7 @@ if __name__ == "__main__":
     setUp()
     Test_put_object_acl()
     Test_get_object_acl()
+    Test_create_bucket()
+    Test_put_bucket_acl()
+    Test_get_bucket_acl()
+    Test_delete_bucket()

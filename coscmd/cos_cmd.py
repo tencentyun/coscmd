@@ -227,6 +227,45 @@ class BucketOp(object):
             logger.info("list fail!")
             return -1
 
+    @staticmethod
+    def put_bucket_acl(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        while args.cos_path.startswith('/'):
+            args.cos_path = args.cos_path[1:]
+        Intface = client.obj_int()
+
+        if not isinstance(args. cos_path, unicode):
+            args.cos_path = args.cos_path.decode(fs_coding)
+        Intface = client.obj_int()
+        rt = Intface.put_object_acl(args.grant_read, args.grant_write, args.grant_full_control, args.cos_path)
+        if rt is True:
+            logger.info("put success!")
+            return 0
+        else:
+            logger.info("put fail!")
+            return -1
+
+    @staticmethod
+    def get_bucket_acl(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        while args.cos_path.startswith('/'):
+            args.cos_path = args.cos_path[1:]
+        Intface = client.obj_int()
+
+        if not isinstance(args. cos_path, unicode):
+            args.cos_path = args.cos_path.decode(fs_coding)
+        Intface = client.obj_int()
+
+        rt = Intface.get_object_acl(args.cos_path)
+        if rt is True:
+            logger.info("get success!")
+            return 0
+        else:
+            logger.info("get fail!")
+            return -1
+
 
 def _main():
 
@@ -279,6 +318,14 @@ def _main():
     parser_i.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_i.set_defaults(func=FileOp.get_object_acl)
 
+    parser_j = sub_parser.add_parser("putbucketacl")
+    parser_j.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
+    parser_j.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
+    parser_j.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
+    parser_j.set_defaults(func=BucketOp.put_bucket_acl)
+
+    parser_k = sub_parser.add_parser("getbucketacl")
+    parser_k.set_defaults(func=BucketOp.get_bucket_acl)
     args = parser.parse_args()
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format="%(asctime)s - %(message)s")
