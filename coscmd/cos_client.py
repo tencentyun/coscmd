@@ -382,7 +382,7 @@ class BucketInterface(object):
                  code=rt.status_code,
                  headers=rt.headers,
                  text=rt.text))
-            return rt.status_code == 200
+            return rt.status_code == 204
         except Exception:
             logger.warn("Error!")
             return False
