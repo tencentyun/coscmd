@@ -2,12 +2,9 @@
 from cos_client import CosConfig, CosS3Client
 from ConfigParser import SafeConfigParser
 from argparse import ArgumentParser
-import random
 import sys
-import time
 import logging
 import os
-import sys
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +148,45 @@ class FileOp(object):
             logger.info("delete fail!")
             return -1
 
+    @staticmethod
+    def put_object_acl(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        while args.cos_path.startswith('/'):
+            args.cos_path = args.cos_path[1:]
+        Intface = client.obj_int()
+
+        if not isinstance(args. cos_path, unicode):
+            args.cos_path = args.cos_path.decode(fs_coding)
+        Intface = client.obj_int()
+        rt = Intface.put_object_acl(args.grant_read, args.grant_write, args.grant_full_control, args.cos_path)
+        if rt is True:
+            logger.info("put success!")
+            return 0
+        else:
+            logger.info("put fail!")
+            return -1
+
+    @staticmethod
+    def get_object_acl(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        while args.cos_path.startswith('/'):
+            args.cos_path = args.cos_path[1:]
+        Intface = client.obj_int()
+
+        if not isinstance(args. cos_path, unicode):
+            args.cos_path = args.cos_path.decode(fs_coding)
+        Intface = client.obj_int()
+
+        rt = Intface.get_object_acl(args.cos_path)
+        if rt is True:
+            logger.info("get success!")
+            return 0
+        else:
+            logger.info("get fail!")
+            return -1
+
 
 class BucketOp(object):
 
@@ -232,6 +268,17 @@ def _main():
     parser_g = sub_parser.add_parser("listbucket")
     parser_g.set_defaults(func=BucketOp.list)
 
+    parser_h = sub_parser.add_parser("putobjectacl")
+    parser_h.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_h.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
+    parser_h.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
+    parser_h.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
+    parser_h.set_defaults(func=FileOp.put_object_acl)
+
+    parser_i = sub_parser.add_parser("getobjectacl")
+    parser_i.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_i.set_defaults(func=FileOp.get_object_acl)
+
     args = parser.parse_args()
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format="%(asctime)s - %(message)s")
@@ -239,6 +286,7 @@ def _main():
         logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
 
     return args.func(args)
+
 
 if __name__ == '__main__':
     _main()

@@ -8,7 +8,7 @@ import os
 reload(sys)
 sys.setdefaultencoding('utf-8')
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.WARN, stream=sys.stdout, format="%(asctime)s - %(message)s")
+logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
 access_id = "AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00"
 access_key = "ciivKvnnrMvSvQpMAWuIz12pThGGlWRW"
 file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
@@ -55,7 +55,7 @@ def tearDown():
     print "function teardown"
 
 
-def Test_upload_files():
+def Test_upload_object():
     for i in range(test_num):
         file_size = 3.1 * i + 0.1
         file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
@@ -69,7 +69,7 @@ def Test_upload_files():
         os.remove(file_name)
 
 
-def Test_download_file():
+def Test_download_object():
     for i in range(test_num):
         file_name = file_list[i]
         print "Test download " + file_name
@@ -80,7 +80,7 @@ def Test_download_file():
         os.remove(file_name)
 
 
-def Test_file_delete():
+def Test_file_object():
     for i in range(test_num):
         file_name = file_list[i]
         print "Test delete " + file_name
@@ -88,6 +88,24 @@ def Test_file_delete():
         global obj_int
         rt = obj_int.delete_file(file_name)
         assert rt
+
+
+def Test_put_object_acl():
+    print "Test put object acl"
+    gen_file('tmp', 1)
+    global obj_int
+    rt = obj_int.upload_file('tmp', 'tmp')
+    assert rt
+    os.remove('tmp')
+    rt = obj_int.put_object_acl("327874225", "4532,54351,anyone", "123451", "tmp")
+    assert rt
+
+
+def Test_get_object_acl():
+    print "Test get object acl"
+    global obj_int
+    rt = obj_int.get_object_acl("tmp")
+    assert rt
 
 
 def Test_create_bucket():
@@ -109,3 +127,9 @@ def Test_delete_bucket():
     global buc_int
     rt = buc_int.delete_bucket()
     assert rt
+
+
+if __name__ == "__main__":
+    setUp()
+    Test_put_object_acl()
+    Test_get_object_acl()
