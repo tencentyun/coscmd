@@ -8,7 +8,10 @@ python:
 install:
     - pip install tox
     - pip install pep8
+    - pip install requests
+    - pip install nose
 
 script:
     - pep8 --max-line-length=180
+    - nosetests -s -v
     - tox
