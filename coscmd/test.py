@@ -111,7 +111,7 @@ def Test_get_object_acl():
 def Test_put_bucket_acl():
     print "Test put bucket acl"
     global buc_int
-    rt = obj_int.put_object_acl("327874225", "4532,54351,anyone", "123451", "tmp")
+    rt = buc_int.put_bucket_acl("327874225", "4532,54351,anyone", "123451")
     assert rt
 
 
