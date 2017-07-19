@@ -207,12 +207,20 @@ class BucketOp(object):
         conf = load_conf()
         client = CosS3Client(conf)
         Intface = client.buc_int()
-        if Intface.delete_bucket():
-            logger.info("delete success!")
-            return 0
+        if args.force:
+            if Intface.delete_bucket_force():
+                logger.info("delete success!")
+                return 0
+            else:
+                logger.info("delete fail!")
+                return -1
         else:
-            logger.info("delete fail!")
-            return -1
+            if Intface.delete_bucket():
+                logger.info("delete success!")
+                return 0
+            else:
+                logger.info("delete fail!")
+                return -1
 
     @staticmethod
     def list(args):
@@ -302,6 +310,7 @@ def _main():
     parser_create_bucket.set_defaults(func=BucketOp.create)
 
     parser_delete_bucket = sub_parser.add_parser("deletebucket")
+    parser_delete_bucket.add_argument('-f', '--force', help="delete bucket even if there are objects in bucket", action="store_true", default=False)
     parser_delete_bucket.set_defaults(func=BucketOp.delete)
 
     parser_list_bucket = sub_parser.add_parser("listbucket")

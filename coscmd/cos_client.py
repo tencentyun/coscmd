@@ -44,6 +44,15 @@ def getTagText(root, tag):
             rc = rc + node.data
 
 
+def make_sure(warnning):
+    while True:
+        decision = raw_input(warnning)
+        if decision in ['n', 'no', 'N', 'No']:
+            return False
+        elif decision in ['y', 'yes', 'Y', 'Yes']:
+            return True
+
+
 class CosConfig(object):
 
     def __init__(self, appid, region, bucket, access_id, access_key, part_size=1, max_thread=5, *args, **kwargs):
@@ -473,6 +482,56 @@ class BucketInterface(object):
             logger.warn("Error!")
             return False
         return True
+
+    def delete_bucket_force(self):
+        decision = make_sure("This operator will delete bucket including all the file in it\nBe Careful  (y/n)\n")
+        if decision is False:
+            return False
+        NextMarker = ""
+        IsTruncated = "true"
+        pagecount = 0
+        filecount = 0
+        okcount = 0
+        file_list = []
+        logger.info("getting bucket...");
+        while IsTruncated == "true":
+            pagecount += 1
+            url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}'.format(nextmarker=NextMarker))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            if rt.status_code == 200:
+                root = minidom.parseString(rt.content).documentElement
+                IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                if IsTruncated == 'true':
+                    NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+
+                logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                     code=rt.status_code,
+                     headers=rt.headers,
+                     text=to_printable_str(rt.text)))
+                contentset = root.getElementsByTagName("Key")
+                for content in contentset:
+                    filecount += 1
+                    cos_path = content.childNodes[0].data
+                    file_list.append(cos_path)
+            else:
+                logger.debug("get bucket error")
+                return False
+        logger.info("deleting bucket...")
+        for cos_path in file_list:
+            url_file = self._conf.uri(path=cos_path)
+            logger.debug("delete object with : " + cos_path)
+            rt = self._session.delete(url=url_file, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            if rt.status_code == 204:
+                okcount += 1
+            view_bar(okcount, filecount)
+        print ""
+        logger.info("filecount: %d, deletecount: %d" % (filecount, okcount))
+        if filecount == okcount:
+            self.delete_bucket()
+            logger.debug("get bucket success")
+            return True
+        else:
+            return False
 
     def get_bucket(self):
         NextMarker = ""
