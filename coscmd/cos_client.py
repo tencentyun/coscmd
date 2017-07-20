@@ -1,15 +1,12 @@
 # -*- coding=utf-8
 from cos_auth import CosS3Auth
 from cos_threadpool import SimpleThreadPool
-from urllib import quote
 import time
 import requests
 from os import path
-from hashlib import md5
 from contextlib import closing
 from xml.dom import minidom
 import logging
-import random
 import sys
 import os
 
