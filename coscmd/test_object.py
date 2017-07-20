@@ -39,6 +39,7 @@ def setUp():
     global obj_int
     obj_int = client.obj_int()
 
+
 def tearDown():
     print "test over"
 
@@ -76,6 +77,7 @@ def Test_delete_object():
         global obj_int
         rt = obj_int.delete_file(file_name)
         assert rt
+
 
 if __name__ == "__main__":
     setUp()

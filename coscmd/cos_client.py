@@ -45,7 +45,6 @@ def getTagText(root, tag):
 
 
 def make_sure(warnning):
-    
     while True:
         decision = raw_input(warnning)
         if decision in ['n', 'no', 'N', 'No']:
@@ -487,7 +486,7 @@ class BucketInterface(object):
         return True
 
     def delete_bucket_force(self):
-        
+
         def multidelete_parts_data(cos_path):
             for i in range(self._retry):
                 logger.debug("delete object with : " + cos_path)
@@ -497,7 +496,7 @@ class BucketInterface(object):
                     self._okcount += 1
                     view_bar(self._okcount, self._filecount)
                     break
-            
+
         decision = make_sure("This operator will delete bucket including all the file in it\nBe Careful  (y/n)\n")
         if decision is False:
             return False
