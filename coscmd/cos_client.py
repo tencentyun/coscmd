@@ -1,16 +1,12 @@
 # -*- coding=utf-8
 from cos_auth import CosS3Auth
 from cos_threadpool import SimpleThreadPool
-from urllib import quote
 import time
 import requests
 from os import path
-from hashlib import md5
 from contextlib import closing
 from xml.dom import minidom
 import logging
-import random
-import time
 import sys
 import os
 
@@ -165,7 +161,7 @@ class ObjectInterface(object):
                 return rt.status_code == 200
             except Exception:
                 return False
-            return Tr
+            return True
 
         def multiupload_parts():
 
@@ -197,7 +193,7 @@ class ObjectInterface(object):
                     else:
                         time.sleep(2**j)
                         continue
-                    if j+1 == retry:
+                    if j+1 == self._retry:
                         logger.warn("upload part failed: part{part}, round{round}, code: {code}".format(part=idx+1, round=j+1, code=rt.status_code))
                         return False
                 return True
@@ -382,7 +378,7 @@ class BucketInterface(object):
                  code=rt.status_code,
                  headers=rt.headers,
                  text=rt.text))
-            return rt.status_code == 200
+            return rt.status_code == 204
         except Exception:
             logger.warn("Error!")
             return False
