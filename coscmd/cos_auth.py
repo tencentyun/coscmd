@@ -73,6 +73,7 @@ class CosS3Auth(AuthBase):
         logger.debug("request headers: " + str(r.headers))
         return r
 
+
 if __name__ == "__main__":
     url = 'http://lewzylu01-1252448703.cn-south.myqcloud.com/a.txt'
     logger.debug("init with : " + url)
