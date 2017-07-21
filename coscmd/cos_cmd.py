@@ -2,12 +2,9 @@
 from cos_client import CosConfig, CosS3Client
 from ConfigParser import SafeConfigParser
 from argparse import ArgumentParser
-import random
 import sys
-import time
 import logging
 import os
-import sys
 
 logger = logging.getLogger(__name__)
 
@@ -239,6 +236,7 @@ def _main():
         logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
 
     return args.func(args)
+
 
 if __name__ == '__main__':
     _main()
