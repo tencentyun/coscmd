@@ -70,7 +70,7 @@ def load_conf():
         return conf
 
 
-class FileOp(object):
+class ObjectOp(object):
     @staticmethod
     def upload(args):
         conf = load_conf()
@@ -195,39 +195,39 @@ def _main():
     parser.add_argument('-v', '--verbose', help="verbose mode", action="store_true", default=False)
 
     sub_parser = parser.add_subparsers(help="config")
-    parser_a = sub_parser.add_parser("config")
-    parser_a.add_argument('-a', '--access_id', help='specify your access id', type=str, required=True)
-    parser_a.add_argument('-s', '--secret_key', help='specify your secret key', type=str, required=True)
-    parser_a.add_argument('-u', '--appid', help='specify your appid', type=str, required=True)
-    parser_a.add_argument('-b', '--bucket', help='specify your bucket', type=str, required=True)
-    parser_a.add_argument('-r', '--region', help='specify your bucket', type=str, required=True)
-    parser_a.add_argument('-m', '--max_thread', help='specify the number of threads (default 5)', type=int, default=5)
-    parser_a.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1)
-    parser_a.set_defaults(func=config)
+    parser_config = sub_parser.add_parser("config")
+    parser_config.add_argument('-a', '--access_id', help='specify your access id', type=str, required=True)
+    parser_config.add_argument('-s', '--secret_key', help='specify your secret key', type=str, required=True)
+    parser_config.add_argument('-u', '--appid', help='specify your appid', type=str, required=True)
+    parser_config.add_argument('-b', '--bucket', help='specify your bucket', type=str, required=True)
+    parser_config.add_argument('-r', '--region', help='specify your bucket', type=str, required=True)
+    parser_config.add_argument('-m', '--max_thread', help='specify the number of threads (default 5)', type=int, default=5)
+    parser_config.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1)
+    parser_config.set_defaults(func=config)
 
-    parser_b = sub_parser.add_parser("upload")
-    parser_b.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
-    parser_b.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_b.add_argument("-t", "--type", help="storage class type: standard/nearline/coldline", type=str, choices=["standard", "nearline", "coldline"], default="standard")
-    parser_b.set_defaults(func=FileOp.upload)
+    parser_upload = sub_parser.add_parser("upload")
+    parser_upload.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
+    parser_upload.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_upload.add_argument("-t", "--type", help="storage class type: standard/nearline/coldline", type=str, choices=["standard", "nearline", "coldline"], default="standard")
+    parser_upload.set_defaults(func=ObjectOp.upload)
 
-    parser_c = sub_parser.add_parser("download")
-    parser_c.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
-    parser_c.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_c.set_defaults(func=FileOp.download)
+    parser_download = sub_parser.add_parser("download")
+    parser_download.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
+    parser_download.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_download.set_defaults(func=ObjectOp.download)
 
-    parser_d = sub_parser.add_parser("delete")
-    parser_d.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_d.set_defaults(func=FileOp.delete)
+    parser_delete = sub_parser.add_parser("delete")
+    parser_delete.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_delete.set_defaults(func=ObjectOp.delete)
 
-    parser_e = sub_parser.add_parser("createbucket")
-    parser_e.set_defaults(func=BucketOp.create)
+    parser_create_bucket = sub_parser.add_parser("createbucket")
+    parser_create_bucket.set_defaults(func=BucketOp.create)
 
-    parser_f = sub_parser.add_parser("deletebucket")
-    parser_f.set_defaults(func=BucketOp.delete)
+    parser_delete_bucket = sub_parser.add_parser("deletebucket")
+    parser_delete_bucket.set_defaults(func=BucketOp.delete)
 
-    parser_g = sub_parser.add_parser("listbucket")
-    parser_g.set_defaults(func=BucketOp.list)
+    parser_list_bucket = sub_parser.add_parser("listbucket")
+    parser_list_bucket.set_defaults(func=BucketOp.list)
 
     args = parser.parse_args()
     if args.verbose:
