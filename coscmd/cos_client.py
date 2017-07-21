@@ -168,7 +168,7 @@ class ObjectInterface(object):
             def multiupload_parts_data(local_path, offset, length, parts_size, idx):
                 with open(local_path, 'rb') as File:
                     File.seek(offset, 0)
-                    data = file.read(length)
+                    data = File.read(length)
                 url = self._conf.uri(path=cos_path)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx+1, uploadid=self._upload_id)
                 logger.debug("upload url: " + str(url))
                 for j in range(self._retry):
