@@ -148,6 +148,41 @@ class ObjectOp(object):
             logger.info("delete fail!")
             return -1
 
+    @staticmethod
+    def put_object_acl(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        while args.cos_path.startswith('/'):
+            args.cos_path = args.cos_path[1:]
+        if not isinstance(args. cos_path, unicode):
+            args.cos_path = args.cos_path.decode(fs_coding)
+        Intface = client.obj_int()
+        rt = Intface.put_object_acl(args.grant_read, args.grant_write, args.grant_full_control, args.cos_path)
+        if rt is True:
+            logger.info("put success!")
+            return 0
+        else:
+            logger.info("put fail!")
+            return -1
+
+    @staticmethod
+    def get_object_acl(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        while args.cos_path.startswith('/'):
+            args.cos_path = args.cos_path[1:]
+        if not isinstance(args. cos_path, unicode):
+            args.cos_path = args.cos_path.decode(fs_coding)
+        Intface = client.obj_int()
+
+        rt = Intface.get_object_acl(args.cos_path)
+        if rt is True:
+            logger.info("get success!")
+            return 0
+        else:
+            logger.info("get fail!")
+            return -1
+
 
 class BucketOp(object):
 
@@ -186,6 +221,32 @@ class BucketOp(object):
             return 0
         else:
             logger.info("list fail!")
+            return -1
+
+    @staticmethod
+    def put_bucket_acl(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        Intface = client.buc_int()
+        rt = Intface.put_bucket_acl(args.grant_read, args.grant_write, args.grant_full_control)
+        if rt is True:
+            logger.info("put success!")
+            return 0
+        else:
+            logger.info("put fail!")
+            return -1
+
+    @staticmethod
+    def get_bucket_acl(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        Intface = client.buc_int()
+        rt = Intface.get_bucket_acl()
+        if rt is True:
+            logger.info("get success!")
+            return 0
+        else:
+            logger.info("get fail!")
             return -1
 
 
@@ -229,6 +290,25 @@ def _main():
     parser_list_bucket = sub_parser.add_parser("listbucket")
     parser_list_bucket.set_defaults(func=BucketOp.list)
 
+    parser_put_object_acl = sub_parser.add_parser("putobjectacl")
+    parser_put_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_put_object_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
+    parser_put_object_acl.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
+    parser_put_object_acl.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
+    parser_put_object_acl.set_defaults(func=ObjectOp.put_object_acl)
+
+    parser_get_object_acl = sub_parser.add_parser("getobjectacl")
+    parser_get_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_get_object_acl.set_defaults(func=ObjectOp.get_object_acl)
+
+    parser_put_bucket_acl = sub_parser.add_parser("putbucketacl")
+    parser_put_bucket_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
+    parser_put_bucket_acl.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
+    parser_put_bucket_acl.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
+    parser_put_bucket_acl.set_defaults(func=BucketOp.put_bucket_acl)
+
+    parser_get_bucket_acl = sub_parser.add_parser("getbucketacl")
+    parser_get_bucket_acl.set_defaults(func=BucketOp.get_bucket_acl)
     args = parser.parse_args()
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format="%(asctime)s - %(message)s")
