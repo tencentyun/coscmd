@@ -2,12 +2,9 @@
 from cos_client import CosConfig, CosS3Client
 from ConfigParser import SafeConfigParser
 from argparse import ArgumentParser
-import random
 import sys
-import time
 import logging
 import os
-import sys
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +70,7 @@ def load_conf():
         return conf
 
 
-class FileOp(object):
+class ObjectOp(object):
     @staticmethod
     def upload(args):
         conf = load_conf()
@@ -151,6 +148,41 @@ class FileOp(object):
             logger.info("delete fail!")
             return -1
 
+    @staticmethod
+    def put_object_acl(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        while args.cos_path.startswith('/'):
+            args.cos_path = args.cos_path[1:]
+        if not isinstance(args. cos_path, unicode):
+            args.cos_path = args.cos_path.decode(fs_coding)
+        Intface = client.obj_int()
+        rt = Intface.put_object_acl(args.grant_read, args.grant_write, args.grant_full_control, args.cos_path)
+        if rt is True:
+            logger.info("put success!")
+            return 0
+        else:
+            logger.info("put fail!")
+            return -1
+
+    @staticmethod
+    def get_object_acl(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        while args.cos_path.startswith('/'):
+            args.cos_path = args.cos_path[1:]
+        if not isinstance(args. cos_path, unicode):
+            args.cos_path = args.cos_path.decode(fs_coding)
+        Intface = client.obj_int()
+
+        rt = Intface.get_object_acl(args.cos_path)
+        if rt is True:
+            logger.info("get success!")
+            return 0
+        else:
+            logger.info("get fail!")
+            return -1
+
 
 class BucketOp(object):
 
@@ -191,6 +223,32 @@ class BucketOp(object):
             logger.info("list fail!")
             return -1
 
+    @staticmethod
+    def put_bucket_acl(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        Intface = client.buc_int()
+        rt = Intface.put_bucket_acl(args.grant_read, args.grant_write, args.grant_full_control)
+        if rt is True:
+            logger.info("put success!")
+            return 0
+        else:
+            logger.info("put fail!")
+            return -1
+
+    @staticmethod
+    def get_bucket_acl(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        Intface = client.buc_int()
+        rt = Intface.get_bucket_acl()
+        if rt is True:
+            logger.info("get success!")
+            return 0
+        else:
+            logger.info("get fail!")
+            return -1
+
 
 def _main():
 
@@ -198,40 +256,59 @@ def _main():
     parser.add_argument('-v', '--verbose', help="verbose mode", action="store_true", default=False)
 
     sub_parser = parser.add_subparsers(help="config")
-    parser_a = sub_parser.add_parser("config")
-    parser_a.add_argument('-a', '--access_id', help='specify your access id', type=str, required=True)
-    parser_a.add_argument('-s', '--secret_key', help='specify your secret key', type=str, required=True)
-    parser_a.add_argument('-u', '--appid', help='specify your appid', type=str, required=True)
-    parser_a.add_argument('-b', '--bucket', help='specify your bucket', type=str, required=True)
-    parser_a.add_argument('-r', '--region', help='specify your bucket', type=str, required=True)
-    parser_a.add_argument('-m', '--max_thread', help='specify the number of threads (default 5)', type=int, default=5)
-    parser_a.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1)
-    parser_a.set_defaults(func=config)
+    parser_config = sub_parser.add_parser("config")
+    parser_config.add_argument('-a', '--access_id', help='specify your access id', type=str, required=True)
+    parser_config.add_argument('-s', '--secret_key', help='specify your secret key', type=str, required=True)
+    parser_config.add_argument('-u', '--appid', help='specify your appid', type=str, required=True)
+    parser_config.add_argument('-b', '--bucket', help='specify your bucket', type=str, required=True)
+    parser_config.add_argument('-r', '--region', help='specify your bucket', type=str, required=True)
+    parser_config.add_argument('-m', '--max_thread', help='specify the number of threads (default 5)', type=int, default=5)
+    parser_config.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1)
+    parser_config.set_defaults(func=config)
 
-    parser_b = sub_parser.add_parser("upload")
-    parser_b.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
-    parser_b.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_b.add_argument("-t", "--type", help="storage class type: standard/nearline/coldline", type=str, choices=["standard", "nearline", "coldline"], default="standard")
-    parser_b.set_defaults(func=FileOp.upload)
+    parser_upload = sub_parser.add_parser("upload")
+    parser_upload.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
+    parser_upload.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_upload.add_argument("-t", "--type", help="storage class type: standard/nearline/coldline", type=str, choices=["standard", "nearline", "coldline"], default="standard")
+    parser_upload.set_defaults(func=ObjectOp.upload)
 
-    parser_c = sub_parser.add_parser("download")
-    parser_c.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
-    parser_c.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_c.set_defaults(func=FileOp.download)
+    parser_download = sub_parser.add_parser("download")
+    parser_download.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
+    parser_download.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_download.set_defaults(func=ObjectOp.download)
 
-    parser_d = sub_parser.add_parser("delete")
-    parser_d.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_d.set_defaults(func=FileOp.delete)
+    parser_delete = sub_parser.add_parser("delete")
+    parser_delete.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_delete.set_defaults(func=ObjectOp.delete)
 
-    parser_e = sub_parser.add_parser("createbucket")
-    parser_e.set_defaults(func=BucketOp.create)
+    parser_create_bucket = sub_parser.add_parser("createbucket")
+    parser_create_bucket.set_defaults(func=BucketOp.create)
 
-    parser_f = sub_parser.add_parser("deletebucket")
-    parser_f.set_defaults(func=BucketOp.delete)
+    parser_delete_bucket = sub_parser.add_parser("deletebucket")
+    parser_delete_bucket.set_defaults(func=BucketOp.delete)
 
-    parser_g = sub_parser.add_parser("listbucket")
-    parser_g.set_defaults(func=BucketOp.list)
+    parser_list_bucket = sub_parser.add_parser("listbucket")
+    parser_list_bucket.set_defaults(func=BucketOp.list)
 
+    parser_put_object_acl = sub_parser.add_parser("putobjectacl")
+    parser_put_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_put_object_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
+    parser_put_object_acl.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
+    parser_put_object_acl.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
+    parser_put_object_acl.set_defaults(func=ObjectOp.put_object_acl)
+
+    parser_get_object_acl = sub_parser.add_parser("getobjectacl")
+    parser_get_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_get_object_acl.set_defaults(func=ObjectOp.get_object_acl)
+
+    parser_put_bucket_acl = sub_parser.add_parser("putbucketacl")
+    parser_put_bucket_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
+    parser_put_bucket_acl.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
+    parser_put_bucket_acl.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
+    parser_put_bucket_acl.set_defaults(func=BucketOp.put_bucket_acl)
+
+    parser_get_bucket_acl = sub_parser.add_parser("getbucketacl")
+    parser_get_bucket_acl.set_defaults(func=BucketOp.get_bucket_acl)
     args = parser.parse_args()
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format="%(asctime)s - %(message)s")
@@ -239,6 +316,7 @@ def _main():
         logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
 
     return args.func(args)
+
 
 if __name__ == '__main__':
     _main()

@@ -5,7 +5,7 @@ import urllib
 import hashlib
 import logging
 import requests
-from urllib import quote, urlencode
+from urllib import quote
 from urlparse import urlparse
 from requests.auth import AuthBase
 logger = logging.getLogger(__name__)
@@ -30,10 +30,6 @@ class CosS3Auth(AuthBase):
             uri_params = {rt.query: ""}
         else:
             uri_params = {}
-        # del r.headers["accept"]
-        # del r.headers["accept-encoding"]
-        # del r.headers["connection"]
-        # del r.headers["user-agent"]
         r.headers = {}
         r.headers['Host'] = rt.netloc
         headers = dict([(k.lower(), quote(v).lower()) for k, v in r.headers.items()])
@@ -47,7 +43,6 @@ class CosS3Auth(AuthBase):
 
         start_sign_time = int(time.time())
         sign_time = "{bg_time};{ed_time}".format(bg_time=start_sign_time-60, ed_time=start_sign_time + self._expire)
-        # sign_time = "1480932292;1981012292"
         sha1 = hashlib.sha1()
         sha1.update(format_str)
 
@@ -72,6 +67,7 @@ class CosS3Auth(AuthBase):
 
         logger.debug("request headers: " + str(r.headers))
         return r
+
 
 if __name__ == "__main__":
     url = 'http://lewzylu01-1252448703.cn-south.myqcloud.com/a.txt'
