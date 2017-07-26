@@ -9,6 +9,8 @@ from xml.dom import minidom
 import logging
 import sys
 import os
+import base64
+from distutils.tests.test_filelist import make_local_path
 
 logger = logging.getLogger(__name__)
 fs_coding = sys.getfilesystemencoding()
@@ -83,12 +85,14 @@ class ObjectInterface(object):
     def __init__(self, conf, session=None):
         self._conf = conf
         self._upload_id = None
-        self._md5 = []
+        self._md5 = {}
         self._have_finished = 0
         self._err_tips = ''
         self._retry = 2
         self._file_num = 0
         self._folder_num = 0
+        self._path_md5 = ""
+        self._have_uploaded = []
         self._etag = 'ETag'
         if session is None:
             self._session = requests.session()
@@ -119,6 +123,34 @@ class ObjectInterface(object):
                     self._file_num += 1
                     logger.debug("upload {file} success".format(file=to_printable_str(filepath)))
 
+    def list_part(self, cos_path):
+        logger.info("getting uploaded parts")
+        NextMarker = ""
+        IsTruncated = "true"
+        while IsTruncated == "true":
+            url = self._conf.uri(path=cos_path+'?uploadId={UploadId}&upload&max-parts=1000&part-number-marker={nextmarker}'.format(UploadId=self._upload_id, nextmarker=NextMarker))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+
+            if rt.status_code == 200:
+                root = minidom.parseString(rt.content).documentElement
+                IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                if IsTruncated == 'true':
+                    NextMarker = root.getElementsByTagName("NextPartNumberMarker")[0].childNodes[0].data
+                logger.debug("list resp, status code: {code}, headers: {headers}, text: {text}".format(
+                     code=rt.status_code,
+                     headers=rt.headers,
+                     text=to_printable_str(rt.text)))
+                contentset = root.getElementsByTagName("Part")
+                for content in contentset:
+                    ID = content.getElementsByTagName("PartNumber")[0].childNodes[0].data
+                    self._have_uploaded.append(ID)
+                    self._md5[int(ID)] = content.getElementsByTagName(self._etag)[0].childNodes[0].data[1:-1]
+            else:
+                logger.debug("list parts error")
+                return False
+        logger.debug("list parts error")
+        return True
+
     def upload_file(self, local_path, cos_path):
 
         def single_upload():
@@ -148,18 +180,35 @@ class ObjectInterface(object):
         def init_multiupload():
             url = self._conf.uri(path=cos_path)
             self._have_finished = 0
+            self._have_uploaded = []
+            logger.info("checking upload breakpoint...")
+            self._path_md5 = os.path.expanduser('~/.tmp/'+base64.encodestring(str(os.path.getsize(local_path))+"!!!"+cos_path)[0:10])
             logger.debug("init with : " + url)
-            try:
-                rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
-                logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                     code=rt.status_code,
-                     headers=rt.headers,
-                     text=rt.text))
+            if os.path.isfile(self._path_md5):
+                with open(self._path_md5, 'rb') as f:
+                    self._upload_id = f.read()
+                if self.list_part(cos_path) is True:
+                    logger.info("continue uploading from last breakpoint")
+                    return True
+                else:
+                    logger.info("read breakpoint fail, start uploading again")
+            else:
+                logger.info("can not find upload breakpoint")
+            rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                 code=rt.status_code,
+                 headers=rt.headers,
+                 text=rt.text))
 
-                root = minidom.parseString(rt.content).documentElement
-                self._upload_id = root.getElementsByTagName("UploadId")[0].childNodes[0].data
-                return rt.status_code == 200
-            except Exception:
+            root = minidom.parseString(rt.content).documentElement
+            self._upload_id = root.getElementsByTagName("UploadId")[0].childNodes[0].data
+            if rt.status_code == 200:
+                if os.path.isdir(os.path.expanduser("~/.tmp")) is False:
+                    os.makedirs(os.path.expanduser("~/.tmp"))
+                with open(self._path_md5, 'wb') as f:
+                    f.write(self._upload_id)
+                return True
+            else:
                 return False
             return True
 
@@ -169,14 +218,14 @@ class ObjectInterface(object):
                 with open(local_path, 'rb') as File:
                     File.seek(offset, 0)
                     data = File.read(length)
-                url = self._conf.uri(path=cos_path)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx+1, uploadid=self._upload_id)
+                url = self._conf.uri(path=cos_path)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=self._upload_id)
                 logger.debug("upload url: " + str(url))
                 for j in range(self._retry):
                     rt = self._session.put(url=url,
                                            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                                            data=data)
                     logger.debug("multi part result: part{part}, round{round}, code: {code}, headers: {headers}, text: {text}".format(
-                        part=idx+1,
+                        part=idx,
                         round=j+1,
                         code=rt.status_code,
                         headers=rt.headers,
@@ -194,7 +243,7 @@ class ObjectInterface(object):
                         time.sleep(2**j)
                         continue
                     if j+1 == self._retry:
-                        logger.warn("upload part failed: part{part}, round{round}, code: {code}".format(part=idx+1, round=j+1, code=rt.status_code))
+                        logger.warn("upload part failed: part{part}, round{round}, code: {code}".format(part=idx, round=j+1, code=rt.status_code))
                         return False
                 return True
 
@@ -208,21 +257,24 @@ class ObjectInterface(object):
             last_size = file_size - parts_num * chunk_size
             if last_size != 0:
                 parts_num += 1
-            self._md5 = range(parts_num)
             if parts_num < self._conf._max_thread:
                 self._conf._max_thread = parts_num
             pool = SimpleThreadPool(self._conf._max_thread)
             logger.debug("chunk_size: " + str(chunk_size))
             logger.debug('upload file concurrently')
             logger.info("uploading {file}".format(file=to_printable_str(local_path)))
+            self._have_finished = len(self._have_uploaded)
             if chunk_size >= file_size:
                 pool.add_task(multiupload_parts_data, local_path, offset, file_size, 1, 0)
             else:
                 for i in range(parts_num):
+                    if(str(i+1) in self._have_uploaded):
+                        offset += chunk_size
+                        continue
                     if i+1 == parts_num:
-                        pool.add_task(multiupload_parts_data, local_path, offset, file_size-offset, parts_num, i)
+                        pool.add_task(multiupload_parts_data, local_path, offset, file_size-offset, parts_num, i+1)
                     else:
-                        pool.add_task(multiupload_parts_data, local_path, offset, chunk_size, parts_num, i)
+                        pool.add_task(multiupload_parts_data, local_path, offset, chunk_size, parts_num, i+1)
                         offset += chunk_size
             pool.wait_completion()
             result = pool.get_result()
@@ -235,10 +287,11 @@ class ObjectInterface(object):
         def complete_multiupload():
             doc = minidom.Document()
             root = doc.createElement("CompleteMultipartUpload")
-            for i, v in enumerate(self._md5):
+            list_md5 = sorted(self._md5.items(), key=lambda d: d[0])
+            for i, v in list_md5:
                 t = doc.createElement("Part")
                 t1 = doc.createElement("PartNumber")
-                t1.appendChild(doc.createTextNode(str(i+1)))
+                t1.appendChild(doc.createTextNode(str(i)))
                 t2 = doc.createElement(self._etag)
                 t2.appendChild(doc.createTextNode('"{v}"'.format(v=v)))
                 t.appendChild(t1)
@@ -252,7 +305,11 @@ class ObjectInterface(object):
                 with closing(self._session.post(url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=data, stream=True)) as rt:
                     logger.debug("complete status code: {code}".format(code=rt.status_code))
                     logger.debug("complete headers: {headers}".format(headers=rt.headers))
-                return rt.status_code == 200
+                if rt.status_code == 200:
+                    os.remove(self._path_md5)
+                    return True
+                else:
+                    return False
             except Exception:
                 return False
             return True
@@ -439,7 +496,6 @@ class BucketInterface(object):
     def __init__(self,  conf, session=None):
         self._conf = conf
         self._upload_id = None
-        self._md5 = []
         self._have_finished = 0
         self._err_tips = ''
         if session is None:
