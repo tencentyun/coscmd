@@ -10,7 +10,6 @@ import logging
 import sys
 import os
 import base64
-from distutils.tests.test_filelist import make_local_path
 
 logger = logging.getLogger(__name__)
 fs_coding = sys.getfilesystemencoding()
@@ -44,6 +43,11 @@ def getTagText(root, tag):
     for node in node.childNodes:
         if node.nodeType in (node.TEXT_NODE, node.CDATA_SECTION_NODE):
             rc = rc + node.data
+
+
+def get_md5_filename(local_path, cos_path):
+    ori_file = '~/.tmp/' + os.path.abspath(os.path.dirname(local_path)) + "!!!" + str(os.path.getsize(local_path)) + "!!!" + cos_path
+    return base64.encodestring(os.path.expanduser(ori_file))[0:10]
 
 
 class CosConfig(object):
@@ -182,7 +186,7 @@ class ObjectInterface(object):
             self._have_finished = 0
             self._have_uploaded = []
             logger.info("checking upload breakpoint...")
-            self._path_md5 = os.path.expanduser('~/.tmp/'+base64.encodestring(str(os.path.getsize(local_path))+"!!!"+cos_path)[0:10])
+            self._path_md5 = get_md5_filename(local_path, cos_path)
             logger.debug("init with : " + url)
             if os.path.isfile(self._path_md5):
                 with open(self._path_md5, 'rb') as f:
@@ -285,6 +289,7 @@ class ObjectInterface(object):
                 return False
 
         def complete_multiupload():
+            logger.info('completing multiupload')
             doc = minidom.Document()
             root = doc.createElement("CompleteMultipartUpload")
             list_md5 = sorted(self._md5.items(), key=lambda d: d[0])
