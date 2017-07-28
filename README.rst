@@ -50,11 +50,11 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
 请将参数替换为您所需要的本地文件路径(localpath)，以及cos上存储的路径(cospath)。
 
-如果本地文件路径是一个文件夹，则会将文件夹以cospath的名字上传。
-
 支持大文件断点上传为功能。
 
 当分片上传大文件失败时，重新上传该文件只会上传失败的分块，而不会从头开始(请保证重新上传的文件绝对目录以及内容和上传的目录不要改变)
+
+使用-r删除文件夹。
 
 
 下载文件
@@ -64,9 +64,9 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
 .. code::
 
- coscmd download localpath cospath 
+ coscmd download cospath localpath
 
-请将参数替换为您所需要的本地存储路径(localpath)，以及需要下载的cos上文件的路径(cospath)。
+请将参数替换为您所需要下载的cos上文件的路径(cospath)，以及需要的本地存储路径(localpath)。
 
 
 删除文件
@@ -78,7 +78,7 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
  coscmd delete cospath 
 
-请将参数替换为您所需要删除的cos上文件的路径(cospath)。
+请将参数替换为您所需要删除的cos上文件的路径(cospath)。使用-r删除文件夹。
 
 
 新建bucket
@@ -153,13 +153,16 @@ ACL相关功能
  coscmd upload file1 file2
 
  上传文件夹
- coscmd upload folder1 folder2
+ coscmd upload -r folder1 folder2
 
  下载文件
  coscmd download file1 file2
 
  删除文件
  coscmd delete file1
+
+ 删除文件夹
+ coscmd delete -r folder1
 
  新建bucket
  coscmd createbucket
