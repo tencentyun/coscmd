@@ -3,14 +3,14 @@ import cos_client
 import logging
 import random
 import sys
-
+import os
 reload(sys)
 sys.setdefaultencoding('utf-8')
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
-access_id = "AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00"
-access_key = "ciivKvnnrMvSvQpMAWuIz12pThGGlWRW"
-test_num = 10
+access_id = os.environ["ACCESS_ID"]
+access_key = os.environ["ACCESS_KEY"]
+test_num = 5
 
 
 def setUp():
@@ -44,7 +44,7 @@ def Test_bucket():
         assert rt
         print "Test put bucket acl " + conf._bucket
         sys.stdout.flush()
-        rt = buc_int.put_bucket_acl("anyone,1231,3210232098/345725437", None, "anyone")
+        rt = buc_int.put_bucket_acl("anyone,43,123", None, "anyone")
         assert rt
         print "Test get bucket acl " + conf._bucket
         sys.stdout.flush()

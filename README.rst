@@ -173,7 +173,7 @@ ACL相关功能
  设置bucket ACL
  coscmd putbucketacl --grant-read anyone,1231,3210232098/345725437 -grant-full-control anyone
  
- 设置object ACK
+ 设置object ACL
 
  coscmd putobjectacl --grant-read anyone,1231,3210232098/345725437 --grant-write anyone,1231,3210232098/345725437 -grant-full-control anyone cos_path
  
