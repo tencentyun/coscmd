@@ -285,8 +285,8 @@ def _main():
     parser_upload.set_defaults(func=ObjectOp.upload)
 
     parser_download = sub_parser.add_parser("download")
-    parser_download.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
     parser_download.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_download.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
     parser_download.set_defaults(func=ObjectOp.download)
 
     parser_delete = sub_parser.add_parser("delete")
