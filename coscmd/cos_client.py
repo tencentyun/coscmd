@@ -50,6 +50,30 @@ def get_md5_filename(local_path, cos_path):
     return base64.encodestring(os.path.expanduser(ori_file))[0:10]
 
 
+def query_yes_no(question, default=None):
+    valid = {"yes": True, "y": True, "ye": True,
+             "no": False, "n": False}
+    if default is None:
+        prompt = " [y/n] "
+    elif default == "yes":
+        prompt = " [Y/n] "
+    elif default == "no":
+        prompt = " [y/N] "
+    else:
+        raise ValueError("invalid default answer: '%s'" % default)
+    while True:
+        sys.stdout.write(question + prompt)
+        sys.stdout.flush()
+        choice = raw_input().lower()
+        if default is not None and choice == '':
+            return valid[default]
+        elif choice in valid:
+            return valid[choice]
+        else:
+            sys.stdout.write("Please respond with 'yes' or 'no' "
+                             "(or 'y' or 'n').\n")
+
+
 class CosConfig(object):
 
     def __init__(self, appid, region, bucket, access_id, access_key, part_size=1, max_thread=5, *args, **kwargs):
@@ -103,30 +127,6 @@ class ObjectInterface(object):
         else:
             self._session = session
 
-    def upload_folder(self, local_path, cos_path):
-
-        local_path = to_unicode(local_path)
-        cos_path = to_unicode(cos_path)
-        filelist = os.listdir(local_path)
-        if cos_path[-1] != '/':
-            cos_path += '/'
-        if local_path[-1] != '/':
-            local_path += '/'
-        self._folder_num += 1
-        if len(filelist) == 0:
-            logger.debug(cos_path+'tmp/')
-            self.upload_file(local_path="", cos_path=cos_path+"tmp/")
-        for filename in filelist:
-            filepath = os.path.join(local_path, filename)
-            if os.path.isdir(filepath):
-                self.upload_folder(filepath, cos_path+filename)
-            else:
-                if self.upload_file(local_path=filepath, cos_path=cos_path+filename) is False:
-                    logger.info("upload {file} fail".format(file=to_printable_str(filepath)))
-                else:
-                    self._file_num += 1
-                    logger.debug("upload {file} success".format(file=to_printable_str(filepath)))
-
     def list_part(self, cos_path):
         logger.info("getting uploaded parts")
         NextMarker = ""
@@ -154,6 +154,30 @@ class ObjectInterface(object):
                 return False
         logger.debug("list parts error")
         return True
+
+    def upload_folder(self, local_path, cos_path):
+
+        local_path = to_unicode(local_path)
+        cos_path = to_unicode(cos_path)
+        filelist = os.listdir(local_path)
+        if cos_path[-1] != '/':
+            cos_path += '/'
+        if local_path[-1] != '/':
+            local_path += '/'
+        self._folder_num += 1
+        if len(filelist) == 0:
+            logger.debug(cos_path+'tmp/')
+            self.upload_file(local_path="", cos_path=cos_path+"tmp/")
+        for filename in filelist:
+            filepath = os.path.join(local_path, filename)
+            if os.path.isdir(filepath):
+                self.upload_folder(filepath, cos_path+filename)
+            else:
+                if self.upload_file(local_path=filepath, cos_path=cos_path+filename) is False:
+                    logger.info("upload {file} fail".format(file=to_printable_str(filepath)))
+                else:
+                    self._file_num += 1
+                    logger.debug("upload {file} success".format(file=to_printable_str(filepath)))
 
     def upload_file(self, local_path, cos_path):
 
@@ -385,6 +409,67 @@ class ObjectInterface(object):
             logger.warn("Error!")
             return False
         return False
+
+    def delete_folder(self, cos_path):
+
+        def multidelete_parts_data(_cos_path):
+            for i in range(self._retry):
+                logger.debug("delete object with : " + _cos_path)
+                url_file = self._conf.uri(path=_cos_path)
+                rt = self._session.delete(url=url_file, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+                if rt.status_code == 204:
+                    self._have_finished += 1
+                    view_bar(self._have_finished, self._file_num)
+                    break
+        cos_path = to_unicode(cos_path)
+        if len(cos_path) > 0:
+            if cos_path[-1] != '/':
+                cos_path += '/'
+        self._have_finished = 0
+        self._file_num = 0
+        NextMarker = ""
+        IsTruncated = "true"
+        pagecount = 0
+        file_list = []
+        logger.info("getting folder...")
+        while IsTruncated == "true":
+            pagecount += 1
+            url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}&prefix={prefix}'.format(nextmarker=NextMarker, prefix=cos_path))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            if rt.status_code == 200:
+                root = minidom.parseString(rt.content).documentElement
+                IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                if IsTruncated == 'true':
+                    NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+
+                logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                     code=rt.status_code,
+                     headers=rt.headers,
+                     text=to_printable_str(rt.text)))
+                contentset = root.getElementsByTagName("Key")
+                for content in contentset:
+                    self._file_num += 1
+                    file_name = content.childNodes[0].data
+                    file_list.append(file_name)
+            else:
+                logger.debug("get folder error")
+                return False
+        logger.info("filecount: %d" % (self._file_num))
+        # make sure
+        if query_yes_no("you are deleting the folder {cos_path}, please make sure".format(cos_path=cos_path)) is False:
+            return False
+        logger.info("deleting folder...")
+        pool = SimpleThreadPool(self._conf._max_thread)
+        for cos_path in file_list:
+            pool.add_task(multidelete_parts_data, cos_path)
+        pool.wait_completion()
+        print ""
+        logger.info("deleted: %d" % (self._have_finished))
+        if self._file_num == self._have_finished:
+            logger.debug("get folder success")
+            return True
+        else:
+            return False
 
     def delete_file(self, cos_path):
         url = self._conf.uri(path=cos_path)
