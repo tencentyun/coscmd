@@ -9,10 +9,10 @@ reload(sys)
 sys.setdefaultencoding('utf-8')
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
-access_id = "AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00"
-access_key = "ciivKvnnrMvSvQpMAWuIz12pThGGlWRW"
+access_id = os.environ["ACCESS_ID"]
+access_key = os.environ["ACCESS_KEY"]
 file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
-test_num = 10
+test_num = 5
 
 
 def gen_file(path, size):
@@ -55,7 +55,7 @@ def Test_object():
         assert rt
         print "Test put object acl " + file_name
         sys.stdout.flush()
-        rt = obj_int.put_object_acl("anyone,1231,3210232098/345725437", None, "anyone", file_name)
+        rt = obj_int.put_object_acl("anyone,43,123", None, "anyone", file_name)
         assert rt
         print "Test get object acl " + file_name
         sys.stdout.flush()

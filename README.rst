@@ -117,6 +117,29 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 输入以下命令会根据在conf设置的信息查看对应的bucket内的文件信息
 而且会在当前目录下生成一个名为tmp.xml的文件，包含该bucket下所有文件的信息。
 
+ACL相关功能
+^^^^^^^^
+
+使用以下命令设置bucket或object的ACL
+
+.. code::
+
+ putbucketacl --grant-read --grant-write --grant-full-control
+ 
+ putobjectacl --grant-read --grant-write --grant-full-control cos_path
+
+若为根帐号设置权限，则输入rootid，若为子帐号设置权限，则需输入rootid/subid，若需要对所有人开发权限，则输入anyone，同类型权限设置多个帐号用逗号隔开
+
+具体细节详见样例
+
+使用以下命令得到bucket或object的ACL
+
+.. code::
+
+ getbucketacl
+ 
+ getobjectacl cos_path
+
 
 简单示例
 ^^^^^^^^
@@ -124,7 +147,7 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 .. code::
 
  设置属性
- coscmd config -a AKKTZbAo6WhgcBqVl3213ID15IsskiBQ0 -s cii213fdfaWuIz12pThGGlWRW -u 1252448703 -b uploadtest -r cn-south -m 10 -p 5
+ coscmd config -a ACCESS_ID -s ACCESS_KEY -u 1252448703 -b uploadtest -r cn-south -m 10 -p 5
 
  上传文件
  coscmd upload file1 file2
@@ -147,6 +170,18 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
  遍历bucket
  coscmd listbucket
 
+ 设置bucket ACL
+ coscmd putbucketacl --grant-read anyone,1231,3210232098/345725437 -grant-full-control anyone
+ 
+ 设置object ACL
+
+ coscmd putobjectacl --grant-read anyone,1231,3210232098/345725437 --grant-write anyone,1231,3210232098/345725437 -grant-full-control anyone cos_path
+ 
+ 得到bucket ACL
+ coscmd getbucketacl
+ 
+ 得到object ACL
+ coscmd getobjectacl
 
 注意事项
 ^^^^^^^^
