@@ -124,9 +124,9 @@ ACL相关功能
 
 .. code::
 
- putbucketacl --grant-read --grant-write --grant-full-control
+ coscmd putbucketacl --grant-read --grant-write --grant-full-control
  
- putobjectacl --grant-read --grant-write --grant-full-control cos_path
+ coscmd putobjectacl --grant-read --grant-write --grant-full-control cos_path
 
 若为根帐号设置权限，则输入rootid，若为子帐号设置权限，则需输入rootid/subid，若需要对所有人开发权限，则输入anyone，同类型权限设置多个帐号用逗号隔开
 
@@ -136,9 +136,9 @@ ACL相关功能
 
 .. code::
 
- getbucketacl
+ coscmd getbucketacl
  
- getobjectacl cos_path
+ coscmd getobjectacl cos_path
 
 
 简单示例
