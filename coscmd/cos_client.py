@@ -166,6 +166,7 @@ class ObjectInterface(object):
             local_path += '/'
         self._folder_num += 1
         if len(filelist) == 0:
+            self._file_num += 1
             logger.debug(cos_path+'tmp/')
             self.upload_file(local_path="", cos_path=cos_path+"tmp/")
         for filename in filelist:
