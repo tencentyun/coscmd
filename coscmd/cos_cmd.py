@@ -91,7 +91,10 @@ class ObjectOp(object):
         if not os.access(args.local_path, os.R_OK):
             logger.info('local_path %s is not readable!' % to_printable_str(args.local_path))
             return -1
-        if os.path.isdir(args.local_path):
+        if args.recursive:
+            if os.path.isdir(args.local_path) is False:
+                logger.info("path not exist!")
+                return -1
             rt = Intface.upload_folder(args.local_path, args.cos_path)
             logger.info("upload {file} finished".format(file=to_printable_str(args.local_path)))
             logger.info("totol of {folders} folders, {files} files".format(folders=Intface._folder_num, files=Intface._file_num))
@@ -99,16 +102,16 @@ class ObjectOp(object):
                 return 0
             else:
                 return -1
-        elif os.path.isfile(args.local_path):
+        else:
+            if os.path.isfile(args.local_path) is False:
+                logger.info("path not exist!")
+                return -1
             if Intface.upload_file(args.local_path, args.cos_path) is True:
                 logger.info("upload {file} success".format(file=to_printable_str(args.local_path)))
                 return 0
             else:
                 logger.info("upload {file} fail".format(file=to_printable_str(args.local_path)))
                 return -1
-        else:
-            logger.info("file or folder not exsist!")
-            return -1
         return -1
 
     @staticmethod
@@ -141,12 +144,21 @@ class ObjectOp(object):
 
         if not isinstance(args. cos_path, unicode):
             args.cos_path = args.cos_path.decode(fs_coding)
-        if Intface.delete_file(args.cos_path):
-            logger.info("delete success!")
-            return 0
+
+        if args.recursive:
+            if Intface.delete_folder(args.cos_path):
+                logger.info("delete success!")
+                return 0
+            else:
+                logger.info("delete fail!")
+                return -1
         else:
-            logger.info("delete fail!")
-            return -1
+            if Intface.delete_file(args.cos_path):
+                logger.info("delete success!")
+                return 0
+            else:
+                logger.info("delete fail!")
+                return -1
 
     @staticmethod
     def put_object_acl(args):
@@ -269,16 +281,17 @@ def _main():
     parser_upload = sub_parser.add_parser("upload")
     parser_upload.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
     parser_upload.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_upload.add_argument("-t", "--type", help="storage class type: standard/nearline/coldline", type=str, choices=["standard", "nearline", "coldline"], default="standard")
+    parser_upload.add_argument('-r', '--recursive', help="upload folder", action="store_true", default=False)
     parser_upload.set_defaults(func=ObjectOp.upload)
 
     parser_download = sub_parser.add_parser("download")
-    parser_download.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
     parser_download.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_download.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
     parser_download.set_defaults(func=ObjectOp.download)
 
     parser_delete = sub_parser.add_parser("delete")
     parser_delete.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_delete.add_argument('-r', '--recursive', help="delete folder", action="store_true", default=False)
     parser_delete.set_defaults(func=ObjectOp.delete)
 
     parser_create_bucket = sub_parser.add_parser("createbucket")
