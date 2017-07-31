@@ -108,7 +108,7 @@ class CosConfig(object):
         return url
 
 
-class ObjectInterface(object):
+class Interface(object):
 
     def __init__(self, conf, session=None):
         self._conf = conf
@@ -457,7 +457,7 @@ class ObjectInterface(object):
                 return False
         logger.info("filecount: %d" % (self._file_num))
         # make sure
-        if query_yes_no("you are deleting the folder {cos_path}, please make sure".format(cos_path=cos_path)) is False:
+        if query_yes_no("you are deleting the cos_path '{cos_path}', please make sure".format(cos_path=cos_path)) is False:
             return False
         logger.info("deleting folder...")
         pool = SimpleThreadPool(self._conf._max_thread)
@@ -581,19 +581,6 @@ class ObjectInterface(object):
             return False
         return False
 
-
-class BucketInterface(object):
-
-    def __init__(self,  conf, session=None):
-        self._conf = conf
-        self._upload_id = None
-        self._have_finished = 0
-        self._err_tips = ''
-        if session is None:
-            self._session = requests.session()
-        else:
-            self._session = session
-
     def create_bucket(self):
         url = self._conf.uri(path='')
         self._have_finished = 0
@@ -625,6 +612,7 @@ class BucketInterface(object):
             logger.warn("Error!")
             return False
         return True
+
 
     def get_bucket(self):
         NextMarker = ""
@@ -765,11 +753,8 @@ class CosS3Client(object):
         self._conf = conf
         self._session = requests.session()
 
-    def obj_int(self, local_path='', cos_path=''):
-        return ObjectInterface(conf=self._conf, session=self._session)
-
-    def buc_int(self):
-        return BucketInterface(conf=self._conf, session=self._session)
+    def op_int(self):
+        return Interface(conf=self._conf, session=self._session)
 
 
 if __name__ == "__main__":

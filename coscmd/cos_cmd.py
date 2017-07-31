@@ -70,14 +70,14 @@ def load_conf():
         return conf
 
 
-class ObjectOp(object):
+class Op(object):
     @staticmethod
     def upload(args):
         conf = load_conf()
         client = CosS3Client(conf)
         while args.cos_path.startswith('/'):
             args.cos_path = args.cos_path[1:]
-        Intface = client.obj_int()
+        Intface = client.op_int()
 
         if not isinstance(args.local_path, unicode):
             args.local_path = args.local_path.decode(fs_coding)
@@ -120,7 +120,7 @@ class ObjectOp(object):
         client = CosS3Client(conf)
         while args.cos_path.startswith('/'):
             args.cos_path = args.cos_path[1:]
-        Intface = client.obj_int()
+        Intface = client.op_int()
         if not isinstance(args.local_path, unicode):
             args.local_path = args.local_path.decode(fs_coding)
 
@@ -140,7 +140,7 @@ class ObjectOp(object):
         client = CosS3Client(conf)
         while args.cos_path.startswith('/'):
             args.cos_path = args.cos_path[1:]
-        Intface = client.obj_int()
+        Intface = client.op_int()
 
         if not isinstance(args. cos_path, unicode):
             args.cos_path = args.cos_path.decode(fs_coding)
@@ -168,7 +168,7 @@ class ObjectOp(object):
             args.cos_path = args.cos_path[1:]
         if not isinstance(args. cos_path, unicode):
             args.cos_path = args.cos_path.decode(fs_coding)
-        Intface = client.obj_int()
+        Intface = client.op_int()
         rt = Intface.put_object_acl(args.grant_read, args.grant_write, args.grant_full_control, args.cos_path)
         if rt is True:
             logger.info("put success!")
@@ -185,7 +185,7 @@ class ObjectOp(object):
             args.cos_path = args.cos_path[1:]
         if not isinstance(args. cos_path, unicode):
             args.cos_path = args.cos_path.decode(fs_coding)
-        Intface = client.obj_int()
+        Intface = client.op_int()
 
         rt = Intface.get_object_acl(args.cos_path)
         if rt is True:
@@ -195,14 +195,11 @@ class ObjectOp(object):
             logger.info("get fail!")
             return -1
 
-
-class BucketOp(object):
-
     @staticmethod
-    def create(args):
+    def create_bucket(args):
         conf = load_conf()
         client = CosS3Client(conf)
-        Intface = client.buc_int()
+        Intface = client.op_int()
         if Intface.create_bucket():
             logger.info("create success!")
             return 0
@@ -211,10 +208,14 @@ class BucketOp(object):
             return -1
 
     @staticmethod
-    def delete(args):
+    def delete_bucket(args):
         conf = load_conf()
         client = CosS3Client(conf)
-        Intface = client.buc_int()
+        Intface = client.op_int()
+        if args.force is True:
+            if Intface.delete_folder("") is False:
+                logger.info("delete files in bucket fail")
+                return -1
         if Intface.delete_bucket():
             logger.info("delete success!")
             return 0
@@ -223,10 +224,10 @@ class BucketOp(object):
             return -1
 
     @staticmethod
-    def list(args):
+    def list_bucket(args):
         conf = load_conf()
         client = CosS3Client(conf)
-        Intface = client.buc_int()
+        Intface = client.op_int()
         if Intface.get_bucket():
             logger.info("save as tmp.xml in the current directory！")
             logger.info("list success!")
@@ -239,7 +240,7 @@ class BucketOp(object):
     def put_bucket_acl(args):
         conf = load_conf()
         client = CosS3Client(conf)
-        Intface = client.buc_int()
+        Intface = client.op_int()
         rt = Intface.put_bucket_acl(args.grant_read, args.grant_write, args.grant_full_control)
         if rt is True:
             logger.info("put success!")
@@ -252,7 +253,7 @@ class BucketOp(object):
     def get_bucket_acl(args):
         conf = load_conf()
         client = CosS3Client(conf)
-        Intface = client.buc_int()
+        Intface = client.op_int()
         rt = Intface.get_bucket_acl()
         if rt is True:
             logger.info("get success!")
@@ -282,46 +283,47 @@ def _main():
     parser_upload.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
     parser_upload.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_upload.add_argument('-r', '--recursive', help="upload folder", action="store_true", default=False)
-    parser_upload.set_defaults(func=ObjectOp.upload)
+    parser_upload.set_defaults(func=Op.upload)
 
     parser_download = sub_parser.add_parser("download")
     parser_download.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_download.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
-    parser_download.set_defaults(func=ObjectOp.download)
+    parser_download.set_defaults(func=Op.download)
 
     parser_delete = sub_parser.add_parser("delete")
     parser_delete.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_delete.add_argument('-r', '--recursive', help="delete folder", action="store_true", default=False)
-    parser_delete.set_defaults(func=ObjectOp.delete)
+    parser_delete.set_defaults(func=Op.delete)
 
     parser_create_bucket = sub_parser.add_parser("createbucket")
-    parser_create_bucket.set_defaults(func=BucketOp.create)
+    parser_create_bucket.set_defaults(func=Op.create_bucket)
 
     parser_delete_bucket = sub_parser.add_parser("deletebucket")
-    parser_delete_bucket.set_defaults(func=BucketOp.delete)
+    parser_delete_bucket.add_argument('-f', '--force', help="force delete bucket", action="store_true", default=False)
+    parser_delete_bucket.set_defaults(func=Op.delete_bucket)
 
     parser_list_bucket = sub_parser.add_parser("listbucket")
-    parser_list_bucket.set_defaults(func=BucketOp.list)
+    parser_list_bucket.set_defaults(func=Op.list_bucket)
 
     parser_put_object_acl = sub_parser.add_parser("putobjectacl")
     parser_put_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_put_object_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
     parser_put_object_acl.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
     parser_put_object_acl.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
-    parser_put_object_acl.set_defaults(func=ObjectOp.put_object_acl)
+    parser_put_object_acl.set_defaults(func=Op.put_object_acl)
 
     parser_get_object_acl = sub_parser.add_parser("getobjectacl")
     parser_get_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_get_object_acl.set_defaults(func=ObjectOp.get_object_acl)
+    parser_get_object_acl.set_defaults(func=Op.get_object_acl)
 
     parser_put_bucket_acl = sub_parser.add_parser("putbucketacl")
     parser_put_bucket_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
     parser_put_bucket_acl.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
     parser_put_bucket_acl.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
-    parser_put_bucket_acl.set_defaults(func=BucketOp.put_bucket_acl)
+    parser_put_bucket_acl.set_defaults(func=Op.put_bucket_acl)
 
     parser_get_bucket_acl = sub_parser.add_parser("getbucketacl")
-    parser_get_bucket_acl.set_defaults(func=BucketOp.get_bucket_acl)
+    parser_get_bucket_acl.set_defaults(func=Op.get_bucket_acl)
     args = parser.parse_args()
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format="%(asctime)s - %(message)s")
