@@ -46,8 +46,8 @@ def getTagText(root, tag):
 
 
 def get_md5_filename(local_path, cos_path):
-    ori_file = '~/.tmp/' + os.path.abspath(os.path.dirname(local_path)) + "!!!" + str(os.path.getsize(local_path)) + "!!!" + cos_path
-    return base64.encodestring(os.path.expanduser(ori_file))[0:10]
+    ori_file = os.path.abspath(os.path.dirname(local_path)) + "!!!" + str(os.path.getsize(local_path)) + "!!!" + cos_path
+    return os.path.expanduser('~/.tmp/' + base64.encodestring(ori_file)[0:10])
 
 
 def query_yes_no(question, default=None):
@@ -116,7 +116,7 @@ class Interface(object):
         self._md5 = {}
         self._have_finished = 0
         self._err_tips = ''
-        self._retry = 2
+        self._retry = 1
         self._file_num = 0
         self._folder_num = 0
         self._path_md5 = ""
@@ -259,10 +259,6 @@ class Interface(object):
                         code=rt.status_code,
                         headers=rt.headers,
                         text=rt.text))
-                    if 'ETag' in rt.headers:
-                        self._etag = 'ETag'
-                    elif 'Etag' in rt.headers:
-                        self._etag = 'Etag'
                     self._md5[idx] = rt.headers[self._etag][1:-1]
                     if rt.status_code == 200:
                         self._have_finished += 1
@@ -612,7 +608,6 @@ class Interface(object):
             logger.warn("Error!")
             return False
         return True
-
 
     def get_bucket(self):
         NextMarker = ""
