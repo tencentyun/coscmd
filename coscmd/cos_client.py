@@ -283,9 +283,8 @@ class Interface(object):
             self._have_finished = len(self._have_uploaded)
             if last_size != 0:
                 parts_num += 1
-            if parts_num - self._have_finished < self._conf._max_thread:
-                self._conf._max_thread = parts_num - self._have_finished
-            pool = SimpleThreadPool(self._conf._max_thread)
+            _max_thread = min(self._conf._max_thread, parts_num - self._have_finished)
+            pool = SimpleThreadPool(_max_thread)
 
             logger.debug("chunk_size: " + str(chunk_size))
             logger.debug('upload file concurrently')
@@ -457,7 +456,8 @@ class Interface(object):
         if query_yes_no("you are deleting the cos_path '{cos_path}', please make sure".format(cos_path=cos_path)) is False:
             return False
         logger.info("deleting folder...")
-        pool = SimpleThreadPool(self._conf._max_thread)
+        _max_thread = min(self._conf._max_thread, self._file_num)
+        pool = SimpleThreadPool(_max_thread)
         for cos_path in file_list:
             pool.add_task(multidelete_parts_data, cos_path)
         pool.wait_completion()
