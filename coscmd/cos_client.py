@@ -46,8 +46,8 @@ def getTagText(root, tag):
 
 
 def get_md5_filename(local_path, cos_path):
-    ori_file = '~/.tmp/' + os.path.abspath(os.path.dirname(local_path)) + "!!!" + str(os.path.getsize(local_path)) + "!!!" + cos_path
-    return base64.encodestring(os.path.expanduser(ori_file))[0:10]
+    ori_file = os.path.abspath(os.path.dirname(local_path)) + "!!!" + str(os.path.getsize(local_path)) + "!!!" + cos_path
+    return os.path.expanduser('~/.tmp/' + base64.encodestring(ori_file)[0:10])
 
 
 def query_yes_no(question, default=None):
@@ -108,7 +108,7 @@ class CosConfig(object):
         return url
 
 
-class ObjectInterface(object):
+class Interface(object):
 
     def __init__(self, conf, session=None):
         self._conf = conf
@@ -116,7 +116,7 @@ class ObjectInterface(object):
         self._md5 = {}
         self._have_finished = 0
         self._err_tips = ''
-        self._retry = 2
+        self._retry = 1
         self._file_num = 0
         self._folder_num = 0
         self._path_md5 = ""
@@ -259,10 +259,6 @@ class ObjectInterface(object):
                         code=rt.status_code,
                         headers=rt.headers,
                         text=rt.text))
-                    if 'ETag' in rt.headers:
-                        self._etag = 'ETag'
-                    elif 'Etag' in rt.headers:
-                        self._etag = 'Etag'
                     self._md5[idx] = rt.headers[self._etag][1:-1]
                     if rt.status_code == 200:
                         self._have_finished += 1
@@ -284,15 +280,15 @@ class ObjectInterface(object):
                 chunk_size = chunk_size * 10
             parts_num = file_size / chunk_size
             last_size = file_size - parts_num * chunk_size
+            self._have_finished = len(self._have_uploaded)
             if last_size != 0:
                 parts_num += 1
-            if parts_num < self._conf._max_thread:
-                self._conf._max_thread = parts_num
-            pool = SimpleThreadPool(self._conf._max_thread)
+            _max_thread = min(self._conf._max_thread, parts_num - self._have_finished)
+            pool = SimpleThreadPool(_max_thread)
+
             logger.debug("chunk_size: " + str(chunk_size))
             logger.debug('upload file concurrently')
             logger.info("uploading {file}".format(file=to_printable_str(local_path)))
-            self._have_finished = len(self._have_uploaded)
             if chunk_size >= file_size:
                 pool.add_task(multiupload_parts_data, local_path, offset, file_size, 1, 0)
             else:
@@ -457,10 +453,11 @@ class ObjectInterface(object):
                 return False
         logger.info("filecount: %d" % (self._file_num))
         # make sure
-        if query_yes_no("you are deleting the folder {cos_path}, please make sure".format(cos_path=cos_path)) is False:
+        if query_yes_no("you are deleting the cos_path '{cos_path}', please make sure".format(cos_path=cos_path)) is False:
             return False
         logger.info("deleting folder...")
-        pool = SimpleThreadPool(self._conf._max_thread)
+        _max_thread = min(self._conf._max_thread, self._file_num)
+        pool = SimpleThreadPool(_max_thread)
         for cos_path in file_list:
             pool.add_task(multidelete_parts_data, cos_path)
         pool.wait_completion()
@@ -580,19 +577,6 @@ class ObjectInterface(object):
             logger.warn("Error!")
             return False
         return False
-
-
-class BucketInterface(object):
-
-    def __init__(self,  conf, session=None):
-        self._conf = conf
-        self._upload_id = None
-        self._have_finished = 0
-        self._err_tips = ''
-        if session is None:
-            self._session = requests.session()
-        else:
-            self._session = session
 
     def create_bucket(self):
         url = self._conf.uri(path='')
@@ -765,11 +749,8 @@ class CosS3Client(object):
         self._conf = conf
         self._session = requests.session()
 
-    def obj_int(self, local_path='', cos_path=''):
-        return ObjectInterface(conf=self._conf, session=self._session)
-
-    def buc_int(self):
-        return BucketInterface(conf=self._conf, session=self._session)
+    def op_int(self):
+        return Interface(conf=self._conf, session=self._session)
 
 
 if __name__ == "__main__":
