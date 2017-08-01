@@ -280,15 +280,16 @@ class Interface(object):
                 chunk_size = chunk_size * 10
             parts_num = file_size / chunk_size
             last_size = file_size - parts_num * chunk_size
+            self._have_finished = len(self._have_uploaded)
             if last_size != 0:
                 parts_num += 1
-            if parts_num < self._conf._max_thread:
-                self._conf._max_thread = parts_num
+            if parts_num - self._have_finished < self._conf._max_thread:
+                self._conf._max_thread = parts_num - self._have_finished
             pool = SimpleThreadPool(self._conf._max_thread)
+
             logger.debug("chunk_size: " + str(chunk_size))
             logger.debug('upload file concurrently')
             logger.info("uploading {file}".format(file=to_printable_str(local_path)))
-            self._have_finished = len(self._have_uploaded)
             if chunk_size >= file_size:
                 pool.add_task(multiupload_parts_data, local_path, offset, file_size, 1, 0)
             else:
