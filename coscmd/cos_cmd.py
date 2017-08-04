@@ -268,8 +268,9 @@ def _main():
     parser = ArgumentParser()
     parser.add_argument('-v', '--verbose', help="verbose mode", action="store_true", default=False)
 
-    sub_parser = parser.add_subparsers(help="config")
-    parser_config = sub_parser.add_parser("config")
+    sub_parser = parser.add_subparsers()
+    parser_config = sub_parser.add_parser("config", help='''coscmd config [-h] -a ACCESS_ID -s SECRET_KEY -u APPID
+                                                            -b BUCKET -r REGION [-m MAX_THREAD] [-p PART_SIZE]''')
     parser_config.add_argument('-a', '--access_id', help='specify your access id', type=str, required=True)
     parser_config.add_argument('-s', '--secret_key', help='specify your secret key', type=str, required=True)
     parser_config.add_argument('-u', '--appid', help='specify your appid', type=str, required=True)
@@ -279,50 +280,55 @@ def _main():
     parser_config.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1)
     parser_config.set_defaults(func=config)
 
-    parser_upload = sub_parser.add_parser("upload")
+    parser_upload = sub_parser.add_parser("upload", help="coscmd  upload [-h] [-r] local_path cos_path")
     parser_upload.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
     parser_upload.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_upload.add_argument('-r', '--recursive', help="upload folder", action="store_true", default=False)
     parser_upload.set_defaults(func=Op.upload)
 
-    parser_download = sub_parser.add_parser("download")
+    parser_download = sub_parser.add_parser("download", help="coscmd download [-h] cos_path local_path")
     parser_download.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_download.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
     parser_download.set_defaults(func=Op.download)
 
-    parser_delete = sub_parser.add_parser("delete")
+    parser_delete = sub_parser.add_parser("delete", help="coscmd cos_cmd.py delete [-h] [-r] cos_path")
     parser_delete.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_delete.add_argument('-r', '--recursive', help="delete folder", action="store_true", default=False)
     parser_delete.set_defaults(func=Op.delete)
 
-    parser_create_bucket = sub_parser.add_parser("createbucket")
+    parser_create_bucket = sub_parser.add_parser("createbucket", help='coscmd createbucket [-h]')
     parser_create_bucket.set_defaults(func=Op.create_bucket)
 
-    parser_delete_bucket = sub_parser.add_parser("deletebucket")
+    parser_delete_bucket = sub_parser.add_parser("deletebucket", help='coscmd deletebucket [-h] [-f]')
     parser_delete_bucket.add_argument('-f', '--force', help="force delete bucket", action="store_true", default=False)
     parser_delete_bucket.set_defaults(func=Op.delete_bucket)
 
-    parser_list_bucket = sub_parser.add_parser("listbucket")
+    parser_list_bucket = sub_parser.add_parser("listbucket", help='coscmd listbucket [-h]')
     parser_list_bucket.set_defaults(func=Op.list_bucket)
 
-    parser_put_object_acl = sub_parser.add_parser("putobjectacl")
+    parser_put_object_acl = sub_parser.add_parser("putobjectacl", help='''coscmd putobjectacl [-h] [--grant-read GRANT_READ]
+                                                                       [--grant-write GRANT_WRITE]
+                                                                       [--grant-full-control GRANT_FULL_CONTROL]
+                                                                       cos_path''')
     parser_put_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_put_object_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
     parser_put_object_acl.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
     parser_put_object_acl.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
     parser_put_object_acl.set_defaults(func=Op.put_object_acl)
 
-    parser_get_object_acl = sub_parser.add_parser("getobjectacl")
+    parser_get_object_acl = sub_parser.add_parser("getobjectacl", help='coscmd getobjectacl [-h] cos_path')
     parser_get_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_get_object_acl.set_defaults(func=Op.get_object_acl)
 
-    parser_put_bucket_acl = sub_parser.add_parser("putbucketacl")
+    parser_put_bucket_acl = sub_parser.add_parser("putbucketacl", help='''coscmd putbucketacl [-h] [--grant-read GRANT_READ]
+                                                                       [--grant-write GRANT_WRITE]
+                                                                       [--grant-full-control GRANT_FULL_CONTROL]''')
     parser_put_bucket_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
     parser_put_bucket_acl.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
     parser_put_bucket_acl.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
     parser_put_bucket_acl.set_defaults(func=Op.put_bucket_acl)
 
-    parser_get_bucket_acl = sub_parser.add_parser("getbucketacl")
+    parser_get_bucket_acl = sub_parser.add_parser("getbucketacl", help='coscmd getbucketacl [-h]')
     parser_get_bucket_acl.set_defaults(func=Op.get_bucket_acl)
     args = parser.parse_args()
     if args.verbose:
