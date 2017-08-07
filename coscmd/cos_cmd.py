@@ -4,11 +4,16 @@ from ConfigParser import SafeConfigParser
 from argparse import ArgumentParser
 import sys
 import logging
+import coloredlogs
 import os
 
 logger = logging.getLogger(__name__)
 
 fs_coding = sys.getfilesystemencoding()
+
+color_red = "31"
+color_green = "32"
+color_yello = "33"
 
 
 def to_printable_str(s):
@@ -16,6 +21,10 @@ def to_printable_str(s):
         return s.encode(fs_coding)
     else:
         return s
+
+
+def change_color(s, color):
+    return "\033[1;" + color + ";40m" + s + "\033[0m"
 
 
 def config(args):
@@ -44,7 +53,7 @@ def load_conf():
         logger.warn("{conf} couldn't be found, please config tool!".format(conf=to_printable_str(conf_path)))
         raise IOError
     else:
-        logger.info('{conf} is found.'.format(conf=to_printable_str(conf_path)))
+        logger.debug('{conf} is found.'.format(conf=to_printable_str(conf_path)))
 
     with open(conf_path, 'r') as f:
         cp = SafeConfigParser()
@@ -85,32 +94,32 @@ class Op(object):
             args.cos_path = args.cos_path.decode(fs_coding)
 
         if not os.path.exists(args.local_path):
-            logger.info('local_path %s not exist!' % to_printable_str(args.local_path))
+            logger.warn('local_path %s not exist!' % to_printable_str(args.local_path))
             return -1
 
         if not os.access(args.local_path, os.R_OK):
-            logger.info('local_path %s is not readable!' % to_printable_str(args.local_path))
+            logger.warn('local_path %s is not readable!' % to_printable_str(args.local_path))
             return -1
         if args.recursive:
             if os.path.isdir(args.local_path) is False:
-                logger.info("path not exist!")
+                logger.warn(change_color("path not exist!", color_red))
                 return -1
             rt = Intface.upload_folder(args.local_path, args.cos_path)
-            logger.info("upload {file} finished".format(file=to_printable_str(args.local_path)))
-            logger.info("totol of {folders} folders, {files} files".format(folders=Intface._folder_num, files=Intface._file_num))
+            logger.info(change_color("upload {file} finished".format(file=to_printable_str(args.local_path)), color_green))
+            logger.info(change_color("totol of {folders} folders, {files} files".format(folders=Intface._folder_num, files=Intface._file_num), color_green))
             if rt:
                 return 0
             else:
                 return -1
         else:
             if os.path.isfile(args.local_path) is False:
-                logger.info("path not exist!")
+                logger.warn(change_color("path not exist!", color_red))
                 return -1
             if Intface.upload_file(args.local_path, args.cos_path) is True:
-                logger.info("upload {file} success".format(file=to_printable_str(args.local_path)))
+                logger.info(change_color("upload {file} success".format(file=to_printable_str(args.local_path)), color_green))
                 return 0
             else:
-                logger.info("upload {file} fail".format(file=to_printable_str(args.local_path)))
+                logger.warn(change_color("upload {file} fail".format(file=to_printable_str(args.local_path)), color_red))
                 return -1
         return -1
 
@@ -128,10 +137,10 @@ class Op(object):
             args.cos_path = args.cos_path.decode(fs_coding)
 
         if Intface.download_file(args.local_path, args.cos_path):
-            logger.info("download success!")
+            logger.info(change_color("download success!", color_green))
             return 0
         else:
-            logger.info("download fail!")
+            logger.warn(change_color("download fail!", color_red))
             return -1
 
     @staticmethod
@@ -147,17 +156,17 @@ class Op(object):
 
         if args.recursive:
             if Intface.delete_folder(args.cos_path):
-                logger.info("delete success!")
+                logger.info(change_color("delete success!", color_green))
                 return 0
             else:
-                logger.info("delete fail!")
+                logger.warn(change_color("delete fail!", color_red))
                 return -1
         else:
             if Intface.delete_file(args.cos_path):
-                logger.info("delete success!")
+                logger.info(change_color("delete success!", color_green))
                 return 0
             else:
-                logger.info("delete fail!")
+                logger.warn(change_color("delete fail!", color_red))
                 return -1
 
     @staticmethod
@@ -171,10 +180,10 @@ class Op(object):
         Intface = client.op_int()
         rt = Intface.put_object_acl(args.grant_read, args.grant_write, args.grant_full_control, args.cos_path)
         if rt is True:
-            logger.info("put success!")
+            logger.info(change_color("put success!", color_green))
             return 0
         else:
-            logger.info("put fail!")
+            logger.warn(change_color("put fail!", color_red))
             return -1
 
     @staticmethod
@@ -189,10 +198,10 @@ class Op(object):
 
         rt = Intface.get_object_acl(args.cos_path)
         if rt is True:
-            logger.info("get success!")
+            logger.info(change_color("get success!", color_green))
             return 0
         else:
-            logger.info("get fail!")
+            logger.warn(change_color("get fail!", color_red))
             return -1
 
     @staticmethod
@@ -201,10 +210,10 @@ class Op(object):
         client = CosS3Client(conf)
         Intface = client.op_int()
         if Intface.create_bucket():
-            logger.info("create success!")
+            logger.info(change_color("create success!", color_green))
             return 0
         else:
-            logger.info("create fail!")
+            logger.warn(change_color("create fail!", color_red))
             return -1
 
     @staticmethod
@@ -214,13 +223,13 @@ class Op(object):
         Intface = client.op_int()
         if args.force is True:
             if Intface.delete_folder("") is False:
-                logger.info("delete files in bucket fail")
+                logger.warn(change_color("delete files in bucket fail", color_red))
                 return -1
         if Intface.delete_bucket():
-            logger.info("delete success!")
+            logger.info(change_color("delete success!", color_green))
             return 0
         else:
-            logger.info("delete fail!")
+            logger.warn(change_color("delete fail!", color_red))
             return -1
 
     @staticmethod
@@ -229,10 +238,10 @@ class Op(object):
         client = CosS3Client(conf)
         Intface = client.op_int()
         if Intface.get_bucket(args.max_keys):
-            logger.info("list success!")
+            logger.info(change_color("list success!", color_green))
             return 0
         else:
-            logger.info("list fail!")
+            logger.warn(change_color("list fail!", color_red))
             return -1
 
     @staticmethod
@@ -242,10 +251,10 @@ class Op(object):
         Intface = client.op_int()
         rt = Intface.put_bucket_acl(args.grant_read, args.grant_write, args.grant_full_control)
         if rt is True:
-            logger.info("put success!")
+            logger.info(change_color("put success!", color_green))
             return 0
         else:
-            logger.info("put fail!")
+            logger.warn(change_color("put fail!", color_red))
             return -1
 
     @staticmethod
@@ -255,10 +264,10 @@ class Op(object):
         Intface = client.op_int()
         rt = Intface.get_bucket_acl()
         if rt is True:
-            logger.info("get success!")
+            logger.info(change_color("get success!", color_green))
             return 0
         else:
-            logger.info("get fail!")
+            logger.warn(change_color("get fail!", color_red))
             return -1
 
 
@@ -334,10 +343,14 @@ def _main():
     parser.add_argument('--version', action='version', version='%(prog)s 1.5.4')
 
     args = parser.parse_args()
+
+    logger = logging.getLogger('')
+    coloredlogs.DEFAULT_FIELD_STYLES = {'hostname': {'color': 'white'}, 'name': {'color': 'white'}, 'levelname': {'color': 'white', 'bold': True}, 'asctime': {'color': 'white'}}
+    coloredlogs.DEFAULT_LEVEL_STYLES = {'info': {'color': 'white'}, 'warning': {'color': 'white', 'bold': True}}
     if args.verbose:
-        logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format="%(asctime)s - %(message)s")
+        coloredlogs.install(level='DEBUG', logger=logger, fmt='%(asctime)s - %(message)s')
     else:
-        logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
+        coloredlogs.install(level='INFO', logger=logger, fmt='%(asctime)s - %(message)s')
 
     return args.func(args)
 

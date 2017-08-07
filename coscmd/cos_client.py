@@ -92,7 +92,7 @@ class CosConfig(object):
         self._access_key = access_key
         self._part_size = min(10, part_size)
         self._max_thread = min(10, max_thread)
-        logger.info("config parameter-> appid: {appid}, region: {region}, bucket: {bucket}, part_size: {part_size}, max_thread: {max_thread}".format(
+        logger.debug("config parameter-> appid: {appid}, region: {region}, bucket: {bucket}, part_size: {part_size}, max_thread: {max_thread}".format(
                  appid=appid,
                  region=region,
                  bucket=bucket,
@@ -203,7 +203,7 @@ class Interface(object):
                                            auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=data)
                     if rt.status_code == 200:
                         if local_path != '':
-                            logger.warn("upload {file} with {per}%".format(file=to_printable_str(local_path), per="{0:5.2f}".format(100)))
+                            logger.info("upload {file} with {per}%".format(file=to_printable_str(local_path), per="{0:5.2f}".format(100)))
                         return True
                     else:
                         time.sleep(2**j)
@@ -238,9 +238,9 @@ class Interface(object):
                  headers=rt.headers,
                  text=rt.text))
 
-            root = minidom.parseString(rt.content).documentElement
-            self._upload_id = root.getElementsByTagName("UploadId")[0].childNodes[0].data
             if rt.status_code == 200:
+                root = minidom.parseString(rt.content).documentElement
+                self._upload_id = root.getElementsByTagName("UploadId")[0].childNodes[0].data
                 if os.path.isdir(os.path.expanduser("~/.tmp")) is False:
                     os.makedirs(os.path.expanduser("~/.tmp"))
                 with open(self._path_md5, 'wb') as f:
