@@ -74,6 +74,14 @@ def query_yes_no(question, default=None):
                              "(or 'y' or 'n').\n")
 
 
+def response_info(info, rt):
+    return ("{info}, status code: {code}, headers: {headers}, text: {text}".format(
+                     info=info,
+                     code=rt.status_code,
+                     headers=rt.headers,
+                     text=to_printable_str(rt.text)))
+
+
 class CosConfig(object):
 
     def __init__(self, appid, region, bucket, access_id, access_key, part_size=1, max_thread=5, *args, **kwargs):
@@ -150,7 +158,7 @@ class Interface(object):
                     self._have_uploaded.append(ID)
                     self._md5[int(ID)] = content.getElementsByTagName(self._etag)[0].childNodes[0].data[1:-1]
             else:
-                logger.debug("list parts error")
+                logger.warn(response_info("get res", rt))
                 return False
         logger.debug("list parts error")
         return True
@@ -199,6 +207,7 @@ class Interface(object):
                         return True
                     else:
                         time.sleep(2**j)
+                        logger.warn(response_info("put res", rt))
                         continue
                     if j+1 == self._retry:
                         return False
@@ -238,6 +247,7 @@ class Interface(object):
                     f.write(self._upload_id)
                 return True
             else:
+                logger.warn(response_info("post res", rt))
                 return False
             return True
 
@@ -265,6 +275,7 @@ class Interface(object):
                         view_bar(self._have_finished, parts_size)
                         break
                     else:
+                        logger.warn(response_info("put res", rt))
                         time.sleep(2**j)
                         continue
                     if j+1 == self._retry:
@@ -335,6 +346,7 @@ class Interface(object):
                     os.remove(self._path_md5)
                     return True
                 else:
+                    logger.warn(response_info("post res", rt))
                     return False
             except Exception:
                 return False
@@ -400,7 +412,7 @@ class Interface(object):
                     raise IOError("download failed with incomplete file")
                 return True
             else:
-                logger.warn(rt.content)
+                logger.warn(response_info("get res", rt))
                 return False
         except Exception:
             logger.warn("Error!")
@@ -449,6 +461,7 @@ class Interface(object):
                     file_name = content.childNodes[0].data
                     file_list.append(file_name)
             else:
+                logger.warn(response_info("get res", rt))
                 logger.debug("get folder error")
                 return False
         logger.info("filecount: %d" % (self._file_num))
@@ -477,7 +490,11 @@ class Interface(object):
             logger.debug("init resp, status code: {code}, headers: {headers}".format(
                  code=rt.status_code,
                  headers=rt.headers))
-            return rt.status_code == 204
+            if rt.status_code == 204:
+                return True
+            else:
+                logger.warn(response_info("delete res", rt))
+                return False
         except Exception:
             logger.warn("Error!")
             return False
@@ -502,7 +519,7 @@ class Interface(object):
         try:
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code != 200:
-                logger.warn(rt.content)
+                logger.warn(response_info("get res", rt))
                 return False
             root = minidom.parseString(rt.content).documentElement
             owner_id = root.getElementsByTagName("ID")[0].childNodes[0].data
@@ -549,7 +566,7 @@ class Interface(object):
             if rt.status_code == 200:
                 return True
             else:
-                logger.warn(rt.content)
+                logger.warn(response_info("put res", rt))
                 return False
         except Exception:
             logger.warn("Error!")
@@ -571,7 +588,7 @@ class Interface(object):
             if rt.status_code == 200:
                 return True
             else:
-                logger.warn(rt.content)
+                logger.warn(response_info("get res", rt))
                 return False
         except Exception:
             logger.warn("Error!")
@@ -588,7 +605,11 @@ class Interface(object):
                  code=rt.status_code,
                  headers=rt.headers,
                  text=rt.text))
-            return rt.status_code == 200
+            if rt.status_code == 200:
+                return True
+            else:
+                logger.warn(response_info("put res", rt))
+                return False
         except Exception:
             logger.warn("Error!")
             return False
@@ -600,47 +621,52 @@ class Interface(object):
         logger.debug("delete bucket with : " + url)
         try:
             rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
-            logger.debug("put resp, status code: {code}, headers: {headers}, text: {text}".format(
+            logger.debug("delete resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
                  headers=rt.headers,
                  text=rt.text))
-            return rt.status_code == 204
+            if rt.status_code == 204:
+                return True
+            else:
+                logger.warn(response_info("delete res", rt))
+                return False
         except Exception:
             logger.warn("Error!")
             return False
         return True
 
-    def get_bucket(self):
+    def get_bucket(self, max_keys=10):
         NextMarker = ""
         IsTruncated = "true"
         pagecount = 0
         filecount = 0
         sizecount = 0
-        with open('tmp.xml', 'wb') as f:
-            while IsTruncated == "true":
-                pagecount += 1
-                logger.info("get bucket with page {page}".format(page=pagecount))
-                url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}'.format(nextmarker=NextMarker))
-                rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+        while IsTruncated == "true":
+            pagecount += 1
+            logger.info("get bucket with page {page}".format(page=pagecount))
+            url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}'.format(nextmarker=NextMarker))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
 
-                if rt.status_code == 200:
-                    root = minidom.parseString(rt.content).documentElement
-                    IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                    if IsTruncated == 'true':
-                        NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+            if rt.status_code == 200:
+                root = minidom.parseString(rt.content).documentElement
+                IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                if IsTruncated == 'true':
+                    NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
 
-                    logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                         code=rt.status_code,
-                         headers=rt.headers,
-                         text=to_printable_str(rt.text)))
-                    contentset = root.getElementsByTagName("Contents")
-                    for content in contentset:
-                        filecount += 1
-                        sizecount += int(content.getElementsByTagName("Size")[0].childNodes[0].data)
-                        f.write(to_printable_str(content.toxml()))
-                else:
-                    logger.debug("get bucket error")
-                    return False
+                logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                     code=rt.status_code,
+                     headers=rt.headers,
+                     text=to_printable_str(rt.text)))
+                contentset = root.getElementsByTagName("Contents")
+                for content in contentset:
+                    filecount += 1
+                    sizecount += int(content.getElementsByTagName("Size")[0].childNodes[0].data)
+                    print to_printable_str(content.toxml())
+                    if filecount == max_keys:
+                        break
+            else:
+                logger.warn(response_info("get res", rt))
+                return False
 
         logger.info("filecount: %d" % filecount)
         logger.info("sizecount: %d" % sizecount)
@@ -666,7 +692,7 @@ class Interface(object):
         try:
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code != 200:
-                logger.warn(rt.content)
+                logger.warn(response_info("get res", rt))
                 return False
             root = minidom.parseString(rt.content).documentElement
             owner_id = root.getElementsByTagName("ID")[0].childNodes[0].data
@@ -713,7 +739,7 @@ class Interface(object):
             if rt.status_code == 200:
                 return True
             else:
-                logger.warn(rt.content)
+                logger.warn(response_info("put res", rt))
                 return False
         except Exception:
             logger.warn("Error!")
@@ -735,7 +761,7 @@ class Interface(object):
             if rt.status_code == 200:
                 return True
             else:
-                logger.warn(rt.content)
+                logger.warn(response_info("get res", rt))
                 return False
         except Exception:
             logger.warn("Error!")
