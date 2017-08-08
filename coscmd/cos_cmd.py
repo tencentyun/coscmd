@@ -4,11 +4,16 @@ from ConfigParser import SafeConfigParser
 from argparse import ArgumentParser
 import sys
 import logging
+import coloredlogs
 import os
 
 logger = logging.getLogger(__name__)
 
 fs_coding = sys.getfilesystemencoding()
+
+color_red = "31"
+color_green = "32"
+color_yello = "33"
 
 
 def to_printable_str(s):
@@ -16,6 +21,10 @@ def to_printable_str(s):
         return s.encode(fs_coding)
     else:
         return s
+
+
+def change_color(s, color):
+    return "\033[1;" + color + ";40m" + s + "\033[0m"
 
 
 def config(args):
@@ -44,7 +53,7 @@ def load_conf():
         logger.warn("{conf} couldn't be found, please config tool!".format(conf=to_printable_str(conf_path)))
         raise IOError
     else:
-        logger.info('{conf} is found.'.format(conf=to_printable_str(conf_path)))
+        logger.debug('{conf} is found.'.format(conf=to_printable_str(conf_path)))
 
     with open(conf_path, 'r') as f:
         cp = SafeConfigParser()
@@ -85,32 +94,32 @@ class Op(object):
             args.cos_path = args.cos_path.decode(fs_coding)
 
         if not os.path.exists(args.local_path):
-            logger.info('local_path %s not exist!' % to_printable_str(args.local_path))
+            logger.warn('local_path %s not exist!' % to_printable_str(args.local_path))
             return -1
 
         if not os.access(args.local_path, os.R_OK):
-            logger.info('local_path %s is not readable!' % to_printable_str(args.local_path))
+            logger.warn('local_path %s is not readable!' % to_printable_str(args.local_path))
             return -1
         if args.recursive:
             if os.path.isdir(args.local_path) is False:
-                logger.info("path not exist!")
+                logger.warn(change_color("path not exist!", color_red))
                 return -1
             rt = Intface.upload_folder(args.local_path, args.cos_path)
-            logger.info("upload {file} finished".format(file=to_printable_str(args.local_path)))
-            logger.info("totol of {folders} folders, {files} files".format(folders=Intface._folder_num, files=Intface._file_num))
+            logger.info(change_color("upload {file} finished".format(file=to_printable_str(args.local_path)), color_green))
+            logger.info(change_color("totol of {folders} folders, {files} files".format(folders=Intface._folder_num, files=Intface._file_num), color_green))
             if rt:
                 return 0
             else:
                 return -1
         else:
             if os.path.isfile(args.local_path) is False:
-                logger.info("path not exist!")
+                logger.warn(change_color("path not exist!", color_red))
                 return -1
             if Intface.upload_file(args.local_path, args.cos_path) is True:
-                logger.info("upload {file} success".format(file=to_printable_str(args.local_path)))
+                logger.info(change_color("upload {file} success".format(file=to_printable_str(args.local_path)), color_green))
                 return 0
             else:
-                logger.info("upload {file} fail".format(file=to_printable_str(args.local_path)))
+                logger.warn(change_color("upload {file} fail".format(file=to_printable_str(args.local_path)), color_red))
                 return -1
         return -1
 
@@ -128,10 +137,10 @@ class Op(object):
             args.cos_path = args.cos_path.decode(fs_coding)
 
         if Intface.download_file(args.local_path, args.cos_path):
-            logger.info("download success!")
+            logger.info(change_color("download success!", color_green))
             return 0
         else:
-            logger.info("download fail!")
+            logger.warn(change_color("download fail!", color_red))
             return -1
 
     @staticmethod
@@ -147,17 +156,17 @@ class Op(object):
 
         if args.recursive:
             if Intface.delete_folder(args.cos_path):
-                logger.info("delete success!")
+                logger.info(change_color("delete success!", color_green))
                 return 0
             else:
-                logger.info("delete fail!")
+                logger.warn(change_color("delete fail!", color_red))
                 return -1
         else:
             if Intface.delete_file(args.cos_path):
-                logger.info("delete success!")
+                logger.info(change_color("delete success!", color_green))
                 return 0
             else:
-                logger.info("delete fail!")
+                logger.warn(change_color("delete fail!", color_red))
                 return -1
 
     @staticmethod
@@ -171,10 +180,10 @@ class Op(object):
         Intface = client.op_int()
         rt = Intface.put_object_acl(args.grant_read, args.grant_write, args.grant_full_control, args.cos_path)
         if rt is True:
-            logger.info("put success!")
+            logger.info(change_color("put success!", color_green))
             return 0
         else:
-            logger.info("put fail!")
+            logger.warn(change_color("put fail!", color_red))
             return -1
 
     @staticmethod
@@ -189,10 +198,10 @@ class Op(object):
 
         rt = Intface.get_object_acl(args.cos_path)
         if rt is True:
-            logger.info("get success!")
+            logger.info(change_color("get success!", color_green))
             return 0
         else:
-            logger.info("get fail!")
+            logger.warn(change_color("get fail!", color_red))
             return -1
 
     @staticmethod
@@ -201,10 +210,10 @@ class Op(object):
         client = CosS3Client(conf)
         Intface = client.op_int()
         if Intface.create_bucket():
-            logger.info("create success!")
+            logger.info(change_color("create success!", color_green))
             return 0
         else:
-            logger.info("create fail!")
+            logger.warn(change_color("create fail!", color_red))
             return -1
 
     @staticmethod
@@ -214,13 +223,13 @@ class Op(object):
         Intface = client.op_int()
         if args.force is True:
             if Intface.delete_folder("") is False:
-                logger.info("delete files in bucket fail")
+                logger.warn(change_color("delete files in bucket fail", color_red))
                 return -1
         if Intface.delete_bucket():
-            logger.info("delete success!")
+            logger.info(change_color("delete success!", color_green))
             return 0
         else:
-            logger.info("delete fail!")
+            logger.warn(change_color("delete fail!", color_red))
             return -1
 
     @staticmethod
@@ -228,12 +237,11 @@ class Op(object):
         conf = load_conf()
         client = CosS3Client(conf)
         Intface = client.op_int()
-        if Intface.get_bucket():
-            logger.info("save as tmp.xml in the current directory！")
-            logger.info("list success!")
+        if Intface.get_bucket(args.max_keys):
+            logger.info(change_color("list success!", color_green))
             return 0
         else:
-            logger.info("list fail!")
+            logger.warn(change_color("list fail!", color_red))
             return -1
 
     @staticmethod
@@ -243,10 +251,10 @@ class Op(object):
         Intface = client.op_int()
         rt = Intface.put_bucket_acl(args.grant_read, args.grant_write, args.grant_full_control)
         if rt is True:
-            logger.info("put success!")
+            logger.info(change_color("put success!", color_green))
             return 0
         else:
-            logger.info("put fail!")
+            logger.warn(change_color("put fail!", color_red))
             return -1
 
     @staticmethod
@@ -256,10 +264,10 @@ class Op(object):
         Intface = client.op_int()
         rt = Intface.get_bucket_acl()
         if rt is True:
-            logger.info("get success!")
+            logger.info(change_color("get success!", color_green))
             return 0
         else:
-            logger.info("get fail!")
+            logger.warn(change_color("get fail!", color_red))
             return -1
 
 
@@ -268,8 +276,9 @@ def _main():
     parser = ArgumentParser()
     parser.add_argument('-v', '--verbose', help="verbose mode", action="store_true", default=False)
 
-    sub_parser = parser.add_subparsers(help="config")
-    parser_config = sub_parser.add_parser("config")
+    sub_parser = parser.add_subparsers()
+    parser_config = sub_parser.add_parser("config", help='''coscmd config [-h] -a ACCESS_ID -s SECRET_KEY -u APPID
+                                                            -b BUCKET -r REGION [-m MAX_THREAD] [-p PART_SIZE]''')
     parser_config.add_argument('-a', '--access_id', help='specify your access id', type=str, required=True)
     parser_config.add_argument('-s', '--secret_key', help='specify your secret key', type=str, required=True)
     parser_config.add_argument('-u', '--appid', help='specify your appid', type=str, required=True)
@@ -279,59 +288,72 @@ def _main():
     parser_config.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1)
     parser_config.set_defaults(func=config)
 
-    parser_upload = sub_parser.add_parser("upload")
+    parser_upload = sub_parser.add_parser("upload", help="coscmd  upload [-h] [-r] local_path cos_path")
     parser_upload.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
     parser_upload.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_upload.add_argument('-r', '--recursive', help="upload folder", action="store_true", default=False)
     parser_upload.set_defaults(func=Op.upload)
 
-    parser_download = sub_parser.add_parser("download")
+    parser_download = sub_parser.add_parser("download", help="coscmd download [-h] cos_path local_path")
     parser_download.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_download.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
     parser_download.set_defaults(func=Op.download)
 
-    parser_delete = sub_parser.add_parser("delete")
+    parser_delete = sub_parser.add_parser("delete", help="coscmd delete [-h] [-r] cos_path")
     parser_delete.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_delete.add_argument('-r', '--recursive', help="delete folder", action="store_true", default=False)
     parser_delete.set_defaults(func=Op.delete)
 
-    parser_create_bucket = sub_parser.add_parser("createbucket")
-    parser_create_bucket.set_defaults(func=Op.create_bucket)
+#     parser_create_bucket = sub_parser.add_parser("createbucket", help='coscmd createbucket [-h]')
+#     parser_create_bucket.set_defaults(func=Op.create_bucket)
+#
+#     parser_delete_bucket = sub_parser.add_parser("deletebucket", help='coscmd deletebucket [-h] [-f]')
+#     parser_delete_bucket.add_argument('-f', '--force', help="force delete bucket", action="store_true", default=False)
+#     parser_delete_bucket.set_defaults(func=Op.delete_bucket)
+#
+#     parser_list_bucket = sub_parser.add_parser("listbucket", help='coscmd listbucket [-h] [-m MAX_KEYS]')
+#     parser_list_bucket.add_argument('-m', '--max_keys', help='specify max num you want to list', type=int, default=10)
+#     parser_list_bucket.set_defaults(func=Op.list_bucket)
+#
+#     parser_put_object_acl = sub_parser.add_parser("putobjectacl", help='''coscmd putobjectacl [-h] [--grant-read GRANT_READ]
+#                                                                        [--grant-write GRANT_WRITE]
+#                                                                        [--grant-full-control GRANT_FULL_CONTROL]
+#                                                                        cos_path''')
+#     parser_put_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+#     parser_put_object_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
+#     parser_put_object_acl.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
+#     parser_put_object_acl.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
+#     parser_put_object_acl.set_defaults(func=Op.put_object_acl)
+#
+#     parser_get_object_acl = sub_parser.add_parser("getobjectacl", help='coscmd getobjectacl [-h] cos_path')
+#     parser_get_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+#     parser_get_object_acl.set_defaults(func=Op.get_object_acl)
+#
+#     parser_put_bucket_acl = sub_parser.add_parser("putbucketacl", help='''coscmd putbucketacl [-h] [--grant-read GRANT_READ]
+#                                                                        [--grant-write GRANT_WRITE]
+#                                                                        [--grant-full-control GRANT_FULL_CONTROL]''')
+#     parser_put_bucket_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
+#     parser_put_bucket_acl.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
+#     parser_put_bucket_acl.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
+#     parser_put_bucket_acl.set_defaults(func=Op.put_bucket_acl)
+#
+#     parser_get_bucket_acl = sub_parser.add_parser("getbucketacl", help='coscmd getbucketacl [-h]')
+#     parser_get_bucket_acl.set_defaults(func=Op.get_bucket_acl)
 
-    parser_delete_bucket = sub_parser.add_parser("deletebucket")
-    parser_delete_bucket.add_argument('-f', '--force', help="force delete bucket", action="store_true", default=False)
-    parser_delete_bucket.set_defaults(func=Op.delete_bucket)
+    parser.add_argument('--version', action='version', version='%(prog)s 1.5.4.1')
 
-    parser_list_bucket = sub_parser.add_parser("listbucket")
-    parser_list_bucket.set_defaults(func=Op.list_bucket)
-
-    parser_put_object_acl = sub_parser.add_parser("putobjectacl")
-    parser_put_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_put_object_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
-    parser_put_object_acl.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
-    parser_put_object_acl.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
-    parser_put_object_acl.set_defaults(func=Op.put_object_acl)
-
-    parser_get_object_acl = sub_parser.add_parser("getobjectacl")
-    parser_get_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_get_object_acl.set_defaults(func=Op.get_object_acl)
-
-    parser_put_bucket_acl = sub_parser.add_parser("putbucketacl")
-    parser_put_bucket_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
-    parser_put_bucket_acl.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
-    parser_put_bucket_acl.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
-    parser_put_bucket_acl.set_defaults(func=Op.put_bucket_acl)
-
-    parser_get_bucket_acl = sub_parser.add_parser("getbucketacl")
-    parser_get_bucket_acl.set_defaults(func=Op.get_bucket_acl)
     args = parser.parse_args()
+
+    logger = logging.getLogger('')
+    coloredlogs.DEFAULT_FIELD_STYLES = {'hostname': {'color': 'white'}, 'name': {'color': 'white'}, 'levelname': {'color': 'white', 'bold': True}, 'asctime': {'color': 'white'}}
+    coloredlogs.DEFAULT_LEVEL_STYLES = {'info': {'color': 'white'}, 'warning': {'color': 'white', 'bold': True}}
     if args.verbose:
-        logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format="%(asctime)s - %(message)s")
+        coloredlogs.install(level='DEBUG', logger=logger, fmt='%(asctime)s - %(message)s')
     else:
-        logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
+        coloredlogs.install(level='INFO', logger=logger, fmt='%(asctime)s - %(message)s')
 
     return args.func(args)
 
 
 if __name__ == '__main__':
-    _main()
+    sys.exit(_main())
