@@ -158,7 +158,7 @@ class Interface(object):
                     self._have_uploaded.append(ID)
                     self._md5[int(ID)] = content.getElementsByTagName(self._etag)[0].childNodes[0].data[1:-1]
             else:
-                logger.warn(response_info("get res", rt))
+                logger.debug(response_info("get res", rt))
                 return False
         logger.debug("list parts error")
         return True
@@ -174,19 +174,21 @@ class Interface(object):
             local_path += '/'
         self._folder_num += 1
         if len(filelist) == 0:
-            self._file_num += 1
-            logger.debug(cos_path+'tmp/')
-            self.upload_file(local_path="", cos_path=cos_path+"tmp/")
+            return True
+        res = True
         for filename in filelist:
             filepath = os.path.join(local_path, filename)
             if os.path.isdir(filepath):
-                self.upload_folder(filepath, cos_path+filename)
+                if self.upload_folder(filepath, cos_path+filename) is False:
+                    res = False
             else:
                 if self.upload_file(local_path=filepath, cos_path=cos_path+filename) is False:
-                    logger.info("upload {file} fail".format(file=to_printable_str(filepath)))
+                    logger.info("\033[1;31;40mupload {file} fail\033[0m".format(file=to_printable_str(filepath)))
+                    res = False
                 else:
                     self._file_num += 1
                     logger.debug("upload {file} success".format(file=to_printable_str(filepath)))
+        return res
 
     def upload_file(self, local_path, cos_path):
 
@@ -336,8 +338,8 @@ class Interface(object):
                 root.appendChild(t)
                 data = root.toxml()
                 url = self._conf.uri(path=cos_path)+"?uploadId={uploadid}".format(uploadid=self._upload_id)
-                logger.debug('complete url: ' + url)
-                logger.debug("complete data: " + data)
+#                 logger.debug('complete url: ' + url)
+#                 logger.debug("complete data: " + data)
             try:
                 with closing(self._session.post(url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=data, stream=True)) as rt:
                     logger.debug("complete status code: {code}".format(code=rt.status_code))
@@ -440,7 +442,7 @@ class Interface(object):
         IsTruncated = "true"
         pagecount = 0
         file_list = []
-        logger.info("getting folder...")
+        logger.info("loading folder from cos...")
         while IsTruncated == "true":
             pagecount += 1
             url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}&prefix={prefix}'.format(nextmarker=NextMarker, prefix=cos_path))
@@ -468,7 +470,7 @@ class Interface(object):
         # make sure
         if query_yes_no("you are deleting the cos_path '{cos_path}', please make sure".format(cos_path=cos_path)) is False:
             return False
-        logger.info("deleting folder...")
+        logger.info("deleting folder in cos...")
         _max_thread = min(self._conf._max_thread, self._file_num)
         pool = SimpleThreadPool(_max_thread)
         for cos_path in file_list:
@@ -490,7 +492,7 @@ class Interface(object):
             logger.debug("init resp, status code: {code}, headers: {headers}".format(
                  code=rt.status_code,
                  headers=rt.headers))
-            if rt.status_code == 204:
+            if rt.status_code == 204 or rt.status_code == 200:
                 return True
             else:
                 logger.warn(response_info("delete res", rt))
