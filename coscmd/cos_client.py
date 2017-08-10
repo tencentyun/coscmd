@@ -105,19 +105,26 @@ class ObjectInterface(object):
         if local_path[-1] != '/':
             local_path += '/'
         self._folder_num += 1
-        if len(filelist) == 0:
-            logger.debug(cos_path+'tmp/')
-            self.upload_file(local_path="", cos_path=cos_path+"tmp/")
+
+        ret_code = True # True means 0, False means -1
+
+        # if len(filelist) == 0:
+        #    logger.debug(cos_path+'tmp/')
+        #    self.upload_file(local_path="", cos_path=cos_path+"tmp/")
+
         for filename in filelist:
             filepath = os.path.join(local_path, filename)
             if os.path.isdir(filepath):
-                self.upload_folder(filepath, cos_path+filename)
+                if not self.upload_folder(filepath, cos_path+filename):
+                    ret_code = False
             else:
                 if self.upload_file(local_path=filepath, cos_path=cos_path+filename) is False:
                     logger.info("upload {file} fail".format(file=to_printable_str(filepath)))
+                    ret_code = False
                 else:
                     self._file_num += 1
                     logger.debug("upload {file} success".format(file=to_printable_str(filepath)))
+        return ret_code
 
     def upload_file(self, local_path, cos_path):
 
