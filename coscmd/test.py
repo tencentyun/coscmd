@@ -40,7 +40,7 @@ def Test():
                     part_size=1,
                     max_thread=5)
         client = cos_client.CosS3Client(conf)
-        op_int = client.op_int()
+        op_int = client.buc_int()
         print "Test create bucket " + conf._bucket
         sys.stdout.flush()
         rt = op_int.create_bucket()
@@ -71,7 +71,7 @@ def Test():
             max_thread=5
         )
         client = cos_client.CosS3Client(conf)
-        op_int = client.op_int()
+        op_int = client.obj_int()
         file_size = 5.1 * i + 0.1
         file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
         print "Test upload " + file_name

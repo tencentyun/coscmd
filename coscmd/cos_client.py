@@ -106,7 +106,7 @@ class ObjectInterface(object):
             local_path += '/'
         self._folder_num += 1
 
-        ret_code = True # True means 0, False means -1
+        ret_code = True  # True means 0, False means -1
 
         # if len(filelist) == 0:
         #    logger.debug(cos_path+'tmp/')
