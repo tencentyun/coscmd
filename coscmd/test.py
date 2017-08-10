@@ -51,6 +51,7 @@ def Test():
         assert rt
         print "Test put bucket acl " + conf._bucket
         sys.stdout.flush()
+        """
         rt = op_int.put_bucket_acl("anyone,43,123", None, "anyone")
         assert rt
         print "Test get bucket acl " + conf._bucket
@@ -59,6 +60,7 @@ def Test():
         assert rt
         print "Test delete bucket " + conf._bucket
         sys.stdout.flush()
+        """
         rt = op_int.delete_bucket()
         assert rt
         conf = cos_client.CosConfig(
@@ -79,6 +81,7 @@ def Test():
         gen_file(file_name, file_size)
         rt = op_int.upload_file(file_name, file_name)
         assert rt
+        """
         print "Test put object acl " + file_name
         sys.stdout.flush()
         rt = op_int.put_object_acl("anyone,43,123", None, "anyone", file_name)
@@ -87,6 +90,7 @@ def Test():
         sys.stdout.flush()
         rt = op_int.get_object_acl(file_name)
         assert rt
+        """
         print "Test download " + file_name
         sys.stdout.flush()
         rt = op_int.download_file(file_name, file_name)
