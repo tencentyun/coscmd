@@ -284,7 +284,6 @@ def _main():
     parser = ArgumentParser(description=desc)
     parser.add_argument('-d', '--debug', help="debug mode", action="store_true", default=False)
 
-
     sub_parser = parser.add_subparsers()
     parser_config = sub_parser.add_parser("config", help="config your information at first.")
     parser_config.add_argument('-a', '--access_id', help='specify your access id', type=str, required=True)
