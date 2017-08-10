@@ -277,8 +277,10 @@ class Op(object):
 
 
 def _main():
-
-    parser = ArgumentParser(description="an easy-to-use but powerful command-line tool. \n\ttry \'coscmd -h\' to get more informations. \n\ttry \'coscmd sub-command -h\' to learn all command usage, likes \'coscmd upload -h\'")
+    desc = """an easy-to-use but powerful command-line tool.
+              try \'coscmd -h\' to get more informations.
+              try \'coscmd sub-command -h\' to learn all command usage, likes \'coscmd upload -h\'"""
+    parser = ArgumentParser(description=desc)
     parser.add_argument('-v', '--verbose', help="verbose mode", action="store_true", default=False)
 
     sub_parser = parser.add_subparsers()
