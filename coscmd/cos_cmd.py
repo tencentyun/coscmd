@@ -86,7 +86,7 @@ class Op(object):
         client = CosS3Client(conf)
         while args.cos_path.startswith('/'):
             args.cos_path = args.cos_path[1:]
-        Intface = client.op_int()
+        Interface = client.op_int()
 
         if not isinstance(args.local_path, unicode):
             args.local_path = args.local_path.decode(fs_coding)
@@ -102,11 +102,11 @@ class Op(object):
             return -1
         if args.recursive:
             if os.path.isfile(args.local_path) is True:
-                rt = Intface.upload_file(args.local_path, args.cos_path)
+                rt = Interface.upload_file(args.local_path, args.cos_path)
             elif os.path.isdir(args.local_path):
-                rt = Intface.upload_folder(args.local_path, args.cos_path)
+                rt = Interface.upload_folder(args.local_path, args.cos_path)
                 logger.info(change_color("upload {file} finished".format(file=to_printable_str(args.local_path)), color_green))
-                logger.info(change_color("totol of {folders} folders, {files} files".format(folders=Intface._folder_num, files=Intface._file_num), color_green))
+                logger.info(change_color("totol of {folders} folders, {files} files".format(folders=Interface._folder_num, files=Interface._file_num), color_green))
             if rt:
                 logger.info(change_color("upload {file} success".format(file=to_printable_str(args.local_path)), color_green))
                 return 0
@@ -120,7 +120,7 @@ class Op(object):
             if os.path.isfile(args.local_path) is False:
                 logger.warn(change_color("cannot stat '%s': No such file or directory" % to_printable_str(args.local_path), color_red))
                 return -1
-            if Intface.upload_file(args.local_path, args.cos_path) is True:
+            if Interface.upload_file(args.local_path, args.cos_path) is True:
                 logger.info(change_color("upload {file} success".format(file=to_printable_str(args.local_path)), color_green))
                 return 0
             else:
@@ -134,14 +134,14 @@ class Op(object):
         client = CosS3Client(conf)
         while args.cos_path.startswith('/'):
             args.cos_path = args.cos_path[1:]
-        Intface = client.op_int()
+        Interface = client.op_int()
         if not isinstance(args.local_path, unicode):
             args.local_path = args.local_path.decode(fs_coding)
 
         if not isinstance(args. cos_path, unicode):
             args.cos_path = args.cos_path.decode(fs_coding)
 
-        if Intface.download_file(args.local_path, args.cos_path):
+        if Interface.download_file(args.local_path, args.cos_path):
             logger.info(change_color("download success!", color_green))
             return 0
         else:
@@ -154,20 +154,20 @@ class Op(object):
         client = CosS3Client(conf)
         while args.cos_path.startswith('/'):
             args.cos_path = args.cos_path[1:]
-        Intface = client.op_int()
+        Interface = client.op_int()
 
         if not isinstance(args. cos_path, unicode):
             args.cos_path = args.cos_path.decode(fs_coding)
 
         if args.recursive:
-            if Intface.delete_folder(args.cos_path):
+            if Interface.delete_folder(args.cos_path):
                 logger.info(change_color("delete success!", color_green))
                 return 0
             else:
                 logger.warn(change_color("delete fail!", color_red))
                 return -1
         else:
-            if Intface.delete_file(args.cos_path):
+            if Interface.delete_file(args.cos_path):
                 logger.info(change_color("delete success!", color_green))
                 return 0
             else:
@@ -182,8 +182,8 @@ class Op(object):
             args.cos_path = args.cos_path[1:]
         if not isinstance(args. cos_path, unicode):
             args.cos_path = args.cos_path.decode(fs_coding)
-        Intface = client.op_int()
-        rt = Intface.put_object_acl(args.grant_read, args.grant_write, args.grant_full_control, args.cos_path)
+        Interface = client.op_int()
+        rt = Interface.put_object_acl(args.grant_read, args.grant_write, args.grant_full_control, args.cos_path)
         if rt is True:
             logger.info(change_color("put success!", color_green))
             return 0
@@ -199,9 +199,9 @@ class Op(object):
             args.cos_path = args.cos_path[1:]
         if not isinstance(args. cos_path, unicode):
             args.cos_path = args.cos_path.decode(fs_coding)
-        Intface = client.op_int()
+        Interface = client.op_int()
 
-        rt = Intface.get_object_acl(args.cos_path)
+        rt = Interface.get_object_acl(args.cos_path)
         if rt is True:
             logger.info(change_color("get success!", color_green))
             return 0
@@ -213,8 +213,8 @@ class Op(object):
     def create_bucket(args):
         conf = load_conf()
         client = CosS3Client(conf)
-        Intface = client.op_int()
-        if Intface.create_bucket():
+        Interface = client.op_int()
+        if Interface.create_bucket():
             logger.info(change_color("create success!", color_green))
             return 0
         else:
@@ -225,12 +225,12 @@ class Op(object):
     def delete_bucket(args):
         conf = load_conf()
         client = CosS3Client(conf)
-        Intface = client.op_int()
+        Interface = client.op_int()
         if args.force is True:
-            if Intface.delete_folder("") is False:
+            if Interface.delete_folder("") is False:
                 logger.warn(change_color("delete files in bucket fail", color_red))
                 return -1
-        if Intface.delete_bucket():
+        if Interface.delete_bucket():
             logger.info(change_color("delete success!", color_green))
             return 0
         else:
@@ -241,8 +241,8 @@ class Op(object):
     def list_bucket(args):
         conf = load_conf()
         client = CosS3Client(conf)
-        Intface = client.op_int()
-        if Intface.get_bucket(args.max_keys):
+        Interface = client.op_int()
+        if Interface.get_bucket(args.max_keys):
             logger.info(change_color("list success!", color_green))
             return 0
         else:
@@ -253,8 +253,8 @@ class Op(object):
     def put_bucket_acl(args):
         conf = load_conf()
         client = CosS3Client(conf)
-        Intface = client.op_int()
-        rt = Intface.put_bucket_acl(args.grant_read, args.grant_write, args.grant_full_control)
+        Interface = client.op_int()
+        rt = Interface.put_bucket_acl(args.grant_read, args.grant_write, args.grant_full_control)
         if rt is True:
             logger.info(change_color("put success!", color_green))
             return 0
@@ -266,8 +266,8 @@ class Op(object):
     def get_bucket_acl(args):
         conf = load_conf()
         client = CosS3Client(conf)
-        Intface = client.op_int()
-        rt = Intface.get_bucket_acl()
+        Interface = client.op_int()
+        rt = Interface.get_bucket_acl()
         if rt is True:
             logger.info(change_color("get success!", color_green))
             return 0
