@@ -433,7 +433,7 @@ class Interface(object):
                 logger.debug("delete object with : " + _cos_path)
                 url_file = self._conf.uri(path=_cos_path)
                 rt = self._session.delete(url=url_file, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
-                if rt.status_code == 204:
+                if rt.status_code == 204 or rt.status_code == 200:
                     self._have_finished += 1
                     view_bar(self._have_finished, self._file_num)
                     break
@@ -497,7 +497,7 @@ class Interface(object):
             logger.debug("init resp, status code: {code}, headers: {headers}".format(
                  code=rt.status_code,
                  headers=rt.headers))
-            if rt.status_code == 204:
+            if rt.status_code == 204 or rt.status_code == 200:
                 return True
             else:
                 logger.warn(response_info("delete res", rt))
