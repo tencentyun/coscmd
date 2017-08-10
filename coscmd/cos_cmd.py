@@ -279,7 +279,7 @@ class Op(object):
 def _main():
 
     parser = ArgumentParser()
-    parser.add_argument('-d', '--verbose', help="verbose mode", action="store_true", default=False)
+    parser.add_argument('-d', '--debug', help="debug mode", action="store_true", default=False)
 
     sub_parser = parser.add_subparsers()
     parser_config = sub_parser.add_parser("config", help='''coscmd config [-h] -a ACCESS_ID -s SECRET_KEY -u APPID
