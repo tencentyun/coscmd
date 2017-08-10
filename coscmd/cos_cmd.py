@@ -105,11 +105,13 @@ class Op(object):
                 logger.warn(change_color("path not exist!", color_red))
                 return -1
             rt = Intface.upload_folder(args.local_path, args.cos_path)
-            logger.info(change_color("upload {file} finished".format(file=to_printable_str(args.local_path)), color_green))
-            logger.info(change_color("totol of {folders} folders, {files} files".format(folders=Intface._folder_num, files=Intface._file_num), color_green))
+            logger.info("upload {file} finished".format(file=to_printable_str(args.local_path)))
+            logger.info("totol of {folders} folders, {files} files".format(folders=Intface._folder_num, files=Intface._file_num))
             if rt:
+                logger.info(change_color("upload folder {local_path} successfully".format(local_path=to_printable_str(args.local_path)), color_green))
                 return 0
             else:
+                logger.error(change_color("upload folder {local_path} failed".format(local_path=to_printable_str(args.local_path)), color_red))
                 return -1
         else:
             if os.path.isfile(args.local_path) is False:
