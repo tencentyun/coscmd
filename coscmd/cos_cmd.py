@@ -106,7 +106,7 @@ class Op(object):
             elif os.path.isdir(args.local_path):
                 rt = Interface.upload_folder(args.local_path, args.cos_path)
                 logger.info(change_color("upload {file} finished".format(file=to_printable_str(args.local_path)), color_green))
-                logger.info(change_color("totol of {folders} folders, {files} files".format(folders=Interface._folder_num, files=Interface._file_num), color_green))
+                logger.info("{folders} folders, {files} files uploaded".format(folders=Interface._folder_num, files=Interface._file_num))
             if rt:
                 logger.info(change_color("upload {file} success".format(file=to_printable_str(args.local_path)), color_green))
                 return 0
