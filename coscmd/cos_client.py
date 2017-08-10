@@ -174,13 +174,6 @@ class Interface(object):
             local_path += '/'
         self._folder_num += 1
         ret_code = True  # True means 0, False means -1
-
-        if len(filelist) == 0:
-            self._file_num += 1
-            logger.debug(cos_path+'tmp/')
-            if not self.upload_file(local_path="", cos_path=cos_path+"tmp/"):
-                ret_code = False
-
         for filename in filelist:
             filepath = os.path.join(local_path, filename)
             if os.path.isdir(filepath):
