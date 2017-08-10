@@ -105,26 +105,26 @@ class Op(object):
                 rt = Interface.upload_file(args.local_path, args.cos_path)
             elif os.path.isdir(args.local_path):
                 rt = Interface.upload_folder(args.local_path, args.cos_path)
-                logger.info(change_color("upload {file} finished".format(file=to_printable_str(args.local_path)), color_green))
+                logger.info("upload all files under \"{file}\" directory finished".format(file=to_printable_str(args.local_path)))
                 logger.info("{folders} folders, {files} files uploaded".format(folders=Interface._folder_num, files=Interface._file_num))
             if rt:
-                logger.info(change_color("upload {file} successfully".format(file=to_printable_str(args.local_path)), color_green))
+                logger.info(change_color("upload all files under \"{file}\" directory successfully".format(file=to_printable_str(args.local_path)), color_green))
                 return 0
             else:
-                logger.warn(change_color("upload {file} failed".format(file=to_printable_str(args.local_path)), color_red))
+                logger.warn(change_color("upload all files under \"{file}\" directory failed".format(file=to_printable_str(args.local_path)), color_red))
                 return -1
         else:
             if os.path.isdir(args.local_path):
-                logger.warn(change_color("{path} is a directory, use \'-r\' option to upload it please.".format(path=to_printable_str(args.local_path)), color_red))
+                logger.warn(change_color("\"{path}\" is a directory, use \'-r\' option to upload it please.".format(path=to_printable_str(args.local_path)), color_red))
                 return -1
             if os.path.isfile(args.local_path) is False:
                 logger.warn(change_color("cannot stat '%s': No such file or directory" % to_printable_str(args.local_path), color_red))
                 return -1
             if Interface.upload_file(args.local_path, args.cos_path) is True:
-                logger.info(change_color("upload {file} successfully".format(file=to_printable_str(args.local_path)), color_green))
+                logger.info(change_color("upload \"{file}\" successfully".format(file=to_printable_str(args.local_path)), color_green))
                 return 0
             else:
-                logger.warn(change_color("upload {file} failed".format(file=to_printable_str(args.local_path)), color_red))
+                logger.warn(change_color("upload \"{file}\" failed".format(file=to_printable_str(args.local_path)), color_red))
                 return -1
         return -1
 
