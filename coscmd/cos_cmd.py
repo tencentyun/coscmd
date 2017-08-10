@@ -277,11 +277,12 @@ class Op(object):
 
 
 def _main():
+
     desc = """an easy-to-use but powerful command-line tool.
               try \'coscmd -h\' to get more informations.
               try \'coscmd sub-command -h\' to learn all command usage, likes \'coscmd upload -h\'"""
     parser = ArgumentParser(description=desc)
-    parser.add_argument('-v', '--verbose', help="verbose mode", action="store_true", default=False)
+    parser.add_argument('-d', '--debug', help="debug mode", action="store_true", default=False)
 
     sub_parser = parser.add_subparsers()
     parser_config = sub_parser.add_parser("config", help="config your information at first.")
@@ -289,7 +290,7 @@ def _main():
     parser_config.add_argument('-s', '--secret_key', help='specify your secret key', type=str, required=True)
     parser_config.add_argument('-u', '--appid', help='specify your appid', type=str, required=True)
     parser_config.add_argument('-b', '--bucket', help='specify your bucket', type=str, required=True)
-    parser_config.add_argument('-r', '--region', help='specify your bucket', type=str, required=True)
+    parser_config.add_argument('-r', '--region', help='specify your region', type=str, required=True)
     parser_config.add_argument('-m', '--max_thread', help='specify the number of threads (default 5)', type=int, default=5)
     parser_config.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1)
     parser_config.set_defaults(func=config)
@@ -346,7 +347,7 @@ def _main():
 #     parser_get_bucket_acl = sub_parser.add_parser("getbucketacl", help='coscmd getbucketacl [-h]')
 #     parser_get_bucket_acl.set_defaults(func=Op.get_bucket_acl)
 
-    parser.add_argument('--version', action='version', version='%(prog)s 1.5.4.1')
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.5.4.1')
 
     args = parser.parse_args()
 
