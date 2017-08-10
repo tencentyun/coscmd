@@ -466,7 +466,7 @@ class Interface(object):
                 return False
         logger.info("filecount: %d" % (self._file_num))
         # make sure
-        if query_yes_no("you are deleting the cos_path '{cos_path}', please make sure".format(cos_path=cos_path)) is False:
+        if query_yes_no("WARN: you are deleting all files under cos_path '{cos_path}', please make sure".format(cos_path=cos_path)) is False:
             return False
         logger.info("deleting folder...")
         _max_thread = min(self._conf._max_thread, self._file_num)
