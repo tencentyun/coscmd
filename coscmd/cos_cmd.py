@@ -94,28 +94,31 @@ class Op(object):
             args.cos_path = args.cos_path.decode(fs_coding)
 
         if not os.path.exists(args.local_path):
-            logger.warn('local_path %s not exist!' % to_printable_str(args.local_path))
+            logger.warn(change_color("cannot stat '%s': No such file or directory" % to_printable_str(args.local_path), color_red))
             return -1
 
         if not os.access(args.local_path, os.R_OK):
             logger.warn('local_path %s is not readable!' % to_printable_str(args.local_path))
             return -1
         if args.recursive:
-            if os.path.isdir(args.local_path) is False:
-                logger.warn(change_color("path not exist!", color_red))
-                return -1
-            rt = Intface.upload_folder(args.local_path, args.cos_path)
-            logger.info("upload {file} finished".format(file=to_printable_str(args.local_path)))
-            logger.info("totol of {folders} folders, {files} files".format(folders=Intface._folder_num, files=Intface._file_num))
+            if os.path.isfile(args.local_path) is True:
+                rt = Intface.upload_file(args.local_path, args.cos_path)
+            elif os.path.isdir(args.local_path):
+                rt = Intface.upload_folder(args.local_path, args.cos_path)
+                logger.info(change_color("upload {file} finished".format(file=to_printable_str(args.local_path)), color_green))
+                logger.info(change_color("totol of {folders} folders, {files} files".format(folders=Intface._folder_num, files=Intface._file_num), color_green))
             if rt:
-                logger.info(change_color("upload folder {local_path} successfully".format(local_path=to_printable_str(args.local_path)), color_green))
+                logger.info(change_color("upload {file} success".format(file=to_printable_str(args.local_path)), color_green))
                 return 0
             else:
-                logger.error(change_color("upload folder {local_path} failed".format(local_path=to_printable_str(args.local_path)), color_red))
+                logger.warn(change_color("upload {file} fail".format(file=to_printable_str(args.local_path)), color_red))
                 return -1
         else:
+            if os.path.isdir(args.local_path):
+                logger.warn(change_color("{path} is a directory, use \'-r\' option to upload it please.".format(path=to_printable_str(args.local_path)), color_red))
+                return -1
             if os.path.isfile(args.local_path) is False:
-                logger.warn(change_color("path not exist!", color_red))
+                logger.warn(change_color("cannot stat '%s': No such file or directory" % to_printable_str(args.local_path), color_red))
                 return -1
             if Intface.upload_file(args.local_path, args.cos_path) is True:
                 logger.info(change_color("upload {file} success".format(file=to_printable_str(args.local_path)), color_green))
@@ -350,7 +353,7 @@ def _main():
     coloredlogs.DEFAULT_FIELD_STYLES = {'hostname': {'color': 'white'}, 'name': {'color': 'white'}, 'levelname': {'color': 'white', 'bold': True}, 'asctime': {'color': 'white'}}
     coloredlogs.DEFAULT_LEVEL_STYLES = {'info': {'color': 'white'}, 'warning': {'color': 'white', 'bold': True}}
     if args.verbose:
-        coloredlogs.install(level='DEBUG', logger=logger, fmt='%(asctime)s - %(message)s')
+        coloredlogs.install(level='DEBUG', logger=logger, fmt='%(message)s')
     else:
         coloredlogs.install(level='INFO', logger=logger, fmt='%(asctime)s - %(message)s')
 
