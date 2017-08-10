@@ -50,7 +50,7 @@ def load_conf():
 
     conf_path = os.path.expanduser('~/.cos.conf')
     if not os.path.exists(conf_path):
-        logger.warn("{conf} couldn't be found, please config tool!".format(conf=to_printable_str(conf_path)))
+        logger.warn("{conf} couldn't be found, please use \'coscmd config -h\' to learn how to config coscmd!".format(conf=to_printable_str(conf_path)))
         raise IOError
     else:
         logger.debug('{conf} is found.'.format(conf=to_printable_str(conf_path)))
@@ -105,26 +105,26 @@ class Op(object):
                 rt = Interface.upload_file(args.local_path, args.cos_path)
             elif os.path.isdir(args.local_path):
                 rt = Interface.upload_folder(args.local_path, args.cos_path)
-                logger.info(change_color("upload {file} finished".format(file=to_printable_str(args.local_path)), color_green))
+                logger.info("upload all files under \"{file}\" directory finished".format(file=to_printable_str(args.local_path)))
                 logger.info("{folders} folders, {files} files uploaded".format(folders=Interface._folder_num, files=Interface._file_num))
             if rt:
-                logger.info(change_color("upload {file} success".format(file=to_printable_str(args.local_path)), color_green))
+                logger.info(change_color("upload all files under \"{file}\" directory successfully".format(file=to_printable_str(args.local_path)), color_green))
                 return 0
             else:
-                logger.warn(change_color("upload {file} fail".format(file=to_printable_str(args.local_path)), color_red))
+                logger.warn(change_color("upload all files under \"{file}\" directory failed".format(file=to_printable_str(args.local_path)), color_red))
                 return -1
         else:
             if os.path.isdir(args.local_path):
-                logger.warn(change_color("{path} is a directory, use \'-r\' option to upload it please.".format(path=to_printable_str(args.local_path)), color_red))
+                logger.warn(change_color("\"{path}\" is a directory, use \'-r\' option to upload it please.".format(path=to_printable_str(args.local_path)), color_red))
                 return -1
             if os.path.isfile(args.local_path) is False:
                 logger.warn(change_color("cannot stat '%s': No such file or directory" % to_printable_str(args.local_path), color_red))
                 return -1
             if Interface.upload_file(args.local_path, args.cos_path) is True:
-                logger.info(change_color("upload {file} success".format(file=to_printable_str(args.local_path)), color_green))
+                logger.info(change_color("upload \"{file}\" successfully".format(file=to_printable_str(args.local_path)), color_green))
                 return 0
             else:
-                logger.warn(change_color("upload {file} fail".format(file=to_printable_str(args.local_path)), color_red))
+                logger.warn(change_color("upload \"{file}\" failed".format(file=to_printable_str(args.local_path)), color_red))
                 return -1
         return -1
 
@@ -142,10 +142,10 @@ class Op(object):
             args.cos_path = args.cos_path.decode(fs_coding)
 
         if Interface.download_file(args.local_path, args.cos_path):
-            logger.info(change_color("download success!", color_green))
+            logger.info(change_color("download {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)), color_green))
             return 0
         else:
-            logger.warn(change_color("download fail!", color_red))
+            logger.warn(change_color("download {cos_path} fail!".format(cos_path=to_printable_str(args.cos_path)), color_red))
             return -1
 
     @staticmethod
@@ -161,17 +161,17 @@ class Op(object):
 
         if args.recursive:
             if Interface.delete_folder(args.cos_path):
-                logger.info(change_color("delete success!", color_green))
+                logger.info(change_color("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)), color_green))
                 return 0
             else:
-                logger.warn(change_color("delete fail!", color_red))
+                logger.warn(change_color("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)), color_red))
                 return -1
         else:
             if Interface.delete_file(args.cos_path):
-                logger.info(change_color("delete success!", color_green))
+                logger.info(change_color("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)), color_green))
                 return 0
             else:
-                logger.warn(change_color("delete fail!", color_red))
+                logger.warn(change_color("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)), color_red))
                 return -1
 
     @staticmethod
@@ -278,12 +278,15 @@ class Op(object):
 
 def _main():
 
-    parser = ArgumentParser()
+    desc = """an easy-to-use but powerful command-line tool.
+              try \'coscmd -h\' to get more informations.
+              try \'coscmd sub-command -h\' to learn all command usage, likes \'coscmd upload -h\'"""
+    parser = ArgumentParser(description=desc)
     parser.add_argument('-d', '--debug', help="debug mode", action="store_true", default=False)
 
+
     sub_parser = parser.add_subparsers()
-    parser_config = sub_parser.add_parser("config", help='''coscmd config [-h] -a ACCESS_ID -s SECRET_KEY -u APPID
-                                                            -b BUCKET -r REGION [-m MAX_THREAD] [-p PART_SIZE]''')
+    parser_config = sub_parser.add_parser("config", help="config your information at first.")
     parser_config.add_argument('-a', '--access_id', help='specify your access id', type=str, required=True)
     parser_config.add_argument('-s', '--secret_key', help='specify your secret key', type=str, required=True)
     parser_config.add_argument('-u', '--appid', help='specify your appid', type=str, required=True)
@@ -293,20 +296,20 @@ def _main():
     parser_config.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1)
     parser_config.set_defaults(func=config)
 
-    parser_upload = sub_parser.add_parser("upload", help="coscmd  upload [-h] [-r] local_path cos_path")
-    parser_upload.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
+    parser_upload = sub_parser.add_parser("upload", help="upload file or directory to COS.")
+    parser_upload.add_argument('local_path', help="local file path as /tmp/a.txt or directory", type=str)
     parser_upload.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_upload.add_argument('-r', '--recursive', help="upload folder", action="store_true", default=False)
+    parser_upload.add_argument('-r', '--recursive', help="upload recursively when upload directory", action="store_true", default=False)
     parser_upload.set_defaults(func=Op.upload)
 
-    parser_download = sub_parser.add_parser("download", help="coscmd download [-h] cos_path local_path")
+    parser_download = sub_parser.add_parser("download", help="download file from COS to local.")
     parser_download.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_download.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
     parser_download.set_defaults(func=Op.download)
 
-    parser_delete = sub_parser.add_parser("delete", help="coscmd delete [-h] [-r] cos_path")
+    parser_delete = sub_parser.add_parser("delete", help="delete file or files on COS")
     parser_delete.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_delete.add_argument('-r', '--recursive', help="delete folder", action="store_true", default=False)
+    parser_delete.add_argument('-r', '--recursive', help="delete files recursively, WARN: all files with the prefix will be deleted!", action="store_true", default=False)
     parser_delete.set_defaults(func=Op.delete)
 
 #     parser_create_bucket = sub_parser.add_parser("createbucket", help='coscmd createbucket [-h]')
