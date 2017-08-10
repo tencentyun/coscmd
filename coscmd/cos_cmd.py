@@ -102,7 +102,7 @@ class Op(object):
             return -1
         if args.recursive:
             if os.path.isdir(args.local_path) is False:
-                logger.warn(change_color("path not exist!", color_red))
+                logger.warn(change_color("{local_path} is not a directory, do not use \'-r\' option here!".format(local_path=to_printable_str(args.local_path)), color_red))
                 return -1
             rt = Intface.upload_folder(args.local_path, args.cos_path)
             logger.info("upload {file} finished".format(file=to_printable_str(args.local_path)))
@@ -114,6 +114,9 @@ class Op(object):
                 logger.error(change_color("upload folder {local_path} failed".format(local_path=to_printable_str(args.local_path)), color_red))
                 return -1
         else:
+            if os.path.isdir(args.local_path):
+                logger.warn(change_color("{path} is a directory, use \'-r\' option to upload it please.".format(path=to_printable_str(args.local_path)), color_red))
+                return -1
             if os.path.isfile(args.local_path) is False:
                 logger.warn(change_color("path not exist!", color_red))
                 return -1
