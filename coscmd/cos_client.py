@@ -219,7 +219,6 @@ class Interface(object):
             url = self._conf.uri(path=cos_path)
             self._have_finished = 0
             self._have_uploaded = []
-            logger.info("checking upload breakpoint...")
             self._path_md5 = get_md5_filename(local_path, cos_path)
             logger.debug("init with : " + url)
             if os.path.isfile(self._path_md5):
@@ -228,10 +227,6 @@ class Interface(object):
                 if self.list_part(cos_path) is True:
                     logger.info("continue uploading from last breakpoint")
                     return True
-                else:
-                    logger.info("read breakpoint fail, start uploading again")
-            else:
-                logger.info("can not find upload breakpoint")
             rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
