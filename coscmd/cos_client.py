@@ -158,7 +158,7 @@ class Interface(object):
                     self._have_uploaded.append(ID)
                     self._md5[int(ID)] = content.getElementsByTagName(self._etag)[0].childNodes[0].data[1:-1]
             else:
-                logger.warn(response_info("get res", rt))
+                logger.debug(response_info("get res", rt))
                 return False
         logger.debug("list parts error")
         return True
@@ -211,7 +211,7 @@ class Interface(object):
                         continue
                     if j+1 == self._retry:
                         return False
-                except Exception:
+                except Exception as e:
                     logger.warn("upload file failed")
             return False
 
@@ -348,7 +348,7 @@ class Interface(object):
                 else:
                     logger.warn(response_info("post res", rt))
                     return False
-            except Exception:
+            except Exception as e:
                 return False
             return True
 
@@ -414,9 +414,8 @@ class Interface(object):
             else:
                 logger.warn(response_info("get res", rt))
                 return False
-        except Exception:
-            logger.warn("Error!")
-            return False
+        except Exception as e:
+            logger.warn(str(e))
         return False
 
     def delete_folder(self, cos_path):
@@ -495,8 +494,8 @@ class Interface(object):
             else:
                 logger.warn(response_info("delete res", rt))
                 return False
-        except Exception:
-            logger.warn("Error!")
+        except Exception as e:
+            logger.warn(str(e))
             return False
         return False
 
@@ -568,8 +567,8 @@ class Interface(object):
             else:
                 logger.warn(response_info("put res", rt))
                 return False
-        except Exception:
-            logger.warn("Error!")
+        except Exception as e:
+            logger.warn(str(e))
             return False
         return False
 
@@ -590,8 +589,8 @@ class Interface(object):
             else:
                 logger.warn(response_info("get res", rt))
                 return False
-        except Exception:
-            logger.warn("Error!")
+        except Exception as e:
+            logger.warn(str(e))
             return False
         return False
 
@@ -610,8 +609,8 @@ class Interface(object):
             else:
                 logger.warn(response_info("put res", rt))
                 return False
-        except Exception:
-            logger.warn("Error!")
+        except Exception as e:
+            logger.warn(str(e))
             return False
         return True
 
@@ -630,8 +629,8 @@ class Interface(object):
             else:
                 logger.warn(response_info("delete res", rt))
                 return False
-        except Exception:
-            logger.warn("Error!")
+        except Exception as e:
+            logger.warn(str(e))
             return False
         return True
 
@@ -741,8 +740,8 @@ class Interface(object):
             else:
                 logger.warn(response_info("put res", rt))
                 return False
-        except Exception:
-            logger.warn("Error!")
+        except Exception as e:
+            logger.warn(str(e))
             return False
         return False
 
@@ -763,8 +762,8 @@ class Interface(object):
             else:
                 logger.warn(response_info("get res", rt))
                 return False
-        except Exception:
-            logger.warn("Error!")
+        except Exception as e:
+            logger.warn(str(e))
             return False
         return False
 
