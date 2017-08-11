@@ -47,7 +47,7 @@ def getTagText(root, tag):
 
 def get_md5_filename(local_path, cos_path):
     ori_file = os.path.abspath(os.path.dirname(local_path)) + "!!!" + str(os.path.getsize(local_path)) + "!!!" + cos_path
-    return os.path.expanduser('~/.tmp/' + base64.encodestring(ori_file)[0:10])
+    return os.path.expanduser('~/.tmp/' + base64.encodestring(ori_file).replace('=', 'A'))
 
 
 def query_yes_no(question, default=None):
@@ -158,7 +158,7 @@ class Interface(object):
                     self._have_uploaded.append(ID)
                     self._md5[int(ID)] = content.getElementsByTagName(self._etag)[0].childNodes[0].data[1:-1]
             else:
-                logger.warn(response_info("get res", rt))
+                logger.debug(response_info("get res", rt))
                 return False
         logger.debug("list parts error")
         return True
@@ -211,7 +211,7 @@ class Interface(object):
                         continue
                     if j+1 == self._retry:
                         return False
-                except Exception:
+                except Exception as e:
                     logger.warn("upload file failed")
             return False
 
@@ -219,7 +219,6 @@ class Interface(object):
             url = self._conf.uri(path=cos_path)
             self._have_finished = 0
             self._have_uploaded = []
-            logger.info("checking upload breakpoint...")
             self._path_md5 = get_md5_filename(local_path, cos_path)
             logger.debug("init with : " + url)
             if os.path.isfile(self._path_md5):
@@ -228,10 +227,6 @@ class Interface(object):
                 if self.list_part(cos_path) is True:
                     logger.info("continue uploading from last breakpoint")
                     return True
-                else:
-                    logger.info("read breakpoint fail, start uploading again")
-            else:
-                logger.info("can not find upload breakpoint")
             rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
@@ -348,7 +343,7 @@ class Interface(object):
                 else:
                     logger.warn(response_info("post res", rt))
                     return False
-            except Exception:
+            except Exception as e:
                 return False
             return True
 
@@ -414,9 +409,8 @@ class Interface(object):
             else:
                 logger.warn(response_info("get res", rt))
                 return False
-        except Exception:
-            logger.warn("Error!")
-            return False
+        except Exception as e:
+            logger.warn(str(e))
         return False
 
     def delete_folder(self, cos_path):
@@ -495,8 +489,8 @@ class Interface(object):
             else:
                 logger.warn(response_info("delete res", rt))
                 return False
-        except Exception:
-            logger.warn("Error!")
+        except Exception as e:
+            logger.warn(str(e))
             return False
         return False
 
@@ -568,8 +562,8 @@ class Interface(object):
             else:
                 logger.warn(response_info("put res", rt))
                 return False
-        except Exception:
-            logger.warn("Error!")
+        except Exception as e:
+            logger.warn(str(e))
             return False
         return False
 
@@ -590,8 +584,8 @@ class Interface(object):
             else:
                 logger.warn(response_info("get res", rt))
                 return False
-        except Exception:
-            logger.warn("Error!")
+        except Exception as e:
+            logger.warn(str(e))
             return False
         return False
 
@@ -610,8 +604,8 @@ class Interface(object):
             else:
                 logger.warn(response_info("put res", rt))
                 return False
-        except Exception:
-            logger.warn("Error!")
+        except Exception as e:
+            logger.warn(str(e))
             return False
         return True
 
@@ -630,8 +624,8 @@ class Interface(object):
             else:
                 logger.warn(response_info("delete res", rt))
                 return False
-        except Exception:
-            logger.warn("Error!")
+        except Exception as e:
+            logger.warn(str(e))
             return False
         return True
 
@@ -741,8 +735,8 @@ class Interface(object):
             else:
                 logger.warn(response_info("put res", rt))
                 return False
-        except Exception:
-            logger.warn("Error!")
+        except Exception as e:
+            logger.warn(str(e))
             return False
         return False
 
@@ -763,8 +757,8 @@ class Interface(object):
             else:
                 logger.warn(response_info("get res", rt))
                 return False
-        except Exception:
-            logger.warn("Error!")
+        except Exception as e:
+            logger.warn(str(e))
             return False
         return False
 
