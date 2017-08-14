@@ -29,14 +29,6 @@ def to_printable_str(s):
         return s
 
 
-def view_bar(num, total):
-    ret = 1.0*num / total
-    ag = ret * 100
-    ab = "\r [%-50s]%.2f%%" % ('='*int(ret*50), ag, )
-    sys.stdout.write(ab)
-    sys.stdout.flush()
-
-
 def getTagText(root, tag):
     node = root.getElementsByTagName(tag)[0]
     rc = ""
@@ -267,7 +259,7 @@ class Interface(object):
                     self._md5[idx] = rt.headers[self._etag][1:-1]
                     if rt.status_code == 200:
                         self._have_finished += 1
-                        view_bar(self._have_finished, parts_size)
+                        logger.info("upload {file} with {per}%".format(file=to_printable_str(local_path), per="{0:5.2f}".format(100.0*self._have_finished/parts_size)))
                         break
                     else:
                         logger.warn(response_info("put res", rt))
@@ -309,7 +301,6 @@ class Interface(object):
                         offset += chunk_size
             pool.wait_completion()
             result = pool.get_result()
-            print ""
             if result['success_all']:
                 return True
             else:
@@ -422,7 +413,7 @@ class Interface(object):
                 rt = self._session.delete(url=url_file, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
                 if rt.status_code == 204 or rt.status_code == 200:
                     self._have_finished += 1
-                    view_bar(self._have_finished, self._file_num)
+                    logger.info("delete {file}".format(file=to_printable_str(_cos_path)))
                     break
         cos_path = to_unicode(cos_path)
         if len(cos_path) > 0:
@@ -468,7 +459,6 @@ class Interface(object):
         for cos_path in file_list:
             pool.add_task(multidelete_parts_data, cos_path)
         pool.wait_completion()
-        print ""
         logger.info("deleted: %d" % (self._have_finished))
         if self._file_num == self._have_finished:
             logger.debug("get folder success")
