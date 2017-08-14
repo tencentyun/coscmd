@@ -355,9 +355,9 @@ def _main():
     coloredlogs.DEFAULT_FIELD_STYLES = {'hostname': {'color': 'white'}, 'name': {'color': 'white'}, 'levelname': {'color': 'white', 'bold': True}, 'asctime': {'color': 'white'}}
     coloredlogs.DEFAULT_LEVEL_STYLES = {'info': {'color': 'white'}, 'warning': {'color': 'white', 'bold': True}}
     if args.debug:
-        coloredlogs.install(level='DEBUG', logger=logger, fmt='%(message)s')
+        coloredlogs.install(level='DEBUG', logger=logger, fmt='%(asctime)s - %(message)s')
     else:
-        coloredlogs.install(level='INFO', logger=logger, fmt='%(asctime)s - %(message)s')
+        coloredlogs.install(level='INFO', logger=logger, fmt='%(message)s')
 
     return args.func(args)
 
