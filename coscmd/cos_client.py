@@ -43,7 +43,7 @@ def get_md5_filename(local_path, cos_path):
     return os.path.expanduser('~/.tmp/' + binascii.b2a_hex(base64.encodestring(ori_file))[0:20])
 
 
-def query_yes_no(question, default=None):
+def query_yes_no(question, default="no"):
     valid = {"yes": True, "y": True, "ye": True,
              "no": False, "n": False}
     if default is None:

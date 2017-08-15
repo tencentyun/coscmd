@@ -3,7 +3,6 @@ from platform import python_version_tuple
 
 
 def requirements():
-
     with open('requirements.txt', 'r') as fileobj:
         requirements = [line.strip() for line in fileobj]
 
