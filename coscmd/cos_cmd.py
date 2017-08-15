@@ -241,4 +241,5 @@ def _main():
     return args.func(args)
 
 if __name__ == '__main__':
-    _main()
+    import sys
+    sys.exit(_main())
