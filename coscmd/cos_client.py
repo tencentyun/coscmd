@@ -10,6 +10,7 @@ import logging
 import sys
 import os
 import base64
+import binascii
 
 logger = logging.getLogger(__name__)
 fs_coding = sys.getfilesystemencoding()
@@ -39,7 +40,7 @@ def getTagText(root, tag):
 
 def get_md5_filename(local_path, cos_path):
     ori_file = os.path.abspath(os.path.dirname(local_path)) + "!!!" + str(os.path.getsize(local_path)) + "!!!" + cos_path
-    return os.path.expanduser('~/.tmp/' + base64.encodestring(ori_file).replace('=', 'A').replace('\n', 'B').replace('+', 'C').replace('//', 'D'))
+    return os.path.expanduser('~/.tmp/' + binascii.b2a_hex(base64.encodestring(ori_file)))
 
 
 def query_yes_no(question, default=None):
