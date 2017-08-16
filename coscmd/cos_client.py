@@ -1,6 +1,7 @@
 # -*- coding=utf-8
 from cos_auth import CosS3Auth
 from cos_threadpool import SimpleThreadPool
+from prettytable import PrettyTable
 import time
 import requests
 from os import path
@@ -11,6 +12,8 @@ import sys
 import os
 import base64
 import binascii
+import datetime
+import pytz
 
 logger = logging.getLogger(__name__)
 fs_coding = sys.getfilesystemencoding()
@@ -78,6 +81,15 @@ def response_info(rt):
     return ("error: [code {code}] {message}".format(
                      code=code,
                      message=to_printable_str(message)))
+
+
+def utc_to_local(utc_time_str, utc_format='%Y-%m-%dT%H:%M:%S.000Z'):
+    local_tz = pytz.timezone('Asia/Chongqing')
+    local_format = "%Y-%m-%d %H:%M:%S"
+    utc_dt = datetime.datetime.strptime(utc_time_str, utc_format)
+    local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(local_tz)
+    time_str = local_dt.strftime(local_format)
+    return int(time.mktime(time.strptime(time_str, local_format)))
 
 
 class CosConfig(object):
@@ -486,6 +498,45 @@ class Interface(object):
             logger.warn(str(e))
             return False
         return False
+
+    def list_objects(self, cos_path):
+        NextMarker = ""
+        IsTruncated = "true"
+        table = PrettyTable(["Time", "Size/Type", "Path"])
+        table.align = "l"
+        table.padding_width = 3
+        while IsTruncated == "true":
+            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}&delimiter=/'.format(prefix=cos_path, nextmarker=NextMarker))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            if rt.status_code == 200:
+                root = minidom.parseString(rt.content).documentElement
+                IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                if IsTruncated == 'true':
+                    NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+
+                logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                     code=rt.status_code,
+                     headers=rt.headers,
+                     text=to_printable_str(rt.text)))
+                folderset = root.getElementsByTagName("CommonPrefixes")
+                for _folder in folderset:
+                    _time = ""
+                    _type = "DIR"
+                    _path = _folder.getElementsByTagName("Prefix")[0].childNodes[0].data
+                    table.add_row([_time, _type, _path])
+                fileset = root.getElementsByTagName("Contents")
+                for _file in fileset:
+                    _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
+                    _time = time.localtime(utc_to_local(_time))
+                    _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
+                    _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
+                    _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
+                    table.add_row([_time, _size, _path])
+            else:
+                logger.warn(response_info("get res", rt))
+                return False
+        print table
+        return True
 
     def put_object_acl(self, grant_read, grant_write, grant_full_control, cos_path):
         acl = []

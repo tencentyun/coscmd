@@ -176,6 +176,18 @@ class Op(object):
                 return -1
 
     @staticmethod
+    def list(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        Interface = client.op_int()
+        if Interface.list_objects(args.cos_path):
+            logger.info(change_color("list successfully!", color_green))
+            return 0
+        else:
+            logger.warn(change_color("list failed!", color_red))
+            return -1
+
+    @staticmethod
     def put_object_acl(args):
         conf = load_conf()
         client = CosS3Client(conf)
@@ -243,7 +255,7 @@ class Op(object):
         conf = load_conf()
         client = CosS3Client(conf)
         Interface = client.op_int()
-        if Interface.get_bucket(args.max_keys):
+        if Interface.get_bucket(args.cos_path):
             logger.info(change_color("list success!", color_green))
             return 0
         else:
@@ -312,6 +324,9 @@ def _main():
     parser_delete.add_argument('-r', '--recursive', help="delete files recursively, WARN: all files with the prefix will be deleted!", action="store_true", default=False)
     parser_delete.set_defaults(func=Op.delete)
 
+    parser_list = sub_parser.add_parser("list", help='list files on COS')
+    parser_list.add_argument("cos_path", help="cos_path as a/b.txt", type=str, default='')
+    parser_list.set_defaults(func=Op.list)
 #     parser_create_bucket = sub_parser.add_parser("createbucket", help='coscmd createbucket [-h]')
 #     parser_create_bucket.set_defaults(func=Op.create_bucket)
 #
@@ -319,9 +334,6 @@ def _main():
 #     parser_delete_bucket.add_argument('-f', '--force', help="force delete bucket", action="store_true", default=False)
 #     parser_delete_bucket.set_defaults(func=Op.delete_bucket)
 #
-#     parser_list_bucket = sub_parser.add_parser("listbucket", help='coscmd listbucket [-h] [-m MAX_KEYS]')
-#     parser_list_bucket.add_argument('-m', '--max_keys', help='specify max num you want to list', type=int, default=10)
-#     parser_list_bucket.set_defaults(func=Op.list_bucket)
 #
 #     parser_put_object_acl = sub_parser.add_parser("putobjectacl", help='''coscmd putobjectacl [-h] [--grant-read GRANT_READ]
 #                                                                        [--grant-write GRANT_WRITE]
