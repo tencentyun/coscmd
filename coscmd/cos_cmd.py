@@ -106,7 +106,8 @@ class Op(object):
             elif os.path.isdir(args.local_path):
                 rt = Interface.upload_folder(args.local_path, args.cos_path)
                 logger.info("upload all files under \"{file}\" directory finished".format(file=to_printable_str(args.local_path)))
-                logger.info("{folders} folders, {files} files uploaded".format(folders=Interface._folder_num, files=Interface._file_num))
+                logger.info("{folders} folders, {files} files uploaded, {fail_files} files failed"
+                            .format(folders=Interface._folder_num, files=Interface._file_num, fail_files=Interface._fail_num))
             if rt:
                 logger.info(change_color("upload all files under \"{file}\" directory successfully".format(file=to_printable_str(args.local_path)), color_green))
                 return 0
@@ -347,7 +348,7 @@ def _main():
 #     parser_get_bucket_acl = sub_parser.add_parser("getbucketacl", help='coscmd getbucketacl [-h]')
 #     parser_get_bucket_acl.set_defaults(func=Op.get_bucket_acl)
 
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.5.4.1')
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.5.5.2')
 
     args = parser.parse_args()
 
