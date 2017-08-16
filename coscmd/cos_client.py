@@ -39,7 +39,7 @@ def getTagText(root, tag):
 
 def get_md5_filename(local_path, cos_path):
     ori_file = os.path.abspath(os.path.dirname(local_path)) + "!!!" + str(os.path.getsize(local_path)) + "!!!" + cos_path
-    return os.path.expanduser('~/.tmp/' + base64.encodestring(ori_file).replace('=', 'A'))
+    return os.path.expanduser('~/.tmp/' + base64.encodestring(ori_file).replace('=', 'A').replace('\n', 'B').replace('+', 'C').replace('//', 'D'))
 
 
 def query_yes_no(question, default=None):
@@ -116,9 +116,10 @@ class Interface(object):
         self._md5 = {}
         self._have_finished = 0
         self._err_tips = ''
-        self._retry = 1
+        self._retry = 2
         self._file_num = 0
         self._folder_num = 0
+        self._fail_num = 0
         self._path_md5 = ""
         self._have_uploaded = []
         self._etag = 'ETag'
@@ -174,6 +175,7 @@ class Interface(object):
             else:
                 if self.upload_file(local_path=filepath, cos_path=cos_path+filename) is False:
                     logger.info("upload {file} fail".format(file=to_printable_str(filepath)))
+                    self._fail_num += 1
                     ret_code = False
                 else:
                     self._file_num += 1
