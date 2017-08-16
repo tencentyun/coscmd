@@ -128,7 +128,7 @@ class Interface(object):
             self._session = session
 
     def list_part(self, cos_path):
-        logger.info("getting uploaded parts")
+        logger.debug("getting uploaded parts")
         NextMarker = ""
         IsTruncated = "true"
         while IsTruncated == "true":
