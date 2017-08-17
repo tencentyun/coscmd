@@ -212,8 +212,10 @@ class Interface(object):
 
         def init_multiupload():
             url = self._conf.uri(path=cos_path)
+            self._md5 = {}
             self._have_finished = 0
             self._have_uploaded = []
+            self._upload_id = None
             self._path_md5 = get_md5_filename(local_path, cos_path)
             logger.debug("init with : " + url)
             if os.path.isfile(self._path_md5):
