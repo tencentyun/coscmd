@@ -67,7 +67,7 @@ def query_yes_no(question, default=None):
                              "(or 'y' or 'n').\n")
 
 
-def response_info(info, rt):
+def response_info(rt):
     messgae = ""
     code = rt.status_code
     try:
@@ -75,8 +75,7 @@ def response_info(info, rt):
         message = root.getElementsByTagName("Message")[0].childNodes[0].data
     except Exception:
         message = "unknown error"
-    return ("{info}, code: {code}, message: {message}".format(
-                     info=info,
+    return ("[Error], code: {code}, message: {message}".format(
                      code=code,
                      message=to_printable_str(message)))
 
@@ -158,7 +157,7 @@ class Interface(object):
                     self._have_uploaded.append(ID)
                     self._md5[int(ID)] = content.getElementsByTagName(self._etag)[0].childNodes[0].data[1:-1]
             else:
-                logger.debug(response_info("get res", rt))
+                logger.debug(response_info(rt))
                 return False
         logger.debug("list parts error")
         return True
@@ -208,7 +207,7 @@ class Interface(object):
                         return True
                     else:
                         time.sleep(2**j)
-                        logger.warn(response_info("put res", rt))
+                        logger.warn(response_info(rt))
                         continue
                     if j+1 == self._retry:
                         return False
@@ -245,7 +244,7 @@ class Interface(object):
                     f.write(self._upload_id)
                 return True
             else:
-                logger.warn(response_info("post res", rt))
+                logger.warn(response_info(rt))
                 return False
             return True
 
@@ -273,7 +272,7 @@ class Interface(object):
                         logger.info("upload {file} with {per}%".format(file=to_printable_str(local_path), per="{0:5.2f}".format(100.0*self._have_finished/parts_size)))
                         break
                     else:
-                        logger.warn(response_info("put res", rt))
+                        logger.warn(response_info(rt))
                         time.sleep(2**j)
                         continue
                     if j+1 == self._retry:
@@ -343,7 +342,7 @@ class Interface(object):
                     os.remove(self._path_md5)
                     return True
                 else:
-                    logger.warn(response_info("post res", rt))
+                    logger.warn(response_info(rt))
                     return False
             except Exception as e:
                 return False
@@ -409,7 +408,7 @@ class Interface(object):
                     raise IOError("download failed with incomplete file")
                 return True
             else:
-                logger.warn(response_info("get res", rt))
+                logger.warn(response_info(rt))
                 return False
         except Exception as e:
             logger.warn(str(e))
@@ -457,7 +456,7 @@ class Interface(object):
                     file_name = content.childNodes[0].data
                     file_list.append(file_name)
             else:
-                logger.warn(response_info("get res", rt))
+                logger.warn(response_info(rt))
                 logger.debug("get folder error")
                 return False
         logger.info("filecount: %d" % (self._file_num))
@@ -488,7 +487,7 @@ class Interface(object):
             if rt.status_code == 204 or rt.status_code == 200:
                 return True
             else:
-                logger.warn(response_info("delete res", rt))
+                logger.warn(response_info(rt))
                 return False
         except Exception as e:
             logger.warn(str(e))
@@ -514,7 +513,7 @@ class Interface(object):
         try:
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code != 200:
-                logger.warn(response_info("get res", rt))
+                logger.warn(response_info(rt))
                 return False
             root = minidom.parseString(rt.content).documentElement
             owner_id = root.getElementsByTagName("ID")[0].childNodes[0].data
@@ -561,7 +560,7 @@ class Interface(object):
             if rt.status_code == 200:
                 return True
             else:
-                logger.warn(response_info("put res", rt))
+                logger.warn(response_info(rt))
                 return False
         except Exception as e:
             logger.warn(str(e))
@@ -583,7 +582,7 @@ class Interface(object):
             if rt.status_code == 200:
                 return True
             else:
-                logger.warn(response_info("get res", rt))
+                logger.warn(response_info(rt))
                 return False
         except Exception as e:
             logger.warn(str(e))
@@ -603,7 +602,7 @@ class Interface(object):
             if rt.status_code == 200:
                 return True
             else:
-                logger.warn(response_info("put res", rt))
+                logger.warn(response_info(rt))
                 return False
         except Exception as e:
             logger.warn(str(e))
@@ -623,7 +622,7 @@ class Interface(object):
             if rt.status_code == 204:
                 return True
             else:
-                logger.warn(response_info("delete res", rt))
+                logger.warn(response_info(rt))
                 return False
         except Exception as e:
             logger.warn(str(e))
@@ -660,7 +659,7 @@ class Interface(object):
                     if filecount == max_keys:
                         break
             else:
-                logger.warn(response_info("get res", rt))
+                logger.warn(response_info(rt))
                 return False
 
         logger.info("filecount: %d" % filecount)
@@ -687,7 +686,7 @@ class Interface(object):
         try:
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code != 200:
-                logger.warn(response_info("get res", rt))
+                logger.warn(response_info(rt))
                 return False
             root = minidom.parseString(rt.content).documentElement
             owner_id = root.getElementsByTagName("ID")[0].childNodes[0].data
@@ -734,7 +733,7 @@ class Interface(object):
             if rt.status_code == 200:
                 return True
             else:
-                logger.warn(response_info("put res", rt))
+                logger.warn(response_info(rt))
                 return False
         except Exception as e:
             logger.warn(str(e))
@@ -756,7 +755,7 @@ class Interface(object):
             if rt.status_code == 200:
                 return True
             else:
-                logger.warn(response_info("get res", rt))
+                logger.warn(response_info(rt))
                 return False
         except Exception as e:
             logger.warn(str(e))
