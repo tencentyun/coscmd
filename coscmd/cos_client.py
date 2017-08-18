@@ -75,7 +75,7 @@ def response_info(rt):
         message = root.getElementsByTagName("Message")[0].childNodes[0].data
     except Exception:
         message = "unknown error"
-    return ("[Error], code: {code}, message: {message}".format(
+    return ("error: [code {code}] {message}".format(
                      code=code,
                      message=to_printable_str(message)))
 
