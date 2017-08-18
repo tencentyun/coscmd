@@ -68,11 +68,17 @@ def query_yes_no(question, default=None):
 
 
 def response_info(info, rt):
-    return ("{info}, status code: {code}, headers: {headers}, text: {text}".format(
+    messgae = ""
+    code = rt.status_code
+    try:
+        root = minidom.parseString(rt.content).documentElement
+        message = root.getElementsByTagName("Message")[0].childNodes[0].data
+    except Exception:
+        message = "unknown error"
+    return ("{info}, code: {code}, message: {message}".format(
                      info=info,
-                     code=rt.status_code,
-                     headers=rt.headers,
-                     text=to_printable_str(rt.text)))
+                     code=code,
+                     message=to_printable_str(message)))
 
 
 class CosConfig(object):
@@ -383,7 +389,7 @@ class Interface(object):
         logger.info("download with : " + url)
         try:
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
-            logger.debug("init resp, status code: {code}, headers: {headers}".format(
+            logger.debug("get resp, status code: {code}, headers: {headers}".format(
                  code=rt.status_code,
                  headers=rt.headers))
 
