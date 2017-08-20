@@ -570,7 +570,7 @@ class Interface(object):
         return True
 
     def info_object(self, cos_path):
-        table = PrettyTable(["Name", "Size", "Last-Modified"])
+        table = PrettyTable()
         table.align = "l"
         table.padding_width = 3
         url = self._conf.uri(path=cos_path)
@@ -581,8 +581,10 @@ class Interface(object):
                  code=rt.status_code,
                  headers=rt.headers))
             if rt.status_code == 200:
-                table.add_row([cos_path, rt.headers['Content-Length'], rt.headers['Last-Modified']])
-                print table
+                table.add_row(['Name', cos_path])
+                table.add_row(['Size', rt.headers['Content-Length']])
+                table.add_row(['Last-Modified', rt.headers['Last-Modified']])
+                print table.get_string()
                 return True
             else:
                 logger.warn(response_info(rt))
