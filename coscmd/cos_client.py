@@ -569,6 +569,29 @@ class Interface(object):
             logger.info("Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
         return True
 
+    def info_object(self, cos_path):
+        table = PrettyTable(["Name", "Size", "Last-Modified"])
+        table.align = "l"
+        table.padding_width = 3
+        url = self._conf.uri(path=cos_path)
+        logger.info("info with : " + url)
+        try:
+            rt = self._session.head(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            logger.debug("info resp, status code: {code}, headers: {headers}".format(
+                 code=rt.status_code,
+                 headers=rt.headers))
+            if rt.status_code == 200:
+                table.add_row([cos_path, rt.headers['Content-Length'], rt.headers['Last-Modified']])
+                print table
+                return True
+            else:
+                logger.warn(response_info(rt))
+                return False
+        except Exception as e:
+            logger.warn(str(e))
+            return False
+        return False
+
     def put_object_acl(self, grant_read, grant_write, grant_full_control, cos_path):
         acl = []
         if grant_read is not None:
