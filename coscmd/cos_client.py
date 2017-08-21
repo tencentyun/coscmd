@@ -502,9 +502,10 @@ class Interface(object):
     def list_objects(self, cos_path):
         NextMarker = ""
         IsTruncated = "true"
-        table = PrettyTable(["Time", "Size/Type", "Path"])
+        table = PrettyTable(["Path", "Size/Type", "Time"])
         table.align = "l"
         table.padding_width = 3
+        table.header = False
         while IsTruncated == "true":
             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}&delimiter=/'.format(prefix=cos_path, nextmarker=NextMarker))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
@@ -523,7 +524,7 @@ class Interface(object):
                     _time = ""
                     _type = "DIR"
                     _path = _folder.getElementsByTagName("Prefix")[0].childNodes[0].data
-                    table.add_row([_time, _type, _path])
+                    table.add_row([_path, _type, _time])
                 fileset = root.getElementsByTagName("Contents")
                 for _file in fileset:
                     _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
@@ -531,7 +532,7 @@ class Interface(object):
                     _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
                     _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
                     _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
-                    table.add_row([_time, _size, _path])
+                    table.add_row([_path, _size, _time])
             else:
                 logger.warn(response_info("get res", rt))
                 return False
