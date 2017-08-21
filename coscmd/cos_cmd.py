@@ -325,7 +325,7 @@ def _main():
     parser_delete.set_defaults(func=Op.delete)
 
     parser_list = sub_parser.add_parser("list", help='list files on COS')
-    parser_list.add_argument("cos_path", help="cos_path as a/b.txt", type=str, default='')
+    parser_list.add_argument("cos_path", nargs='?', help="cos_path as a/b.txt", type=str, default='')
     parser_list.set_defaults(func=Op.list)
 #     parser_create_bucket = sub_parser.add_parser("createbucket", help='coscmd createbucket [-h]')
 #     parser_create_bucket.set_defaults(func=Op.create_bucket)
