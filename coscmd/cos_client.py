@@ -534,7 +534,7 @@ class Interface(object):
                     _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
                     table.add_row([_path, _size, _time])
             else:
-                logger.warn(response_info("get res", rt))
+                logger.warn(response_info(rt))
                 return False
         print table
         return True
