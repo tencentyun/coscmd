@@ -425,19 +425,22 @@ class Interface(object):
                     self._have_finished += 1
                     logger.info("delete {file}".format(file=to_printable_str(_cos_path)))
                     break
+                else:
+                    logger.info("delete {file} fail".format(file=to_printable_str(_cos_path)))
+                    self._fail_num += 1
         cos_path = to_unicode(cos_path)
         if len(cos_path) > 0:
             if cos_path[-1] != '/':
                 cos_path += '/'
+        # make sure
+        if query_yes_no("WARN: you are deleting all files under cos_path '{cos_path}', please make sure".format(cos_path=cos_path)) is False:
+            return False
         self._have_finished = 0
         self._file_num = 0
         NextMarker = ""
         IsTruncated = "true"
-        pagecount = 0
-        file_list = []
         logger.info("getting folder...")
         while IsTruncated == "true":
-            pagecount += 1
             url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}&prefix={prefix}'.format(nextmarker=NextMarker, prefix=cos_path))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code == 200:
@@ -454,24 +457,14 @@ class Interface(object):
                 for content in contentset:
                     self._file_num += 1
                     file_name = content.childNodes[0].data
-                    file_list.append(file_name)
+                    multidelete_parts_data(file_name)
             else:
                 logger.warn(response_info(rt))
                 logger.debug("get folder error")
                 return False
-        logger.info("filecount: %d" % (self._file_num))
-        # make sure
-        if query_yes_no("WARN: you are deleting all files under cos_path '{cos_path}', please make sure".format(cos_path=cos_path)) is False:
-            return False
-        logger.info("deleting folder...")
-        _max_thread = min(self._conf._max_thread, self._file_num)
-        pool = SimpleThreadPool(_max_thread)
-        for cos_path in file_list:
-            pool.add_task(multidelete_parts_data, cos_path)
-        pool.wait_completion()
-        logger.info("deleted: %d" % (self._have_finished))
+        logger.info("{files} files deleted, {fail_files} files fail"
+                    .format(files=self._have_finished, fail_files=self._fail_num))
         if self._file_num == self._have_finished:
-            logger.debug("get folder success")
             return True
         else:
             return False
