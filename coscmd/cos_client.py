@@ -426,7 +426,7 @@ class Interface(object):
                     logger.info("delete {file}".format(file=to_printable_str(_cos_path)))
                     break
                 else:
-                    logger.info("upload {file} fail".format(file=to_printable_str(_cos_path)))
+                    logger.info("delete {file} fail".format(file=to_printable_str(_cos_path)))
                     self._fail_num += 1
         cos_path = to_unicode(cos_path)
         if len(cos_path) > 0:
