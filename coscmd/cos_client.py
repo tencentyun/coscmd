@@ -499,15 +499,21 @@ class Interface(object):
             return False
         return False
 
-    def list_objects(self, cos_path):
+    def list_objects(self, cos_path, _recursive=False, _all=False, _num=100):
         NextMarker = ""
         IsTruncated = "true"
+        Delimiter = "&delimiter=/"
+        if _recursive is True:
+            Delimiter = ""
+        if _all is True:
+            _num = -1
         table = PrettyTable(["Path", "Size/Type", "Time"])
         table.align = "l"
         table.padding_width = 3
         table.header = False
+        self._file_num = 0
         while IsTruncated == "true":
-            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}&delimiter=/'.format(prefix=cos_path, nextmarker=NextMarker))
+            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}{delimiter}'.format(prefix=cos_path, nextmarker=NextMarker, delimiter=Delimiter))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code == 200:
                 root = minidom.parseString(rt.content).documentElement
@@ -527,16 +533,23 @@ class Interface(object):
                     table.add_row([_path, _type, _time])
                 fileset = root.getElementsByTagName("Contents")
                 for _file in fileset:
+                    self._file_num += 1
                     _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
                     _time = time.localtime(utc_to_local(_time))
                     _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
                     _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
                     _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
                     table.add_row([_path, _size, _time])
+                    if self._file_num == _num:
+                        break
+                if self._file_num == _num:
+                    break
             else:
                 logger.warn(response_info(rt))
                 return False
         print table
+        if _all is False and self._file_num == _num:
+            logger.info("Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
         return True
 
     def put_object_acl(self, grant_read, grant_write, grant_full_control, cos_path):

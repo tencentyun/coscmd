@@ -180,7 +180,7 @@ class Op(object):
         conf = load_conf()
         client = CosS3Client(conf)
         Interface = client.op_int()
-        if Interface.list_objects(args.cos_path):
+        if Interface.list_objects(args.cos_path, args.recursive, args.all, args.num):
             logger.info(change_color("list successfully!", color_green))
             return 0
         else:
@@ -326,6 +326,9 @@ def _main():
 
     parser_list = sub_parser.add_parser("list", help='list files on COS')
     parser_list.add_argument("cos_path", nargs='?', help="cos_path as a/b.txt", type=str, default='')
+    parser_list.add_argument('-a', '--all', help="list all the files", action="store_true", default=False)
+    parser_list.add_argument('-r', '--recursive', help="list files recursively", action="store_true", default=False)
+    parser_list.add_argument('-n', '--num', help='specify max num of files to list', type=int, default=100)
     parser_list.set_defaults(func=Op.list)
 #     parser_create_bucket = sub_parser.add_parser("createbucket", help='coscmd createbucket [-h]')
 #     parser_create_bucket.set_defaults(func=Op.create_bucket)
