@@ -22,6 +22,7 @@ class CosS3Auth(AuthBase):
         method = r.method.lower()
         uri = urllib.unquote(r.url)
         uri = uri.split('?')[0]
+        tmp_r = {}
         rt = urlparse(uri)
         logger.debug("url parse: " + str(rt))
         if rt.query != "" and ("&" in rt.query or '=' in rt.query):
@@ -30,6 +31,8 @@ class CosS3Auth(AuthBase):
             uri_params = {rt.query: ""}
         else:
             uri_params = {}
+        tmp_r = {}
+        tmp_r = r.headers
         r.headers = {}
         r.headers['Host'] = rt.netloc
         headers = dict([(k.lower(), quote(v).lower()) for k, v in r.headers.items()])
@@ -53,7 +56,7 @@ class CosS3Auth(AuthBase):
         logger.debug('sign_key: ' + str(sign_key))
         logger.debug('sign: ' + str(sign))
         sign_tpl = "q-sign-algorithm=sha1&q-ak={ak}&q-sign-time={sign_time}&q-key-time={key_time}&q-header-list={headers}&q-url-param-list={params}&q-signature={sign}"
-
+        r.headers = tmp_r
         r.headers['Authorization'] = sign_tpl.format(
             ak=self._access_id,
             sign_time=sign_time,
