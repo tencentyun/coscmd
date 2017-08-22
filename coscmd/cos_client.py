@@ -7,6 +7,7 @@ import requests
 from os import path
 from contextlib import closing
 from xml.dom import minidom
+from hashlib import md5
 import logging
 import sys
 import os
@@ -442,18 +443,6 @@ class Interface(object):
 
     def delete_folder(self, cos_path):
 
-        def multidelete_parts_data(_cos_path):
-            for i in range(self._retry):
-                logger.debug("delete object with : " + _cos_path)
-                url_file = self._conf.uri(path=_cos_path)
-                rt = self._session.delete(url=url_file, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
-                if rt.status_code == 204 or rt.status_code == 200:
-                    self._have_finished += 1
-                    logger.info("delete {file}".format(file=to_printable_str(_cos_path)))
-                    break
-                else:
-                    logger.info("delete {file} fail".format(file=to_printable_str(_cos_path)))
-                    self._fail_num += 1
         cos_path = to_unicode(cos_path)
         if len(cos_path) > 0:
             if cos_path[-1] != '/':
@@ -465,8 +454,9 @@ class Interface(object):
         self._file_num = 0
         NextMarker = ""
         IsTruncated = "true"
-        logger.info("getting folder...")
         while IsTruncated == "true":
+            data_xml = ""
+            file_list = []
             url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}&prefix={prefix}'.format(nextmarker=NextMarker, prefix=cos_path))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code == 200:
@@ -483,7 +473,31 @@ class Interface(object):
                 for content in contentset:
                     self._file_num += 1
                     file_name = content.childNodes[0].data
-                    multidelete_parts_data(file_name)
+                    file_list.append(file_name)
+                    data_xml = data_xml + '''
+    <Object>
+        <Key>{Key}</Key>
+    </Object>'''.format(Key=file_name)
+                data_xml = '''
+<Delete>
+    <Quiet>true</Quiet>'''+data_xml+'''
+</Delete>'''
+                http_header = dict()
+                md5_ETag = md5()
+                md5_ETag.update(data_xml)
+                md5_ETag = md5_ETag.digest()
+                http_header['Content-MD5'] = base64.b64encode(md5_ETag)
+                url_file = self._conf.uri(path="?delete")
+                rt = self._session.post(url=url_file, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=data_xml, headers=http_header)
+                if rt.status_code == 204 or rt.status_code == 200:
+                    for file_name in file_list:
+                        logger.info("delete {file}".format(file=to_printable_str(file_name)))
+                    self._have_finished += len(file_list)
+                else:
+                    for file_name in file_list:
+                        break
+                        logger.info("delete {file} fail".format(file=to_printable_str(file_name)))
+                    self._fail_num += len(file_list)
             else:
                 logger.warn(response_info(rt))
                 logger.debug("get folder error")
