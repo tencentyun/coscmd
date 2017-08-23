@@ -77,7 +77,7 @@ def response_info(rt):
         root = minidom.parseString(rt.content).documentElement
         message = root.getElementsByTagName("Message")[0].childNodes[0].data
     except Exception:
-        message = "unknown error"
+        message = "Not Found"
     return ("error: [code {code}] {message}".format(
                      code=code,
                      message=to_printable_str(message)))
@@ -569,10 +569,11 @@ class Interface(object):
             logger.info("Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
         return True
 
-    def info_object(self, cos_path):
-        table = PrettyTable()
+    def info_object(self, cos_path, _human=False):
+        table = PrettyTable(["1", "2"])
         table.align = "l"
         table.padding_width = 3
+        table.header = False
         url = self._conf.uri(path=cos_path)
         logger.info("info with : " + url)
         try:
@@ -581,10 +582,15 @@ class Interface(object):
                  code=rt.status_code,
                  headers=rt.headers))
             if rt.status_code == 200:
+                _size = rt.headers['Content-Length']
+                if _human is True:
+                    _size = change_to_human(_size)
+                _time = time.localtime(utc_to_local(rt.headers['Last-Modified'], '%a, %d %b %Y %H:%M:%S GMT'))
+                _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
                 table.add_row(['Name', cos_path])
-                table.add_row(['Size', rt.headers['Content-Length']])
-                table.add_row(['Last-Modified', rt.headers['Last-Modified']])
-                print table.get_string()
+                table.add_row(['Size', _size])
+                table.add_row(['Last-Modified', _time])
+                print table
                 return True
             else:
                 logger.warn(response_info(rt))

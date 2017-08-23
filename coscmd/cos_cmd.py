@@ -179,6 +179,11 @@ class Op(object):
     def list(args):
         conf = load_conf()
         client = CosS3Client(conf)
+        while args.cos_path.startswith('/'):
+            args.cos_path = args.cos_path[1:]
+
+        if not isinstance(args. cos_path, unicode):
+            args.cos_path = args.cos_path.decode(fs_coding)
         Interface = client.op_int()
         if Interface.list_objects(cos_path=args.cos_path, _recursive=args.recursive, _all=args.all, _num=args.num, _human=args.human):
             logger.info(change_color("list successfully!", color_green))
@@ -186,6 +191,7 @@ class Op(object):
         else:
             logger.warn(change_color("list failed!", color_red))
 
+    @staticmethod
     def info(args):
         conf = load_conf()
         client = CosS3Client(conf)
@@ -195,7 +201,7 @@ class Op(object):
         if not isinstance(args. cos_path, unicode):
             args.cos_path = args.cos_path.decode(fs_coding)
         Interface = client.op_int()
-        if Interface.info_object(args.cos_path):
+        if Interface.info_object(args.cos_path, _human=args.human):
             logger.info(change_color("info successfully!", color_green))
             return 0
         else:
@@ -346,9 +352,10 @@ def _main():
     parser_list.add_argument('-n', '--num', help='specify max num of files to list', type=int, default=100)
     parser_list.add_argument('--human', help='humanized display', action="store_true", default=False)
     parser_list.set_defaults(func=Op.list)
-    
+
     parser_info = sub_parser.add_parser("info", help="get the information of file on COS")
     parser_info.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_info.add_argument('--human', help='humanized display', action="store_true", default=False)
     parser_info.set_defaults(func=Op.info)
 
 #     parser_create_bucket = sub_parser.add_parser("createbucket", help='coscmd createbucket [-h]')
