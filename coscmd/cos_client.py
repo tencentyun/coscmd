@@ -1,6 +1,7 @@
 # -*- coding=utf-8
 from cos_auth import CosS3Auth
 from cos_threadpool import SimpleThreadPool
+from prettytable import PrettyTable
 import time
 import requests
 from os import path
@@ -11,6 +12,8 @@ import sys
 import os
 import base64
 import binascii
+import datetime
+import pytz
 
 logger = logging.getLogger(__name__)
 fs_coding = sys.getfilesystemencoding()
@@ -43,7 +46,7 @@ def get_md5_filename(local_path, cos_path):
     return os.path.expanduser('~/.tmp/' + binascii.b2a_hex(base64.encodestring(ori_file))[0:20])
 
 
-def query_yes_no(question, default=None):
+def query_yes_no(question, default="no"):
     valid = {"yes": True, "y": True, "ye": True,
              "no": False, "n": False}
     if default is None:
@@ -78,6 +81,29 @@ def response_info(rt):
     return ("error: [code {code}] {message}".format(
                      code=code,
                      message=to_printable_str(message)))
+
+
+def utc_to_local(utc_time_str, utc_format='%Y-%m-%dT%H:%M:%S.000Z'):
+    local_tz = pytz.timezone('Asia/Chongqing')
+    local_format = "%Y-%m-%d %H:%M:%S"
+    utc_dt = datetime.datetime.strptime(utc_time_str, utc_format)
+    local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(local_tz)
+    time_str = local_dt.strftime(local_format)
+    return int(time.mktime(time.strptime(time_str, local_format)))
+
+
+def change_to_human(_size):
+    s = int(_size)
+    res = ""
+    if s > 1024 * 1024 * 1024:
+        res = str(round(1.0 * s / (1024 * 1024 * 1024), 1)) + "G"
+    elif s > 1024 * 1024:
+        res = str(round(1.0 * s / (1024 * 1024), 1)) + "M"
+    elif s > 1024:
+        res = str(round(1.0 * s / (1024), 1)) + "K"
+    else:
+        res = str(s)
+    return res
 
 
 class CosConfig(object):
@@ -486,6 +512,62 @@ class Interface(object):
             logger.warn(str(e))
             return False
         return False
+
+    def list_objects(self, cos_path, _recursive=False, _all=False, _num=100, _human=False):
+        NextMarker = ""
+        IsTruncated = "true"
+        Delimiter = "&delimiter=/"
+        if _recursive is True:
+            Delimiter = ""
+        if _all is True:
+            _num = -1
+        table = PrettyTable(["Path", "Size/Type", "Time"])
+        table.align = "l"
+        table.align['Size/Type'] = 'r'
+        table.padding_width = 3
+        table.header = False
+        self._file_num = 0
+        while IsTruncated == "true":
+            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}{delimiter}'.format(prefix=cos_path, nextmarker=NextMarker, delimiter=Delimiter))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            if rt.status_code == 200:
+                root = minidom.parseString(rt.content).documentElement
+                IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                if IsTruncated == 'true':
+                    NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+
+                logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                     code=rt.status_code,
+                     headers=rt.headers,
+                     text=to_printable_str(rt.text)))
+                folderset = root.getElementsByTagName("CommonPrefixes")
+                for _folder in folderset:
+                    _time = ""
+                    _type = "DIR"
+                    _path = _folder.getElementsByTagName("Prefix")[0].childNodes[0].data
+                    table.add_row([_path, _type, _time])
+                fileset = root.getElementsByTagName("Contents")
+                for _file in fileset:
+                    self._file_num += 1
+                    _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
+                    _time = time.localtime(utc_to_local(_time))
+                    _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
+                    _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
+                    if _human is True:
+                        _size = change_to_human(_size)
+                    _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
+                    table.add_row([_path, _size, _time])
+                    if self._file_num == _num:
+                        break
+                if self._file_num == _num:
+                    break
+            else:
+                logger.warn(response_info(rt))
+                return False
+        print table
+        if _all is False and self._file_num == _num:
+            logger.info("Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
+        return True
 
     def put_object_acl(self, grant_read, grant_write, grant_full_control, cos_path):
         acl = []
