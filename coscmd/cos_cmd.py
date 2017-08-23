@@ -206,6 +206,8 @@ class Op(object):
             return 0
         else:
             logger.warn(change_color("info failed!", color_red))
+=======
+>>>>>>> Add List (#35)
             return -1
 
     @staticmethod
@@ -352,12 +354,15 @@ def _main():
     parser_list.add_argument('-n', '--num', help='specify max num of files to list', type=int, default=100)
     parser_list.add_argument('--human', help='humanized display', action="store_true", default=False)
     parser_list.set_defaults(func=Op.list)
+<<<<<<< HEAD
 
     parser_info = sub_parser.add_parser("info", help="get the information of file on COS")
     parser_info.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_info.add_argument('--human', help='humanized display', action="store_true", default=False)
     parser_info.set_defaults(func=Op.info)
 
+=======
+>>>>>>> Add List (#35)
 #     parser_create_bucket = sub_parser.add_parser("createbucket", help='coscmd createbucket [-h]')
 #     parser_create_bucket.set_defaults(func=Op.create_bucket)
 #

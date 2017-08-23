@@ -573,6 +573,7 @@ class Interface(object):
         if _all is False and self._file_num == _num:
             logger.info("Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
         return True
+<<<<<<< HEAD
 
     def info_object(self, cos_path, _human=False):
         table = PrettyTable([cos_path, ""])
@@ -619,6 +620,8 @@ class Interface(object):
             logger.warn(str(e))
             return False
         return False
+=======
+>>>>>>> Add List (#35)
 
     def put_object_acl(self, grant_read, grant_write, grant_full_control, cos_path):
         acl = []
