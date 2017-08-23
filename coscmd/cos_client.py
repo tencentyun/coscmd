@@ -92,6 +92,18 @@ def utc_to_local(utc_time_str, utc_format='%Y-%m-%dT%H:%M:%S.000Z'):
     return int(time.mktime(time.strptime(time_str, local_format)))
 
 
+def change_to_human(_size):
+    s = int(_size)
+    res = ""
+    if s > 1024 * 1024 * 1024:
+        res = str(round(1.0 * s / (1024 * 1024 * 1024), 2)) + "GB"
+    elif s > 1024 * 1024:
+        res = str(round(1.0 * s / (1024 * 1024), 2)) + "MB"
+    elif s > 1024:
+        res = str(round(1.0 * s / (1024), 2)) + "KB"
+    return res
+
+
 class CosConfig(object):
 
     def __init__(self, appid, region, bucket, access_id, access_key, part_size=1, max_thread=5, *args, **kwargs):
@@ -499,7 +511,7 @@ class Interface(object):
             return False
         return False
 
-    def list_objects(self, cos_path, _recursive=False, _all=False, _num=100):
+    def list_objects(self, cos_path, _recursive=False, _all=False, _num=100, _human=False):
         NextMarker = ""
         IsTruncated = "true"
         Delimiter = "&delimiter=/"
@@ -538,6 +550,8 @@ class Interface(object):
                     _time = time.localtime(utc_to_local(_time))
                     _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
                     _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
+                    if _human is True:
+                        _size = change_to_human(_size)
                     _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
                     table.add_row([_path, _size, _time])
                     if self._file_num == _num:
