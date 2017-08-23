@@ -497,7 +497,6 @@ class Interface(object):
                     self._have_finished += len(file_list)
                 else:
                     for file_name in file_list:
-                        break
                         logger.info("delete {file} fail".format(file=to_printable_str(file_name)))
                     self._fail_num += len(file_list)
             else:
