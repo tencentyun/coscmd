@@ -96,11 +96,13 @@ def change_to_human(_size):
     s = int(_size)
     res = ""
     if s > 1024 * 1024 * 1024:
-        res = str(round(1.0 * s / (1024 * 1024 * 1024), 2)) + "GB"
+        res = str(round(1.0 * s / (1024 * 1024 * 1024), 1)) + "G"
     elif s > 1024 * 1024:
-        res = str(round(1.0 * s / (1024 * 1024), 2)) + "MB"
+        res = str(round(1.0 * s / (1024 * 1024), 1)) + "M"
     elif s > 1024:
-        res = str(round(1.0 * s / (1024), 2)) + "KB"
+        res = str(round(1.0 * s / (1024), 1)) + "K"
+    else:
+        res = str(s)
     return res
 
 
@@ -521,6 +523,7 @@ class Interface(object):
             _num = -1
         table = PrettyTable(["Path", "Size/Type", "Time"])
         table.align = "l"
+        table.align['Size/Type'] = 'r'
         table.padding_width = 3
         table.header = False
         self._file_num = 0
