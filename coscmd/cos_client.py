@@ -570,10 +570,9 @@ class Interface(object):
         return True
 
     def info_object(self, cos_path, _human=False):
-        table = PrettyTable(["1", "2"])
+        table = PrettyTable([cos_path, ""])
         table.align = "l"
         table.padding_width = 3
-        table.header = False
         url = self._conf.uri(path=cos_path)
         logger.info("info with : " + url)
         try:
@@ -587,9 +586,25 @@ class Interface(object):
                     _size = change_to_human(_size)
                 _time = time.localtime(utc_to_local(rt.headers['Last-Modified'], '%a, %d %b %Y %H:%M:%S GMT'))
                 _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
-                table.add_row(['Name', cos_path])
-                table.add_row(['Size', _size])
-                table.add_row(['Last-Modified', _time])
+                table.add_row(['File size', _size])
+                table.add_row(['Last mod', _time])
+                url = self._conf.uri(cos_path+"?acl")
+                try:
+                    rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+                    logger.debug("get resp, status code: {code}, headers: {headers}".format(
+                         code=rt.status_code,
+                         headers=rt.headers))
+                    if rt.status_code == 200:
+                        root = minidom.parseString(rt.content).documentElement
+                        grants = root.getElementsByTagName("Grant")
+                        for grant in grants:
+                            table.add_row(['ACL', ("%s: %s" %
+                                                   (grant.getElementsByTagName("ID")[0].childNodes[0].data, grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
+                    else:
+                        logger.warn(response_info(rt))
+                except Exception as e:
+                    logger.warn(str(e))
+                    return False
                 print table
                 return True
             else:
