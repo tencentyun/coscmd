@@ -344,7 +344,7 @@ class Interface(object):
             result = pool.get_result()
             self._pbar.close()
             if result['success_all']:
-                    return True
+                return True
             else:
                 return False
 
