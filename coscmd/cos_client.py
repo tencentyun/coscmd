@@ -77,7 +77,7 @@ def response_info(rt):
         root = minidom.parseString(rt.content).documentElement
         message = root.getElementsByTagName("Message")[0].childNodes[0].data
     except Exception:
-        message = "unknown error"
+        message = "Not Found"
     return ("error: [code {code}] {message}".format(
                      code=code,
                      message=to_printable_str(message)))
@@ -568,6 +568,52 @@ class Interface(object):
         if _all is False and self._file_num == _num:
             logger.info("Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
         return True
+
+    def info_object(self, cos_path, _human=False):
+        table = PrettyTable([cos_path, ""])
+        table.align = "l"
+        table.padding_width = 3
+        url = self._conf.uri(path=cos_path)
+        logger.info("info with : " + url)
+        try:
+            rt = self._session.head(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            logger.debug("info resp, status code: {code}, headers: {headers}".format(
+                 code=rt.status_code,
+                 headers=rt.headers))
+            if rt.status_code == 200:
+                _size = rt.headers['Content-Length']
+                if _human is True:
+                    _size = change_to_human(_size)
+                _time = time.localtime(utc_to_local(rt.headers['Last-Modified'], '%a, %d %b %Y %H:%M:%S GMT'))
+                _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
+                table.add_row(['File size', _size])
+                table.add_row(['Last mod', _time])
+                url = self._conf.uri(cos_path+"?acl")
+                try:
+                    rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+                    logger.debug("get resp, status code: {code}, headers: {headers}".format(
+                         code=rt.status_code,
+                         headers=rt.headers))
+                    if rt.status_code == 200:
+                        root = minidom.parseString(rt.content).documentElement
+                        grants = root.getElementsByTagName("Grant")
+                        for grant in grants:
+                            table.add_row(['ACL', ("%s: %s" %
+                                                   (grant.getElementsByTagName("ID")[0].childNodes[0].data, grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
+                    else:
+                        logger.warn(response_info(rt))
+                except Exception as e:
+                    logger.warn(str(e))
+                    return False
+                print table
+                return True
+            else:
+                logger.warn(response_info(rt))
+                return False
+        except Exception as e:
+            logger.warn(str(e))
+            return False
+        return False
 
     def put_object_acl(self, grant_read, grant_write, grant_full_control, cos_path):
         acl = []
