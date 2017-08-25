@@ -250,7 +250,6 @@ class Interface(object):
             self._have_uploaded = []
             self._upload_id = None
             self._path_md5 = get_md5_filename(local_path, cos_path)
-            self._pbar = tqdm(total=100)
             logger.debug("init with : " + url)
             if os.path.isfile(self._path_md5):
                 with open(self._path_md5, 'rb') as f:
@@ -298,12 +297,7 @@ class Interface(object):
                     self._md5[idx] = rt.headers[self._etag][1:-1]
                     if rt.status_code == 200:
                         self._have_finished += 1
-<<<<<<< HEAD
                         self._pbar.update(length)
-=======
-                        self._pbar.update(1)
-                        #logger.info("upload {file} with {per}%".format(file=to_printable_str(local_path), per="{0:5.2f}".format(100.0*self._have_finished/parts_size)))
->>>>>>> Add view-bar
                         break
                     else:
                         logger.warn(response_info(rt))
