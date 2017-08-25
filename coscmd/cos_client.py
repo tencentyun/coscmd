@@ -14,6 +14,7 @@ import base64
 import binascii
 import datetime
 import pytz
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 fs_coding = sys.getfilesystemencoding()
@@ -155,6 +156,7 @@ class Interface(object):
         self._path_md5 = ""
         self._have_uploaded = []
         self._etag = 'ETag'
+        self._pbar = ''
         if session is None:
             self._session = requests.session()
         else:
@@ -295,7 +297,7 @@ class Interface(object):
                     self._md5[idx] = rt.headers[self._etag][1:-1]
                     if rt.status_code == 200:
                         self._have_finished += 1
-                        logger.info("upload {file} with {per}%".format(file=to_printable_str(local_path), per="{0:5.2f}".format(100.0*self._have_finished/parts_size)))
+                        self._pbar.update(100.0/parts_size)
                         break
                     else:
                         logger.warn(response_info(rt))
@@ -323,7 +325,9 @@ class Interface(object):
             logger.debug("chunk_size: " + str(chunk_size))
             logger.debug('upload file concurrently')
             logger.info("uploading {file}".format(file=to_printable_str(local_path)))
-            if chunk_size >= file_size:
+            self._pbar = tqdm(total=100.0)
+	    self._pbar.update(100.0 * self._have_finished / parts_num)
+	    if chunk_size >= file_size:
                 pool.add_task(multiupload_parts_data, local_path, offset, file_size, 1, 0)
             else:
                 for i in range(parts_num):
@@ -336,6 +340,7 @@ class Interface(object):
                         pool.add_task(multiupload_parts_data, local_path, offset, chunk_size, parts_num, i+1)
                         offset += chunk_size
             pool.wait_completion()
+            self._pbar.close()
             result = pool.get_result()
             if result['success_all']:
                 return True
