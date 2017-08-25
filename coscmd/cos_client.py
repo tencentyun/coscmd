@@ -297,7 +297,7 @@ class Interface(object):
                     self._md5[idx] = rt.headers[self._etag][1:-1]
                     if rt.status_code == 200:
                         self._have_finished += 1
-                        self._pbar.update(100.0/parts_size)
+                        self._pbar.update(length)
                         break
                     else:
                         logger.warn(response_info(rt))
@@ -325,14 +325,14 @@ class Interface(object):
             logger.debug("chunk_size: " + str(chunk_size))
             logger.debug('upload file concurrently')
             logger.info("uploading {file}".format(file=to_printable_str(local_path)))
-            self._pbar = tqdm(total=100.0)
-	    self._pbar.update(100.0 * self._have_finished / parts_num)
-	    if chunk_size >= file_size:
+            self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
+            if chunk_size >= file_size:
                 pool.add_task(multiupload_parts_data, local_path, offset, file_size, 1, 0)
             else:
                 for i in range(parts_num):
                     if(str(i+1) in self._have_uploaded):
                         offset += chunk_size
+                        self._pbar.update(chunk_size)
                         continue
                     if i+1 == parts_num:
                         pool.add_task(multiupload_parts_data, local_path, offset, file_size-offset, parts_num, i+1)
@@ -340,10 +340,10 @@ class Interface(object):
                         pool.add_task(multiupload_parts_data, local_path, offset, chunk_size, parts_num, i+1)
                         offset += chunk_size
             pool.wait_completion()
-            self._pbar.close()
             result = pool.get_result()
+            self._pbar.close()
             if result['success_all']:
-                return True
+                    return True
             else:
                 return False
 
