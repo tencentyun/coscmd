@@ -180,8 +180,6 @@ class Op(object):
         if args.recursive:
             if args.cos_path.endswith('/') is False:
                 args.cos_path += '/'
-            if args.local_path.endswith('/') is False:
-                args.local_path += '/'
             if Interface.delete_folder(args.cos_path):
                 logger.info(change_color("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)), color_green))
                 return 0
