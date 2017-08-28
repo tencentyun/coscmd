@@ -415,10 +415,47 @@ class Interface(object):
             logger.warn("complete multipart upload failed")
             return False
 
-    def download_file(self, local_path, cos_path):
+    def download_folder(self, cos_path, local_path, _force):
+        NextMarker = ""
+        IsTruncated = "true"
+        self._file_num = 0
+        self._have_finished = 0
+        self._fail_num = 0
+        while IsTruncated == "true":
+            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'.format(prefix=cos_path, nextmarker=NextMarker))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            if rt.status_code == 200:
+                root = minidom.parseString(rt.content).documentElement
+                IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                if IsTruncated == 'true':
+                    NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+                fileset = root.getElementsByTagName("Contents")
+                for _file in fileset:
+                    self._file_num += 1
+                    _cos_path = _file.getElementsByTagName("Key")[0].childNodes[0].data
+                    _local_path = local_path + _cos_path[len(cos_path):]
+                    if self.download_file(_cos_path, _local_path, _force) is True:
+                        logger.info("download {file}".format(file=to_printable_str(_cos_path)))
+                        self._have_finished += 1
+                    else:
+                        logger.info("download {file} fail".format(file=to_printable_str(_cos_path)))
+                        self._fail_num += 1
+            else:
+                logger.warn(response_info(rt))
+                return False
+        logger.info("{files} files successful, {fail_files} files failed"
+                    .format(files=self._have_finished, fail_files=self._fail_num))
+        if self._file_num == self._have_finished:
+            return True
+        else:
+            return False
 
+    def download_file(self, cos_path, local_path, _force):
+        if _force is False and os.path.isfile(local_path) is True:
+            logger.warn("The file already exists, please use -f to overwrite the file")
+            return False
         url = self._conf.uri(path=cos_path)
-        logger.info("download with : " + url)
+        logger.debug("download with : " + url)
         try:
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             logger.debug("get resp, status code: {code}, headers: {headers}".format(
@@ -431,6 +468,13 @@ class Interface(object):
                 raise IOError("download failed without Content-Length header")
             if rt.status_code == 200:
                 file_len = 0
+                dir_path = os.path.dirname(local_path)
+                if os.path.isdir(dir_path) is False:
+                    try:
+                        os.makedirs(dir_path)
+                    except Exception as e:
+                        logger.warn(str(e))
+                        return False
                 with open(local_path, 'wb') as f:
                     for chunk in rt.iter_content(chunk_size=1024):
                         if chunk:
@@ -447,12 +491,9 @@ class Interface(object):
             logger.warn(str(e))
         return False
 
-    def delete_folder(self, cos_path):
+    def delete_folder(self, cos_path, _force):
 
         cos_path = to_unicode(cos_path)
-        if len(cos_path) > 0:
-            if cos_path[-1] != '/':
-                cos_path += '/'
         # make sure
         if query_yes_no("WARN: you are deleting all files under cos_path '{cos_path}', please make sure".format(cos_path=cos_path)) is False:
             return False
@@ -509,7 +550,7 @@ class Interface(object):
                 logger.warn(response_info(rt))
                 logger.debug("get folder error")
                 return False
-        logger.info("{files} files deleted, {fail_files} files fail"
+        logger.info("{files} files successful, {fail_files} files failed"
                     .format(files=self._have_finished, fail_files=self._fail_num))
         if self._file_num == self._have_finished:
             return True
