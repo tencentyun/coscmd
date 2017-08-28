@@ -445,6 +445,9 @@ class Interface(object):
                 return False
         logger.info("{files} files successful, {fail_files} files failed"
                     .format(files=self._have_finished, fail_files=self._fail_num))
+        if self._file_num == 0:
+            logger.info("The directory does not exist")
+            return False
         if self._file_num == self._have_finished:
             return True
         else:
@@ -552,6 +555,9 @@ class Interface(object):
                 return False
         logger.info("{files} files successful, {fail_files} files failed"
                     .format(files=self._have_finished, fail_files=self._fail_num))
+        if self._file_num == 0:
+            logger.info("The directory does not exist")
+            return False
         if self._file_num == self._have_finished:
             return True
         else:
