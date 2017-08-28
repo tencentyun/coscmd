@@ -443,11 +443,11 @@ class Interface(object):
             else:
                 logger.warn(response_info(rt))
                 return False
-        logger.info("{files} files successful, {fail_files} files failed"
-                    .format(files=self._have_finished, fail_files=self._fail_num))
         if self._file_num == 0:
             logger.info("The directory does not exist")
             return False
+        logger.info("{files} files successful, {fail_files} files failed"
+                    .format(files=self._have_finished, fail_files=self._fail_num))
         if self._file_num == self._have_finished:
             return True
         else:
@@ -494,7 +494,7 @@ class Interface(object):
             logger.warn(str(e))
         return False
 
-    def delete_folder(self, cos_path, _force):
+    def delete_folder(self, cos_path):
 
         cos_path = to_unicode(cos_path)
         # make sure
@@ -553,11 +553,11 @@ class Interface(object):
                 logger.warn(response_info(rt))
                 logger.debug("get folder error")
                 return False
-        logger.info("{files} files successful, {fail_files} files failed"
-                    .format(files=self._have_finished, fail_files=self._fail_num))
         if self._file_num == 0:
             logger.info("The directory does not exist")
             return False
+        logger.info("{files} files successful, {fail_files} files failed"
+                    .format(files=self._have_finished, fail_files=self._fail_num))
         if self._file_num == self._have_finished:
             return True
         else:
