@@ -416,11 +416,21 @@ class Interface(object):
             return False
 
     def download_folder(self, cos_path, local_path, _force):
+
+        def download_file(_cos_path, _local_path, _force):
+            if self.download_file(_cos_path, _local_path, _force) is True:
+                logger.info("download {file}".format(file=to_printable_str(_cos_path)))
+                self._have_finished += 1
+            else:
+                logger.info("download {file} fail".format(file=to_printable_str(_cos_path)))
+                self._fail_num += 1
+
         NextMarker = ""
         IsTruncated = "true"
         self._file_num = 0
         self._have_finished = 0
         self._fail_num = 0
+        pool = SimpleThreadPool(self._conf._max_thread)
         while IsTruncated == "true":
             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'.format(prefix=cos_path, nextmarker=NextMarker))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
@@ -434,15 +444,11 @@ class Interface(object):
                     self._file_num += 1
                     _cos_path = _file.getElementsByTagName("Key")[0].childNodes[0].data
                     _local_path = local_path + _cos_path[len(cos_path):]
-                    if self.download_file(_cos_path, _local_path, _force) is True:
-                        logger.info("download {file}".format(file=to_printable_str(_cos_path)))
-                        self._have_finished += 1
-                    else:
-                        logger.info("download {file} fail".format(file=to_printable_str(_cos_path)))
-                        self._fail_num += 1
+                    pool.add_task(download_file, _cos_path, _local_path, _force)
             else:
                 logger.warn(response_info(rt))
                 return False
+        pool.wait_completion()
         if self._file_num == 0:
             logger.info("The directory does not exist")
             return False
