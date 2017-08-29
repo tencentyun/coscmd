@@ -81,21 +81,6 @@ def load_conf():
 
 class Op(object):
     @staticmethod
-    def signurl(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        while args.cos_path.startswith('/'):
-            args.cos_path = args.cos_path[1:]
-        try:
-            Interface = client.op_int()
-            rt = Interface.sign_url(args.cos_path, args.timeout)
-            logger.info(rt)
-            return True
-        except Exception as e:
-            logger.warn('geturl failed')
-            return False
-
-    @staticmethod
     def upload(args):
         conf = load_conf()
         client = CosS3Client(conf)
@@ -224,6 +209,21 @@ class Op(object):
             return -1
 
     @staticmethod
+    def signurl(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        while args.cos_path.startswith('/'):
+            args.cos_path = args.cos_path[1:]
+        try:
+            Interface = client.op_int()
+            rt = Interface.sign_url(args.cos_path, args.timeout)
+            logger.info(rt)
+            return True
+        except Exception as e:
+            logger.warn('geturl failed')
+            return False
+
+    @staticmethod
     def put_object_acl(args):
         conf = load_conf()
         client = CosS3Client(conf)
@@ -344,11 +344,6 @@ def _main():
     parser_config.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1)
     parser_config.set_defaults(func=config)
 
-    parser_signurl = sub_parser.add_parser("signurl", help="get download url")
-    parser_signurl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_signurl.add_argument('-t', '--timeout', help='specify the signature valid time', type=int, default=10000)
-    parser_signurl.set_defaults(func=Op.signurl)
-
     parser_upload = sub_parser.add_parser("upload", help="upload file or directory to COS.")
     parser_upload.add_argument('local_path', help="local file path as /tmp/a.txt or directory", type=str)
     parser_upload.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
@@ -377,6 +372,11 @@ def _main():
     parser_info.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_info.add_argument('--human', help='humanized display', action="store_true", default=False)
     parser_info.set_defaults(func=Op.info)
+
+    parser_signurl = sub_parser.add_parser("signurl", help="get download url")
+    parser_signurl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_signurl.add_argument('-t', '--timeout', help='specify the signature valid time', type=int, default=10000)
+    parser_signurl.set_defaults(func=Op.signurl)
 
 #     parser_create_bucket = sub_parser.add_parser("createbucket", help='coscmd createbucket [-h]')
 #     parser_create_bucket.set_defaults(func=Op.create_bucket)
