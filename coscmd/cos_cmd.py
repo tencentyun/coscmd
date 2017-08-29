@@ -15,6 +15,7 @@ fs_coding = sys.getfilesystemencoding()
 color_red = "31"
 color_green = "32"
 color_yello = "33"
+res = -1
 
 
 def to_printable_str(s):
@@ -330,33 +331,7 @@ class Op(object):
             return -1
 
 
-def main_thread():
-    mainthread = Thread()
-    mainthread.start()
-
-    import time
-    try:
-        while True:
-            time.sleep(3)
-
-    except KeyboardInterrupt:
-        sys.exit()
-
-    mainthread.stop()
-    state = mainthread.status()
-    print 'summary:\n ', 'failed: ', state['fail'], ' success: ', state['success']
-
-
-def _main():
-
-    thread_ = Thread(target=main_thread)
-    thread_.daemon = True
-    thread_.start()
-#     try:
-#         while thread_.is_alive():
-#             thread_.join(2)
-#     except KeyboardInterrupt:
-#         print 'exiting'
+def command_thread():
     desc = """an easy-to-use but powerful command-line tool.
               try \'coscmd -h\' to get more informations.
               try \'coscmd sub-command -h\' to learn all command usage, likes \'coscmd upload -h\'"""
@@ -450,8 +425,39 @@ def _main():
     else:
         coloredlogs.install(level='INFO', logger=logger, fmt='%(message)s')
 
-    return args.func(args)
+    res = args.func(args)
+    return res
+
+
+def main_thread():
+    mainthread = Thread()
+    mainthread.start()
+    thread_ = Thread(target=command_thread)
+    thread_.start()
+    import time
+    try:
+        while True:
+            time.sleep(1)
+            if thread_.is_alive() is False:
+                break
+    except KeyboardInterrupt:
+        mainthread.stop()
+        thread_.stop()
+        sys.exit()
+
+
+def _main():
+
+    thread_ = Thread(target=main_thread)
+    thread_.daemon = True
+    thread_.start()
+    try:
+        while thread_.is_alive():
+            thread_.join(2)
+    except KeyboardInterrupt:
+        print 'exiting'
 
 
 if __name__ == '__main__':
-    sys.exit(_main())
+    _main()
+    sys.exit(res)
