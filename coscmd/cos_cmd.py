@@ -6,6 +6,7 @@ import sys
 import logging
 import coloredlogs
 import os
+from threading import Thread
 
 logger = logging.getLogger(__name__)
 
@@ -329,8 +330,33 @@ class Op(object):
             return -1
 
 
+def main_thread():
+    mainthread = Thread()
+    mainthread.start()
+
+    import time
+    try:
+        while True:
+            time.sleep(3)
+
+    except KeyboardInterrupt:
+        sys.exit()
+
+    mainthread.stop()
+    state = mainthread.status()
+    print 'summary:\n ', 'failed: ', state['fail'], ' success: ', state['success']
+
+
 def _main():
 
+    thread_ = Thread(target=main_thread)
+    thread_.daemon = True
+    thread_.start()
+#     try:
+#         while thread_.is_alive():
+#             thread_.join(2)
+#     except KeyboardInterrupt:
+#         print 'exiting'
     desc = """an easy-to-use but powerful command-line tool.
               try \'coscmd -h\' to get more informations.
               try \'coscmd sub-command -h\' to learn all command usage, likes \'coscmd upload -h\'"""
