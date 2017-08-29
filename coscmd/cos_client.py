@@ -15,6 +15,7 @@ import base64
 import binascii
 import datetime
 import pytz
+from urllib import quote
 from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
@@ -162,6 +163,14 @@ class Interface(object):
             self._session = requests.session()
         else:
             self._session = session
+
+    def sign_url(self, cos_path, timeout=10000):
+        url = self._conf.uri(path=cos_path)
+        s = requests.Session()
+        req = requests.Request('GET',  url)
+        prepped = s.prepare_request(req)
+        signature = CosS3Auth(self._conf._access_id, self._conf._access_key, timeout).__call__(prepped).headers['Authorization']
+        return url + '?sign=' + quote(signature)
 
     def list_part(self, cos_path):
         logger.debug("getting uploaded parts")
