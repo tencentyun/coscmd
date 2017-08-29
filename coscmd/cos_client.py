@@ -2,12 +2,12 @@
 from cos_auth import CosS3Auth
 from cos_threadpool import SimpleThreadPool
 from prettytable import PrettyTable
-import time
-import requests
 from os import path
 from contextlib import closing
 from xml.dom import minidom
 from hashlib import md5
+import time
+import requests
 import logging
 import sys
 import os
