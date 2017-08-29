@@ -6,6 +6,7 @@ import sys
 import logging
 import coloredlogs
 import os
+from threading import Thread
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +15,7 @@ fs_coding = sys.getfilesystemencoding()
 color_red = "31"
 color_green = "32"
 color_yello = "33"
+res = -1
 
 
 def to_printable_str(s):
@@ -104,9 +106,12 @@ class Op(object):
             if os.path.isfile(args.local_path) is True:
                 rt = Interface.upload_file(args.local_path, args.cos_path)
             elif os.path.isdir(args.local_path):
+                if args.cos_path.endswith('/') is False:
+                    args.cos_path += '/'
+                if args.local_path.endswith('/') is False:
+                    args.local_path += '/'
                 rt = Interface.upload_folder(args.local_path, args.cos_path)
-                logger.info("upload all files under \"{file}\" directory finished".format(file=to_printable_str(args.local_path)))
-                logger.info("{folders} folders, {files} files uploaded, {fail_files} files failed"
+                logger.info("{folders} folders, {files} files successful, {fail_files} files failed"
                             .format(folders=Interface._folder_num, files=Interface._file_num, fail_files=Interface._fail_num))
             if rt:
                 logger.info(change_color("upload all files under \"{file}\" directory successfully".format(file=to_printable_str(args.local_path)), color_green))
@@ -142,12 +147,26 @@ class Op(object):
         if not isinstance(args. cos_path, unicode):
             args.cos_path = args.cos_path.decode(fs_coding)
 
-        if Interface.download_file(args.local_path, args.cos_path):
-            logger.info(change_color("download {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)), color_green))
-            return 0
+        if args.recursive:
+            if args.cos_path.endswith('/') is False:
+                args.cos_path += '/'
+            if args.local_path.endswith('/') is False:
+                args.local_path += '/'
+            rt = Interface.download_folder(args.cos_path, args.local_path, args.force)
+            if rt:
+                logger.info(change_color("download all files under \"{file}\" directory successfully".format(file=to_printable_str(args.cos_path)), color_green))
+                return 0
+            else:
+                logger.warn(change_color("download all files under \"{file}\" directory failed".format(file=to_printable_str(args.cos_path)), color_red))
+                return -1
         else:
-            logger.warn(change_color("download {cos_path} fail!".format(cos_path=to_printable_str(args.cos_path)), color_red))
-            return -1
+            if Interface.download_file(args.cos_path, args.local_path, args.force) is True:
+                logger.info(change_color("download \"{file}\" successfully".format(file=to_printable_str(args.cos_path)), color_green))
+                return 0
+            else:
+                logger.warn(change_color("download \"{file}\" failed".format(file=to_printable_str(args.cos_path)), color_red))
+                return -1
+        return -1
 
     @staticmethod
     def delete(args):
@@ -161,6 +180,8 @@ class Op(object):
             args.cos_path = args.cos_path.decode(fs_coding)
 
         if args.recursive:
+            if args.cos_path.endswith('/') is False:
+                args.cos_path += '/'
             if Interface.delete_folder(args.cos_path):
                 logger.info(change_color("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)), color_green))
                 return 0
@@ -325,8 +346,7 @@ class Op(object):
             return -1
 
 
-def _main():
-
+def command_thread():
     desc = """an easy-to-use but powerful command-line tool.
               try \'coscmd -h\' to get more informations.
               try \'coscmd sub-command -h\' to learn all command usage, likes \'coscmd upload -h\'"""
@@ -353,6 +373,8 @@ def _main():
     parser_download = sub_parser.add_parser("download", help="download file from COS to local.")
     parser_download.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_download.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
+    parser_download.add_argument('-f', '--force', help="Overwrite the saved files", action="store_true", default=False)
+    parser_download.add_argument('-r', '--recursive', help="download recursively when upload directory", action="store_true", default=False)
     parser_download.set_defaults(func=Op.download)
 
     parser_delete = sub_parser.add_parser("delete", help="delete file or files on COS")
@@ -423,8 +445,39 @@ def _main():
     else:
         coloredlogs.install(level='INFO', logger=logger, fmt='%(message)s')
 
-    return args.func(args)
+    res = args.func(args)
+    return res
+
+
+def main_thread():
+    mainthread = Thread()
+    mainthread.start()
+    thread_ = Thread(target=command_thread)
+    thread_.start()
+    import time
+    try:
+        while True:
+            time.sleep(1)
+            if thread_.is_alive() is False:
+                break
+    except KeyboardInterrupt:
+        mainthread.stop()
+        thread_.stop()
+        sys.exit()
+
+
+def _main():
+
+    thread_ = Thread(target=main_thread)
+    thread_.daemon = True
+    thread_.start()
+    try:
+        while thread_.is_alive():
+            thread_.join(2)
+    except KeyboardInterrupt:
+        print 'exiting'
 
 
 if __name__ == '__main__':
-    sys.exit(_main())
+    _main()
+    sys.exit(res)
