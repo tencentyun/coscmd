@@ -468,7 +468,7 @@ class Interface(object):
         else:
             return False
 
-    def download_file(self, cos_path, local_path, _force):
+    def download_file(self, cos_path, local_path, _force=False):
         if _force is False and os.path.isfile(local_path) is True:
             logger.warn("The file {file} already exists, please use -f to overwrite the file".format(file=cos_path))
             return False
