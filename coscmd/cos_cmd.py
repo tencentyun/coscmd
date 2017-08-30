@@ -182,6 +182,8 @@ class Op(object):
         if args.recursive:
             if args.cos_path.endswith('/') is False:
                 args.cos_path += '/'
+            if args.cos_path == '/':
+                args.cos_path = ''
             if Interface.delete_folder(args.cos_path):
                 logger.info(change_color("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)), color_green))
                 return 0
@@ -378,7 +380,7 @@ def command_thread():
     parser_download.set_defaults(func=Op.download)
 
     parser_delete = sub_parser.add_parser("delete", help="delete file or files on COS")
-    parser_delete.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_delete.add_argument("cos_path", nargs='?', help="cos_path as a/b.txt", type=str, default='')
     parser_delete.add_argument('-r', '--recursive', help="delete files recursively, WARN: all files with the prefix will be deleted!", action="store_true", default=False)
     parser_delete.set_defaults(func=Op.delete)
 
