@@ -495,7 +495,7 @@ class Interface(object):
                 with open(local_path, 'wb') as f:
                     for chunk in rt.iter_content(chunk_size=1024):
                         if chunk:
-                            self._pbar.update(chunk)
+                            self._pbar.update(len(chunk))
                             file_len += len(chunk)
                             f.write(chunk)
                     f.flush()
