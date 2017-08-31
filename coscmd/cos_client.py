@@ -350,7 +350,6 @@ class Interface(object):
                         pool.add_task(multiupload_parts_data, local_path, offset, chunk_size, parts_num, i+1)
                         offset += chunk_size
             pool.wait_completion()
-            self._pbar.close()
             result = pool.get_result()
             self._pbar.close()
             if result['success_all']:
