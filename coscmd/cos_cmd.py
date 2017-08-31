@@ -15,7 +15,7 @@ fs_coding = sys.getfilesystemencoding()
 color_red = "31"
 color_green = "32"
 color_yello = "33"
-res = -1
+global res
 
 
 def to_printable_str(s):
@@ -182,6 +182,8 @@ class Op(object):
         if args.recursive:
             if args.cos_path.endswith('/') is False:
                 args.cos_path += '/'
+            if args.cos_path == '/':
+                args.cos_path = ''
             if Interface.delete_folder(args.cos_path):
                 logger.info(change_color("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)), color_green))
                 return 0
@@ -347,6 +349,8 @@ class Op(object):
 
 
 def command_thread():
+    global res
+    res = -1
     desc = """an easy-to-use but powerful command-line tool.
               try \'coscmd -h\' to get more informations.
               try \'coscmd sub-command -h\' to learn all command usage, likes \'coscmd upload -h\'"""
@@ -378,7 +382,7 @@ def command_thread():
     parser_download.set_defaults(func=Op.download)
 
     parser_delete = sub_parser.add_parser("delete", help="delete file or files on COS")
-    parser_delete.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_delete.add_argument("cos_path", nargs='?', help="cos_path as a/b.txt", type=str, default='')
     parser_delete.add_argument('-r', '--recursive', help="delete files recursively, WARN: all files with the prefix will be deleted!", action="store_true", default=False)
     parser_delete.set_defaults(func=Op.delete)
 
@@ -480,4 +484,5 @@ def _main():
 
 if __name__ == '__main__':
     _main()
+    global res
     sys.exit(res)
