@@ -335,7 +335,7 @@ class Interface(object):
             logger.debug("chunk_size: " + str(chunk_size))
             logger.debug('upload file concurrently')
             logger.info("uploading {file}".format(file=to_printable_str(local_path)))
-            self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
+            self._pbar = tqdm(total=file_size, unit='B', unit_scale=True, unit_divisor=1024)
             if chunk_size >= file_size:
                 pool.add_task(multiupload_parts_data, local_path, offset, file_size, 1, 0)
             else:
