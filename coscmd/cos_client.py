@@ -474,36 +474,38 @@ class Interface(object):
         url = self._conf.uri(path=cos_path)
         logger.debug("download with : " + url)
         try:
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
-            logger.debug("get resp, status code: {code}, headers: {headers}".format(
-                 code=rt.status_code,
-                 headers=rt.headers))
-
-            if 'Content-Length' in rt.headers:
-                content_len = int(rt.headers['Content-Length'])
-            else:
-                raise IOError("download failed without Content-Length header")
-            if rt.status_code == 200:
-                file_len = 0
-                dir_path = os.path.dirname(local_path)
-                if os.path.isdir(dir_path) is False:
-                    try:
-                        os.makedirs(dir_path)
-                    except Exception as e:
-                        logger.warn(str(e))
-                        return False
-                with open(local_path, 'wb') as f:
-                    for chunk in rt.iter_content(chunk_size=1024):
-                        if chunk:
-                            file_len += len(chunk)
-                            f.write(chunk)
-                    f.flush()
-                if file_len != content_len:
-                    raise IOError("download failed with incomplete file")
-                return True
-            else:
-                logger.warn(response_info(rt))
-                return False
+            with self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), stream=True) as rt:
+                logger.debug("get resp, status code: {code}, headers: {headers}".format(
+                     code=rt.status_code,
+                     headers=rt.headers))
+                if 'Content-Length' in rt.headers:
+                    content_len = int(rt.headers['Content-Length'])
+                else:
+                    raise IOError("download failed without Content-Length header")
+                self._pbar = tqdm(total=content_len, unit='B', unit_scale=True, unit_divisor=1024)
+                if rt.status_code == 200:
+                    file_len = 0
+                    dir_path = os.path.dirname(local_path)
+                    if os.path.isdir(dir_path) is False:
+                        try:
+                            os.makedirs(dir_path)
+                        except Exception as e:
+                            logger.warn(str(e))
+                            return False
+                    with open(local_path, 'wb') as f:
+                        for chunk in rt.iter_content(chunk_size=1024):
+                            if chunk:
+                                self._pbar.update(chunk)
+                                file_len += len(chunk)
+                                f.write(chunk)
+                        f.flush()
+                    if file_len != content_len:
+                        raise IOError("download failed with incomplete file")
+                    self._pbar.close()
+                    return True
+                else:
+                    logger.warn(response_info(rt))
+                    return False
         except Exception as e:
             logger.warn(str(e))
         return False
