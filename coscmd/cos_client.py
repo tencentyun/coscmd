@@ -15,7 +15,7 @@ import base64
 import binascii
 import datetime
 import pytz
-from urllib import quote
+import urllib
 from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
@@ -176,6 +176,7 @@ class Interface(object):
         logger.debug("getting uploaded parts")
         NextMarker = ""
         IsTruncated = "true"
+        cos_path = to_printable_str(cos_path)
         while IsTruncated == "true":
             url = self._conf.uri(path=cos_path+'?uploadId={UploadId}&upload&max-parts=1000&part-number-marker={nextmarker}'.format(UploadId=self._upload_id, nextmarker=NextMarker))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
@@ -438,6 +439,7 @@ class Interface(object):
         self._file_num = 0
         self._have_finished = 0
         self._fail_num = 0
+        cos_path = to_printable_str(cos_path)
         pool = SimpleThreadPool(self._conf._max_thread)
         while IsTruncated == "true":
             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'.format(prefix=cos_path, nextmarker=NextMarker))
@@ -611,6 +613,7 @@ class Interface(object):
         table.padding_width = 3
         table.header = False
         self._file_num = 0
+        cos_path = to_printable_str(cos_path)
         while IsTruncated == "true":
             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}{delimiter}'.format(prefix=cos_path, nextmarker=NextMarker, delimiter=Delimiter))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
@@ -659,6 +662,7 @@ class Interface(object):
         table.padding_width = 3
         url = self._conf.uri(path=cos_path)
         logger.info("info with : " + url)
+        cos_path = to_printable_str(cos_path)
         try:
             rt = self._session.head(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             logger.debug("info resp, status code: {code}, headers: {headers}".format(
