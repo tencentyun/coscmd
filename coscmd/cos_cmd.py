@@ -15,7 +15,7 @@ fs_coding = sys.getfilesystemencoding()
 color_red = "31"
 color_green = "32"
 color_yello = "33"
-res = -1
+global res
 
 
 def to_printable_str(s):
@@ -349,6 +349,8 @@ class Op(object):
 
 
 def command_thread():
+    global res
+    res = -1
     desc = """an easy-to-use but powerful command-line tool.
               try \'coscmd -h\' to get more informations.
               try \'coscmd sub-command -h\' to learn all command usage, likes \'coscmd upload -h\'"""
@@ -482,4 +484,5 @@ def _main():
 
 if __name__ == '__main__':
     _main()
+    global res
     sys.exit(res)
