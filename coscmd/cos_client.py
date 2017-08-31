@@ -486,7 +486,7 @@ class Interface(object):
             if rt.status_code == 200:
                 file_len = 0
                 dir_path = os.path.dirname(local_path)
-                if os.path.isdir(dir_path) is False:
+                if os.path.isdir(dir_path) is False and dir_path != '':
                     try:
                         os.makedirs(dir_path)
                     except Exception as e:
