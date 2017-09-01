@@ -480,7 +480,9 @@ def _main():
             thread_.join(2)
     except KeyboardInterrupt:
         print 'exiting'
-
+        return 1
+    global res
+    return res
 
 if __name__ == '__main__':
     _main()
