@@ -482,8 +482,8 @@ class Interface(object):
                 content_len = int(rt.headers['Content-Length'])
             else:
                 raise IOError("download failed without Content-Length header")
-            self._pbar = tqdm(total=content_len, unit='B', unit_scale=True, unit_divisor=1024)
             if rt.status_code == 200:
+                self._pbar = tqdm(total=content_len, unit='B', unit_scale=True, unit_divisor=1024)
                 file_len = 0
                 dir_path = os.path.dirname(local_path)
                 if os.path.isdir(dir_path) is False and dir_path != '':
