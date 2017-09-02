@@ -2,6 +2,7 @@
 import cos_client
 import logging
 import random
+import shutil
 import sys
 import os
 reload(sys)
@@ -72,6 +73,33 @@ def test_delete_file():
     sys.stdout.flush()
     rt = op_int.delete_file(file_name)
     assert rt
+
+
+def test_upload_folder():
+    if os.path.isdir('testfolder') is False:
+        os.mkdir('testfolder')
+    gen_file('testfolder/1', 1.1)
+    gen_file('testfolder/2', 2.1)
+    gen_file('testfolder/3', 3.1)
+    gen_file('testfolder/4', 4.1)
+    gen_file('testfolder/5', 5.1)
+    print "Test upload folder"
+    sys.stdout.flush()
+    rt = op_int.upload_folder('testfolder', 'testfolder')
+    shutil.rmtree('testfolder/')
+
+
+def test_download_folder():
+    print "Test download folder"
+    sys.stdout.flush()
+    rt = op_int.download_folder('testfolder', 'testfolder')
+    shutil.rmtree('testfolder/')
+
+
+# def test_delete_folder():
+#     print "Test delete folder"
+#     sys.stdout.flush()
+#     rt = op_int.delete_folder('testfolder')
 
 
 if __name__ == "__main__":
