@@ -128,14 +128,14 @@ class CosConfig(object):
 
     def uri(self, path=None):
         if path:
-            url = u"http://{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
+            url = u"http://{bucket}-{uid}.cos.{region}.myqcloud.com/{path}".format(
                 bucket=self._bucket,
                 uid=self._appid,
                 region=self._region,
                 path=to_unicode(path)
             )
         else:
-            url = u"http://{bucket}-{uid}.{region}.myqcloud.com".format(
+            url = u"http://{bucket}-{uid}.cos.{region}.myqcloud.com".format(
                 bucket=self._bucket,
                 uid=self._appid,
                 region=self._region
@@ -170,7 +170,7 @@ class Interface(object):
         req = requests.Request('GET',  url)
         prepped = s.prepare_request(req)
         signature = CosS3Auth(self._conf._access_id, self._conf._access_key, timeout).__call__(prepped).headers['Authorization']
-        return url + '?sign=' + quote(signature)
+        return url + '?sign=' + urllib.quote(signature)
 
     def list_part(self, cos_path):
         logger.debug("getting uploaded parts")
