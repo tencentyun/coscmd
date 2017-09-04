@@ -48,6 +48,16 @@ def config(args):
         logger.info("Created configuration file in {path}".format(path=to_printable_str(conf_path)))
 
 
+def compatible(region):
+    _dict = {'tj': 'ap-beijing-1', 'bj': 'ap-beijing', 'gz': 'ap-guangzhou', 'sh': 'ap-shanghai',
+             'cd': 'ap-chengdu', 'spg': 'ap-singapore', 'hk': 'ap-hongkong', 'ca': 'na-toronto', 'ger': 'eu-frankfurt'}
+    if region.startswith('cos.'):
+        region = region[4:]
+    if region in _dict:
+        region = _dict[region]
+    return region
+
+
 def load_conf():
 
     conf_path = os.path.expanduser('~/.cos.conf')
@@ -73,7 +83,7 @@ def load_conf():
             appid=cp.get('common', 'appid'),
             access_id=cp.get('common', 'access_id'),
             access_key=cp.get('common', 'secret_key'),
-            region=cp.get('common', 'region'),
+            region=compatible(cp.get('common', 'region')),
             bucket=cp.get('common', 'bucket'),
             part_size=part_size,
             max_thread=max_thread
@@ -483,6 +493,7 @@ def _main():
         return 1
     global res
     return res
+
 
 if __name__ == '__main__':
     _main()
