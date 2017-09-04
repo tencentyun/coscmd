@@ -323,7 +323,7 @@ class Interface(object):
             file_size = path.getsize(local_path)
             logger.debug("file size: " + str(file_size))
             chunk_size = 1024 * 1024 * self._conf._part_size
-            while file_size / chunk_size > 10000:
+            while file_size / chunk_size > 8000:
                 chunk_size = chunk_size * 10
             parts_num = file_size / chunk_size
             last_size = file_size - parts_num * chunk_size
