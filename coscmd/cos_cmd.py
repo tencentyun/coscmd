@@ -447,7 +447,7 @@ def command_thread():
 #     parser_get_bucket_acl = sub_parser.add_parser("getbucketacl", help='coscmd getbucketacl [-h]')
 #     parser_get_bucket_acl.set_defaults(func=Op.get_bucket_acl)
 
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.7.2')
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.7.3')
 
     args = parser.parse_args()
 
