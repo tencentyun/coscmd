@@ -424,7 +424,7 @@ class Interface(object):
             logger.warn("complete multipart upload failed")
             return False
 
-    def download_folder(self, cos_path, local_path, _force):
+    def download_folder(self, cos_path, local_path, _force=False):
 
         def download_file(_cos_path, _local_path, _force):
             if self.download_file(_cos_path, _local_path, _force) is True:
