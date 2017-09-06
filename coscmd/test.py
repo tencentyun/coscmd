@@ -41,7 +41,7 @@ def gen_file(path, size):
 
 
 def test_upload_small_file():
-    file_name = "测试用例" + file_id + "_Smallfile"
+    file_name = "tmp" + file_id + "_Smallfile"
     print "Test upload " + file_name
     sys.stdout.flush()
     gen_file(file_name, 1.1)
@@ -50,7 +50,7 @@ def test_upload_small_file():
 
 
 def test_upload_big_file():
-    file_name = "测试用例" + file_id + "_Bigfile"
+    file_name = "tmp" + file_id + "_Bigfile"
     print "Test upload " + file_name
     sys.stdout.flush()
     gen_file(file_name, 5.1)
@@ -59,7 +59,7 @@ def test_upload_big_file():
 
 
 def test_download_file():
-    file_name = "测试用例" + file_id + "_Bigfile"
+    file_name = "tmp" + file_id + "_Bigfile"
     print "Test download " + file_name
     sys.stdout.flush()
     rt = op_int.download_file(file_name, file_name, True)
@@ -68,7 +68,7 @@ def test_download_file():
 
 
 def test_delete_file():
-    file_name = "测试用例" + file_id + "_Bigfile"
+    file_name = "tmp" + file_id + "_Bigfile"
     print "Test delete " + file_name
     sys.stdout.flush()
     rt = op_int.delete_file(file_name)
@@ -76,24 +76,24 @@ def test_delete_file():
 
 
 def test_upload_folder():
-    if os.path.isdir('测试文件夹') is False:
-        os.mkdir('测试文件夹')
-    gen_file('测试文件夹/1', 1.1)
-    gen_file('测试文件夹/2', 2.1)
-    gen_file('测试文件夹/3', 3.1)
-    gen_file('测试文件夹/4', 4.1)
-    gen_file('测试文件夹/5', 5.1)
+    if os.path.isdir('testfolder') is False:
+        os.mkdir('testfolder')
+    gen_file('testfolder/1', 1.1)
+    gen_file('testfolder/2', 2.1)
+    gen_file('testfolder/3', 3.1)
+    gen_file('testfolder/4', 4.1)
+    gen_file('testfolder/5', 5.1)
     print "Test upload folder"
     sys.stdout.flush()
-    rt = op_int.upload_folder('测试文件夹', '测试文件夹')
-    shutil.rmtree('测试文件夹/')
+    rt = op_int.upload_folder('testfolder', 'testfolder')
+    shutil.rmtree('testfolder/')
 
 
 def test_download_folder():
     print "Test download folder"
     sys.stdout.flush()
-    rt = op_int.download_folder('测试文件夹', '测试文件夹')
-    shutil.rmtree('测试文件夹/')
+    rt = op_int.download_folder('testfolder', 'testfolder')
+    shutil.rmtree('testfolder/')
 
 
 # def test_delete_folder():
