@@ -71,7 +71,7 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 使用-r上传文件夹。
 
 
-下载文件
+下载文件(夹)
 ^^^^^^^^
 
 使用如下命令上传文件：
@@ -81,6 +81,8 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
  coscmd download cospath localpath
 
 请将参数替换为您所需要下载的cos上文件的路径(cospath)，以及需要的本地存储路径(localpath)。
+
+使用-r上传文件夹。
 
 
 删除文件(夹)
@@ -96,6 +98,37 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
 使用-r删除文件夹。
 
+
+打印bucket下文件列表
+^^^^^^^^
+
+使用如下命令删除文件：
+
+.. code::
+
+ coscmd lsit <cospath> 
+
+请将参数替换为您所需要删除的cos上文件的路径(cospath)。
+
+使用-r递归打印。
+
+使用-a打印所有文件，默认打印100个。
+
+使用-n num设置打印文件的数量。
+
+若cospath为空则打印根目录下的文件列表
+
+
+获取文件信息
+^^^^^^^^
+
+使用如下命令删除文件：
+
+.. code::
+
+ coscmd info <cospath> 
+
+请将参数替换为您所需要删除的cos上文件的路径(cospath)。
 
 
 简单示例
@@ -114,17 +147,25 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
  下载文件
  coscmd download aaa/B.txt bbb/A.txt
+ 
+ 下载文件夹
+ coscmd download aaa/folder1 bbb/folder2
 
  删除文件
  coscmd delete aaa/B.txt
 
  删除文件夹
  coscmd delete -r bbb/folder2
+ 
+ 打印文件列表
+ coscmd lsit -n 20
+ coscmd list -a -r aa/folder1/
+ 
+ 获取文件信息
+ coscmd info aaa/aaa.txt
 
 注意事项
 ^^^^^^^^
-暂时不支持文件夹下载功能
-
 配置项建议：
 
 #. max_thread <= 10
