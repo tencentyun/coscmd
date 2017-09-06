@@ -453,6 +453,8 @@ class Interface(object):
                     self._file_num += 1
                     _cos_path = _file.getElementsByTagName("Key")[0].childNodes[0].data
                     _local_path = local_path + _cos_path[len(cos_path):]
+                    _cos_path = to_unicode(_cos_path)
+                    _local_path = to_unicode(_local_path)
                     download_file(_cos_path, _local_path, _force)
             else:
                 logger.warn(response_info(rt))
@@ -540,7 +542,7 @@ class Interface(object):
                 contentset = root.getElementsByTagName("Key")
                 for content in contentset:
                     self._file_num += 1
-                    file_name = content.childNodes[0].data
+                    file_name = to_unicode(content.childNodes[0].data)
                     file_list.append(file_name)
                     data_xml = data_xml + '''
     <Object>
