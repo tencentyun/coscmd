@@ -439,7 +439,7 @@ class Interface(object):
         self._file_num = 0
         self._have_finished = 0
         self._fail_num = 0
-        cos_path = to_printable_str(cos_path)
+        cos_path = to_unicode(cos_path)
         while IsTruncated == "true":
             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'.format(prefix=cos_path, nextmarker=NextMarker))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
