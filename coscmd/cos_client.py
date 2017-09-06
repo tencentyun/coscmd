@@ -525,7 +525,7 @@ class Interface(object):
         while IsTruncated == "true":
             data_xml = ""
             file_list = []
-            url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}&prefix={prefix}'.format(nextmarker=NextMarker, prefix=cos_path))
+            url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}&prefix={prefix}'.format(nextmarker=to_printable_str(NextMarker), prefix=to_printable_str(cos_path)))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code == 200:
                 try:
@@ -615,7 +615,8 @@ class Interface(object):
         self._file_num = 0
         cos_path = to_printable_str(cos_path)
         while IsTruncated == "true":
-            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}{delimiter}'.format(prefix=cos_path, nextmarker=NextMarker, delimiter=Delimiter))
+            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}{delimiter}'
+                                 .format(prefix=to_printable_str(cos_path), nextmarker=to_printable_str(NextMarker), delimiter=Delimiter))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code == 200:
                 root = minidom.parseString(rt.content).documentElement
