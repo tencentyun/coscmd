@@ -439,9 +439,9 @@ class Interface(object):
         self._file_num = 0
         self._have_finished = 0
         self._fail_num = 0
-        cos_path = to_printable_str(cos_path)
+        cos_path = to_unicode(cos_path)
         while IsTruncated == "true":
-            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'.format(prefix=cos_path, nextmarker=NextMarker))
+            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'.format(prefix=to_printable_str(cos_path), nextmarker=to_printable_str(NextMarker)))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code == 200:
                 root = minidom.parseString(rt.content).documentElement
@@ -453,6 +453,8 @@ class Interface(object):
                     self._file_num += 1
                     _cos_path = _file.getElementsByTagName("Key")[0].childNodes[0].data
                     _local_path = local_path + _cos_path[len(cos_path):]
+                    _cos_path = to_unicode(_cos_path)
+                    _local_path = to_unicode(_local_path)
                     download_file(_cos_path, _local_path, _force)
             else:
                 logger.warn(response_info(rt))
@@ -469,7 +471,7 @@ class Interface(object):
 
     def download_file(self, cos_path, local_path, _force=False):
         if _force is False and os.path.isfile(local_path) is True:
-            logger.warn("The file {file} already exists, please use -f to overwrite the file".format(file=cos_path))
+            logger.warn("The file {file} already exists, please use -f to overwrite the file".format(file=to_printable_str(cos_path)))
             return False
         url = self._conf.uri(path=cos_path)
         logger.debug("download with : " + url)
@@ -514,7 +516,7 @@ class Interface(object):
 
         cos_path = to_unicode(cos_path)
         # make sure
-        if query_yes_no("WARN: you are deleting all files under cos_path '{cos_path}', please make sure".format(cos_path=cos_path)) is False:
+        if query_yes_no("WARN: you are deleting all files under cos_path '{cos_path}', please make sure".format(cos_path=to_printable_str(cos_path))) is False:
             return False
         self._have_finished = 0
         self._file_num = 0
@@ -523,7 +525,7 @@ class Interface(object):
         while IsTruncated == "true":
             data_xml = ""
             file_list = []
-            url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}&prefix={prefix}'.format(nextmarker=NextMarker, prefix=cos_path))
+            url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}&prefix={prefix}'.format(nextmarker=to_printable_str(NextMarker), prefix=to_printable_str(cos_path)))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code == 200:
                 try:
@@ -540,12 +542,12 @@ class Interface(object):
                 contentset = root.getElementsByTagName("Key")
                 for content in contentset:
                     self._file_num += 1
-                    file_name = content.childNodes[0].data
+                    file_name = to_unicode(content.childNodes[0].data)
                     file_list.append(file_name)
                     data_xml = data_xml + '''
     <Object>
         <Key>{Key}</Key>
-    </Object>'''.format(Key=file_name)
+    </Object>'''.format(Key=to_printable_str(file_name))
                 data_xml = '''
 <Delete>
     <Quiet>true</Quiet>'''+data_xml+'''
@@ -613,7 +615,8 @@ class Interface(object):
         self._file_num = 0
         cos_path = to_printable_str(cos_path)
         while IsTruncated == "true":
-            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}{delimiter}'.format(prefix=cos_path, nextmarker=NextMarker, delimiter=Delimiter))
+            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}{delimiter}'
+                                 .format(prefix=to_printable_str(cos_path), nextmarker=to_printable_str(NextMarker), delimiter=Delimiter))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code == 200:
                 root = minidom.parseString(rt.content).documentElement
