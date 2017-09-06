@@ -441,7 +441,7 @@ class Interface(object):
         self._fail_num = 0
         cos_path = to_unicode(cos_path)
         while IsTruncated == "true":
-            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'.format(prefix=cos_path, nextmarker=NextMarker))
+            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'.format(prefix=to_printable_str(cos_path), nextmarker=to_printable_str(NextMarker)))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code == 200:
                 root = minidom.parseString(rt.content).documentElement
