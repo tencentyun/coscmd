@@ -471,7 +471,7 @@ class Interface(object):
 
     def download_file(self, cos_path, local_path, _force=False):
         if _force is False and os.path.isfile(local_path) is True:
-            logger.warn("The file {file} already exists, please use -f to overwrite the file".format(file=cos_path))
+            logger.warn("The file {file} already exists, please use -f to overwrite the file".format(file=to_printable_str(cos_path)))
             return False
         url = self._conf.uri(path=cos_path)
         logger.debug("download with : " + url)
@@ -516,7 +516,7 @@ class Interface(object):
 
         cos_path = to_unicode(cos_path)
         # make sure
-        if query_yes_no("WARN: you are deleting all files under cos_path '{cos_path}', please make sure".format(cos_path=cos_path)) is False:
+        if query_yes_no("WARN: you are deleting all files under cos_path '{cos_path}', please make sure".format(cos_path=to_printable_str(cos_path))) is False:
             return False
         self._have_finished = 0
         self._file_num = 0
@@ -547,7 +547,7 @@ class Interface(object):
                     data_xml = data_xml + '''
     <Object>
         <Key>{Key}</Key>
-    </Object>'''.format(Key=file_name)
+    </Object>'''.format(Key=to_printable_str(file_name))
                 data_xml = '''
 <Delete>
     <Quiet>true</Quiet>'''+data_xml+'''
