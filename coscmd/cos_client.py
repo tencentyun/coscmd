@@ -336,7 +336,7 @@ class Interface(object):
             logger.debug("chunk_size: " + str(chunk_size))
             logger.debug('upload file concurrently')
             logger.info("uploading {file}".format(file=to_printable_str(local_path)))
-            self._pbar = tqdm(total=file_size, unit='B', unit_scale=True, unit_divisor=1024)
+            self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
             if chunk_size >= file_size:
                 pool.add_task(multiupload_parts_data, local_path, offset, file_size, 1, 0)
             else:
@@ -485,7 +485,7 @@ class Interface(object):
             else:
                 raise IOError("download failed without Content-Length header")
             if rt.status_code == 200:
-                self._pbar = tqdm(total=content_len, unit='B', unit_scale=True, unit_divisor=1024)
+                self._pbar = tqdm(total=content_len, unit='B', unit_scale=True)
                 file_len = 0
                 dir_path = os.path.dirname(local_path)
                 if os.path.isdir(dir_path) is False and dir_path != '':

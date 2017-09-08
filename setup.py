@@ -1,5 +1,6 @@
 from setuptools import setup, find_packages
 from platform import python_version_tuple
+from coscmd import cos_global
 
 
 def requirements():
@@ -20,7 +21,7 @@ def long_description():
 
 setup(
     name='coscmd',
-    version='1.7.4',
+    version=cos_global.Version,
     url='https://www.qcloud.com/',
     license='MIT',
     author='lewzylu',

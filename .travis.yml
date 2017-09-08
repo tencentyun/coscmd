@@ -17,4 +17,3 @@ install:
 script:
     - pep8 --max-line-length=180
     - nosetests -s
-    - tox
