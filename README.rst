@@ -1,6 +1,6 @@
 COSCMD使用文档
 ========
-
+|Build-Status|
 
 依赖
 --------
@@ -170,3 +170,6 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
 #. max_thread <= 10
 #. parts_size <= 10
+
+.. |Build-Status| image:: https://travis-ci.org/tencentyun/coscmd.svg?branch=master
+   :target: https://travis-ci.org/tencentyun/coscmd
