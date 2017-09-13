@@ -208,8 +208,10 @@ class Interface(object):
         filelist = os.listdir(local_path)
         if cos_path[-1] != '/':
             cos_path += '/'
+            
         if local_path[-1] != '/':
             local_path += '/'
+        cos_path = cos_path.lstrip('/')
         self._folder_num += 1
         ret_code = True  # True means 0, False means -1
         for filename in filelist:
