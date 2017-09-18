@@ -106,7 +106,7 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
 .. code::
 
- coscmd lsit <cospath> 
+ coscmd list <cospath> 
 
 请将参数替换为您所需要删除的cos上文件的路径(cospath)。
 
