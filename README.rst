@@ -158,7 +158,7 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
  coscmd delete -r bbb/folder2
  
  打印文件列表
- coscmd lsit -n 20
+ coscmd list -n 20
  coscmd list -a -r aa/folder1/
  
  获取文件信息
