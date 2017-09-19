@@ -781,6 +781,9 @@ class Interface(object):
     def get_object_acl(self, cos_path):
         url = self._conf.uri(cos_path+"?acl")
         logger.info("get with : " + url)
+        table = PrettyTable([cos_path, ""])
+        table.align = "l"
+        table.padding_width = 3
         try:
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             logger.debug("get resp, status code: {code}, headers: {headers}".format(
@@ -789,8 +792,9 @@ class Interface(object):
             root = minidom.parseString(rt.content).documentElement
             grants = root.getElementsByTagName("Grant")
             for grant in grants:
-                logger.info("%s => %s" % (grant.getElementsByTagName("ID")[0].childNodes[0].data, grant.getElementsByTagName("Permission")[0].childNodes[0].data))
+                table.add_row(['ACL', ("%s: %s" % (grant.getElementsByTagName("ID")[0].childNodes[0].data, grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
             if rt.status_code == 200:
+                print table
                 return True
             else:
                 logger.warn(response_info(rt))
@@ -954,6 +958,9 @@ class Interface(object):
     def get_bucket_acl(self):
         url = self._conf.uri("?acl")
         logger.info("get with : " + url)
+        table = PrettyTable([self._conf._bucket, ""])
+        table.align = "l"
+        table.padding_width = 3
         try:
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             logger.debug("get resp, status code: {code}, headers: {headers}".format(
@@ -962,8 +969,9 @@ class Interface(object):
             root = minidom.parseString(rt.content).documentElement
             grants = root.getElementsByTagName("Grant")
             for grant in grants:
-                logger.info("%s => %s" % (grant.getElementsByTagName("ID")[0].childNodes[0].data, grant.getElementsByTagName("Permission")[0].childNodes[0].data))
+                table.add_row(['ACL', ("%s: %s" % (grant.getElementsByTagName("ID")[0].childNodes[0].data, grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
             if rt.status_code == 200:
+                print table
                 return True
             else:
                 logger.warn(response_info(rt))
