@@ -42,7 +42,7 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 
 .. code::
 
-  [common]
+ [common]
  access_id = AChT4ThiXAbpBDEFGhT4ThiXAbpHIJK
  secret_key = WE54wreefvds3462refgwewerewr
  appid = 1251000577
