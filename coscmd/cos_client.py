@@ -653,7 +653,10 @@ class Interface(object):
             else:
                 logger.warn(response_info(rt))
                 return False
-        print table
+        try:
+            print unicode(table)
+        except Exception as e:
+            print table
         if _all is False and self._file_num == _num:
             logger.info("Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
         return True
@@ -695,7 +698,10 @@ class Interface(object):
                 except Exception as e:
                     logger.warn(str(e))
                     return False
-                print table
+                try:
+                    print unicode(table)
+                except Exception as e:
+                    print table
                 return True
             else:
                 logger.warn(response_info(rt))
@@ -794,7 +800,10 @@ class Interface(object):
             for grant in grants:
                 table.add_row(['ACL', ("%s: %s" % (grant.getElementsByTagName("ID")[0].childNodes[0].data, grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
             if rt.status_code == 200:
-                print table
+                try:
+                    print unicode(table)
+                except Exception as e:
+                    print table
                 return True
             else:
                 logger.warn(response_info(rt))
@@ -971,7 +980,10 @@ class Interface(object):
             for grant in grants:
                 table.add_row(['ACL', ("%s: %s" % (grant.getElementsByTagName("ID")[0].childNodes[0].data, grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
             if rt.status_code == 200:
-                print table
+                try:
+                    print unicode(table)
+                except Exception as e:
+                    print table
                 return True
             else:
                 logger.warn(response_info(rt))
