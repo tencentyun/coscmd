@@ -220,7 +220,6 @@ class Op(object):
             args.cos_path = args.cos_path.decode(fs_coding)
         Interface = client.op_int()
         if Interface.list_objects(cos_path=args.cos_path, _recursive=args.recursive, _all=args.all, _num=args.num, _human=args.human):
-            logger.info(change_color("list successfully!", color_green))
             return 0
         else:
             logger.warn(change_color("list failed!", color_red))
@@ -236,7 +235,6 @@ class Op(object):
             args.cos_path = args.cos_path.decode(fs_coding)
         Interface = client.op_int()
         if Interface.info_object(args.cos_path, _human=args.human):
-            logger.info(change_color("info successfully!", color_green))
             return 0
         else:
             logger.warn(change_color("info failed!", color_red))
@@ -286,7 +284,6 @@ class Op(object):
 
         rt = Interface.get_object_acl(args.cos_path)
         if rt is True:
-            logger.info(change_color("get success!", color_green))
             return 0
         else:
             logger.warn(change_color("get fail!", color_red))
@@ -326,7 +323,6 @@ class Op(object):
         client = CosS3Client(conf)
         Interface = client.op_int()
         if Interface.get_bucket(args.cos_path):
-            logger.info(change_color("list success!", color_green))
             return 0
         else:
             logger.warn(change_color("list fail!", color_red))
@@ -339,7 +335,6 @@ class Op(object):
         Interface = client.op_int()
         rt = Interface.put_bucket_acl(args.grant_read, args.grant_write, args.grant_full_control)
         if rt is True:
-            logger.info(change_color("put success!", color_green))
             return 0
         else:
             logger.warn(change_color("put fail!", color_red))
