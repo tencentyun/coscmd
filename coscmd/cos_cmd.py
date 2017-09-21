@@ -38,7 +38,7 @@ def config(args):
     with open(conf_path, 'w+') as f:
         cp = SafeConfigParser()
         cp.add_section("common")
-        cp.set('common', 'access_id', args.access_id)
+        cp.set('common', 'secret_id', args.secret_id)
         cp.set('common', 'secret_key', args.secret_key)
         cp.set('common', 'appid', args.appid)
         cp.set('common', 'bucket', args.bucket)
