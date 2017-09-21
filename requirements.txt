@@ -1,4 +1,4 @@
-requests==2.12.4
+requests==2.18.4
 argparse==1.4.0
 coloredlogs==7.1
 prettytable==0.7

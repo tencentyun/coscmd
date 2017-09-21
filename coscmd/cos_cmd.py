@@ -38,7 +38,7 @@ def config(args):
     with open(conf_path, 'w+') as f:
         cp = SafeConfigParser()
         cp.add_section("common")
-        cp.set('common', 'access_id', args.access_id)
+        cp.set('common', 'secret_id', args.secret_id)
         cp.set('common', 'secret_key', args.secret_key)
         cp.set('common', 'appid', args.appid)
         cp.set('common', 'bucket', args.bucket)
@@ -80,9 +80,13 @@ def load_conf():
             max_thread = cp.getint('common', 'max_thread')
         else:
             max_thread = 5
+        try:
+            access_key = cp.get('common', 'secret_id')
+        except:
+            access_key = cp.get('common', 'access_id')
         conf = CosConfig(
             appid=cp.get('common', 'appid'),
-            access_id=cp.get('common', 'access_id'),
+            access_id=access_key,
             access_key=cp.get('common', 'secret_key'),
             region=compatible(cp.get('common', 'region')),
             bucket=cp.get('common', 'bucket'),
@@ -365,7 +369,7 @@ def command_thread():
 
     sub_parser = parser.add_subparsers()
     parser_config = sub_parser.add_parser("config", help="config your information at first.")
-    parser_config.add_argument('-a', '--access_id', help='specify your access id', type=str, required=True)
+    parser_config.add_argument('-a', '--secret_id', help='specify your secret id', type=str, required=True)
     parser_config.add_argument('-s', '--secret_key', help='specify your secret key', type=str, required=True)
     parser_config.add_argument('-u', '--appid', help='specify your appid', type=str, required=True)
     parser_config.add_argument('-b', '--bucket', help='specify your bucket', type=str, required=True)
