@@ -83,7 +83,7 @@ def load_conf():
         try:
             access_key = cp.get('common', 'secret_id')
         except:
-            access_key = cp.get('common', 'access_id') 
+            access_key = cp.get('common', 'access_id')
         conf = CosConfig(
             appid=cp.get('common', 'appid'),
             access_id=access_key,
