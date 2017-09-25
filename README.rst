@@ -29,7 +29,7 @@ COSCMD使用文档
 
 .. code::
 
- coscmd config -a youraccessid -s yoursecretkey -u appid -b bucketname -r region -m max_thread -p parts_size
+ coscmd config -a yoursecretid -s yoursecretkey -u appid -b bucketname -r region -m max_thread -p parts_size
 
 
 请将参数替换为您的真实id/key/appid/bucket和园区代号,园区(region)为cn-south或者cn-north。
@@ -43,7 +43,7 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 .. code::
 
  [common]
- access_id = AChT4ThiXAbpBDEFGhT4ThiXAbpHIJK
+ secret_id = AChT4ThiXAbpBDEFGhT4ThiXAbpHIJK
  secret_key = WE54wreefvds3462refgwewerewr
  appid = 1251000577
  bucket = ABC
@@ -137,7 +137,7 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 .. code::
 
  设置属性
- coscmd config -a ACCESS_ID -s ACCESS_KEY -u 1252448703 -b uploadtest -r cn-south -m 10 -p 5
+ coscmd config -a SECRET_ID -s SECRET_KEY -u 1252448703 -b uploadtest -r cn-south -m 10 -p 5
 
  上传文件
  coscmd upload bbb/A.txt aaa/B.txt
