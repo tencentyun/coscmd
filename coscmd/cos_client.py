@@ -435,6 +435,7 @@ class Interface(object):
                 logger.info("download {file} fail".format(file=to_printable_str(_cos_path)))
                 self._fail_num += 1
 
+        cos_path = cos_path.lstrip('/')
         NextMarker = ""
         IsTruncated = "true"
         self._file_num = 0
