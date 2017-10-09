@@ -659,7 +659,7 @@ class Interface(object):
             else:
                 logger.warn(response_info(rt))
                 return False
-      
+
         if _all is False and self._file_num == _num:
             logger.info("Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
         return True
