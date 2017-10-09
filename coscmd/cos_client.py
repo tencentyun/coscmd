@@ -608,14 +608,15 @@ class Interface(object):
             Delimiter = ""
         if _all is True:
             _num = -1
-        table = PrettyTable(["Path", "Size/Type", "Time"])
-        table.align = "l"
-        table.align['Size/Type'] = 'r'
-        table.padding_width = 3
-        table.header = False
         self._file_num = 0
         cos_path = to_printable_str(cos_path)
         while IsTruncated == "true":
+            table = PrettyTable(["Path", "Size/Type", "Time"])
+            table.align = "l"
+            table.align['Size/Type'] = 'r'
+            table.padding_width = 3
+            table.header = False
+            table.border = False
             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}{delimiter}'
                                  .format(prefix=to_printable_str(cos_path), nextmarker=to_printable_str(NextMarker), delimiter=Delimiter))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
@@ -648,15 +649,16 @@ class Interface(object):
                     table.add_row([_path, _size, _time])
                     if self._file_num == _num:
                         break
+                try:
+                    print unicode(table)
+                except Exception as e:
+                    print table
                 if self._file_num == _num:
                     break
             else:
                 logger.warn(response_info(rt))
                 return False
-        try:
-            print unicode(table)
-        except Exception as e:
-            print table
+      
         if _all is False and self._file_num == _num:
             logger.info("Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
         return True
