@@ -82,7 +82,7 @@ def load_conf():
             max_thread = 5
         try:
             access_key = cp.get('common', 'secret_id')
-        except:
+        except Exception:
             access_key = cp.get('common', 'access_id')
         conf = CosConfig(
             appid=cp.get('common', 'appid'),
@@ -452,8 +452,8 @@ def command_thread():
     args = parser.parse_args()
 
     logger = logging.getLogger('')
-    coloredlogs.DEFAULT_FIELD_STYLES = {'hostname': {'color': 'white'}, 'name': {'color': 'white'}, 'levelname': {'color': 'white', 'bold': True}, 'asctime': {'color': 'white'}}
-    coloredlogs.DEFAULT_LEVEL_STYLES = {'info': {'color': 'white'}, 'warning': {'color': 'white', 'bold': True}}
+#     coloredlogs.DEFAULT_FIELD_STYLES = {'hostname': {'color': 'white'}, 'name': {'color': 'white'}, 'levelname': {'color': 'white', 'bold': True}, 'asctime': {'color': 'white'}}
+#     coloredlogs.DEFAULT_LEVEL_STYLES = {'info': {'color': 'white'}, 'warning': {'color': 'white', 'bold': True}}
     if args.debug:
         coloredlogs.install(level='DEBUG', logger=logger, fmt='%(asctime)s - %(message)s')
     else:
