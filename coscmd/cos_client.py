@@ -31,7 +31,7 @@ def to_unicode(s):
 
 def to_printable_str(s):
     if isinstance(s, unicode):
-        return s.encode(fs_coding)
+        return s.encode('utf-8')
     else:
         return s
 
@@ -442,7 +442,8 @@ class Interface(object):
         self._fail_num = 0
         cos_path = to_unicode(cos_path)
         while IsTruncated == "true":
-            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'.format(prefix=to_printable_str(cos_path), nextmarker=to_printable_str(NextMarker)))
+            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
+                                 .format(prefix=to_printable_str(urllib.quote(cos_path)), nextmarker=to_printable_str(urllib.quote(NextMarker))))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code == 200:
                 root = minidom.parseString(rt.content).documentElement
@@ -526,7 +527,8 @@ class Interface(object):
         while IsTruncated == "true":
             data_xml = ""
             file_list = []
-            url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}&prefix={prefix}'.format(nextmarker=to_printable_str(NextMarker), prefix=to_printable_str(cos_path)))
+            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
+                                 .format(prefix=to_printable_str(urllib.quote(cos_path)), nextmarker=to_printable_str(urllib.quote(NextMarker))))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code == 200:
                 try:
@@ -617,7 +619,7 @@ class Interface(object):
         cos_path = to_printable_str(cos_path)
         while IsTruncated == "true":
             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}{delimiter}'
-                                 .format(prefix=to_printable_str(cos_path), nextmarker=to_printable_str(NextMarker), delimiter=Delimiter))
+                                 .format(prefix=to_printable_str(urllib.quote(cos_path)), nextmarker=to_printable_str(urllib.quote(NextMarker)), delimiter=Delimiter))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code == 200:
                 root = minidom.parseString(rt.content).documentElement
