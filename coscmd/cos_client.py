@@ -46,7 +46,7 @@ def getTagText(root, tag):
 
 def get_md5_filename(local_path, cos_path):
     ori_file = os.path.abspath(os.path.dirname(local_path)) + "!!!" + str(os.path.getsize(local_path)) + "!!!" + cos_path
-    return os.path.expanduser('~/.tmp/' + binascii.b2a_hex(base64.encodestring(ori_file))[0:20])
+    return os.path.expanduser('~/.tmp/' + binascii.b2a_hex(base64.encodestring(to_printable_str(ori_file)))[0:20])
 
 
 def query_yes_no(question, default="no"):
