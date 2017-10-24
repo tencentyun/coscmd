@@ -150,12 +150,23 @@ parts_size为分块上传的单块大小(单位为M)(默认为1M)
 	                 <cospath>
 
 --grant-read代表读的权限。
+
 --grant-write代表写的权限。
+
 --grant-full-control代表读写的权限。
+
 GRANT_READ/GRANT_WRITE/GRANT_FILL_CONTORL代表被赋权的帐号。
-若赋权根帐号，使用rootid的形式；若赋权子账户，使用rootid/subid的形式；若需要对所有人赋权，使用anyone的形式。
+
+若赋权根帐号，使用rootid的形式；
+
+若赋权子账户，使用rootid/subid的形式；
+
+若需要对所有人赋权，使用anyone的形式。
+
 同时赋权的多个帐号用逗号(,)隔开。
+
 请将参数替换为您所需要删除的cos上文件的路径(cospath)。
+
 详细用法请见下面的示例。
 
 使用如下命令获取bucket的访问控制：
@@ -171,6 +182,7 @@ GRANT_READ/GRANT_WRITE/GRANT_FILL_CONTORL代表被赋权的帐号。
  coscmd putbucketacl <cospath>
 
 请将参数替换为您所需要删除的cos上文件的路径(cospath)。
+
 详细用法请见下面的示例。
 
 简单示例
@@ -208,19 +220,18 @@ GRANT_READ/GRANT_WRITE/GRANT_FILL_CONTORL代表被赋权的帐号。
 
  设置bucket的ACL
  coscmd putbucketacl --grant-read 12345678,12345678/11111 --grant-write anyone --grant-full-control 12345678/22222
-这里给予帐户12345678，12345678下面的子账户11111读的权限，
-给所有人写的权限，
-给12345678下面的子账户22222所有的权限
-
+ 这里给予帐户12345678，12345678下面的子账户11111读的权限，
+ 给所有人写的权限，
+ 给12345678下面的子账户22222所有的权限
+ 
  设置object的ACL
  coscmd putbucketacl --grant-read 12345678,12345678/11111 --grant-write anyone --grant-full-control 12345678/22222 aaa/aaa.txt
-
+ 
  获取bucket的ACL
  coscmd getbucketacl
  
  获取object的ACL
  coscmd getobjectacl aaa/aaa.txt
-
 
 注意事项
 ^^^^^^^^
