@@ -422,30 +422,25 @@ def command_thread():
 #     parser_delete_bucket.set_defaults(func=Op.delete_bucket)
 #
 #
-#     parser_put_object_acl = sub_parser.add_parser("putobjectacl", help='''coscmd putobjectacl [-h] [--grant-read GRANT_READ]
-#                                                                        [--grant-write GRANT_WRITE]
-#                                                                        [--grant-full-control GRANT_FULL_CONTROL]
-#                                                                        cos_path''')
-#     parser_put_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-#     parser_put_object_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
-#     parser_put_object_acl.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
-#     parser_put_object_acl.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
-#     parser_put_object_acl.set_defaults(func=Op.put_object_acl)
-#
-#     parser_get_object_acl = sub_parser.add_parser("getobjectacl", help='coscmd getobjectacl [-h] cos_path')
-#     parser_get_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-#     parser_get_object_acl.set_defaults(func=Op.get_object_acl)
-#
-#     parser_put_bucket_acl = sub_parser.add_parser("putbucketacl", help='''coscmd putbucketacl [-h] [--grant-read GRANT_READ]
-#                                                                        [--grant-write GRANT_WRITE]
-#                                                                        [--grant-full-control GRANT_FULL_CONTROL]''')
-#     parser_put_bucket_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
-#     parser_put_bucket_acl.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
-#     parser_put_bucket_acl.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
-#     parser_put_bucket_acl.set_defaults(func=Op.put_bucket_acl)
-#
-#     parser_get_bucket_acl = sub_parser.add_parser("getbucketacl", help='coscmd getbucketacl [-h]')
-#     parser_get_bucket_acl.set_defaults(func=Op.get_bucket_acl)
+    parser_put_object_acl = sub_parser.add_parser("putobjectacl", help='''set object acl''')
+    parser_put_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_put_object_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
+    parser_put_object_acl.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
+    parser_put_object_acl.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
+    parser_put_object_acl.set_defaults(func=Op.put_object_acl)
+
+    parser_get_object_acl = sub_parser.add_parser("getobjectacl", help='get object acl')
+    parser_get_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_get_object_acl.set_defaults(func=Op.get_object_acl)
+
+    parser_put_bucket_acl = sub_parser.add_parser("putbucketacl", help='''set bucket acl''')
+    parser_put_bucket_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
+    parser_put_bucket_acl.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
+    parser_put_bucket_acl.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
+    parser_put_bucket_acl.set_defaults(func=Op.put_bucket_acl)
+
+    parser_get_bucket_acl = sub_parser.add_parser("getbucketacl", help='get bucket acl')
+    parser_get_bucket_acl.set_defaults(func=Op.get_bucket_acl)
 
     parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + cos_global.Version)
 

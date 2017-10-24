@@ -696,8 +696,11 @@ class Interface(object):
                         root = minidom.parseString(rt.content).documentElement
                         grants = root.getElementsByTagName("Grant")
                         for grant in grants:
-                            table.add_row(['ACL', ("%s: %s" %
-                                                   (grant.getElementsByTagName("ID")[0].childNodes[0].data, grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
+                            try:
+                                table.add_row(['ACL', ("%s: %s" % (grant.getElementsByTagName("ID")[0].childNodes[0].data,
+                                                                   grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
+                            except Exception:
+                                table.add_row(['ACL', ("%s: %s" % ('anyone', grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
                     else:
                         logger.warn(response_info(rt))
                 except Exception as e:
@@ -803,7 +806,10 @@ class Interface(object):
             root = minidom.parseString(rt.content).documentElement
             grants = root.getElementsByTagName("Grant")
             for grant in grants:
-                table.add_row(['ACL', ("%s: %s" % (grant.getElementsByTagName("ID")[0].childNodes[0].data, grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
+                try:
+                    table.add_row(['ACL', ("%s: %s" % (grant.getElementsByTagName("ID")[0].childNodes[0].data, grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
+                except Exception:
+                    table.add_row(['ACL', ("%s: %s" % ('anyone', grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
             if rt.status_code == 200:
                 try:
                     print unicode(table)
@@ -983,7 +989,10 @@ class Interface(object):
             root = minidom.parseString(rt.content).documentElement
             grants = root.getElementsByTagName("Grant")
             for grant in grants:
-                table.add_row(['ACL', ("%s: %s" % (grant.getElementsByTagName("ID")[0].childNodes[0].data, grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
+                try:
+                    table.add_row(['ACL', ("%s: %s" % (grant.getElementsByTagName("ID")[0].childNodes[0].data, grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
+                except Exception:
+                    table.add_row(['ACL', ("%s: %s" % ('anyone', grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
             if rt.status_code == 200:
                 try:
                     print unicode(table)
