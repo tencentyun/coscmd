@@ -444,7 +444,7 @@ class Interface(object):
         cos_path = to_unicode(cos_path)
         while IsTruncated == "true":
             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
-                                 .format(prefix=to_printable_str(urllib.quote(cos_path)), nextmarker=to_printable_str(urllib.quote(NextMarker))))
+                                 .format(prefix=urllib.quote(to_printable_str(cos_path)), nextmarker=urllib.quote(to_printable_str(NextMarker))))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code == 200:
                 root = minidom.parseString(rt.content).documentElement
@@ -529,7 +529,7 @@ class Interface(object):
             data_xml = ""
             file_list = []
             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
-                                 .format(prefix=to_printable_str(urllib.quote(cos_path)), nextmarker=to_printable_str(urllib.quote(NextMarker))))
+                                 .format(prefix=urllib.quote(to_printable_str(cos_path)), nextmarker=urllib.quote(to_printable_str(NextMarker))))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code == 200:
                 try:
@@ -621,7 +621,7 @@ class Interface(object):
             table.header = False
             table.border = False
             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}{delimiter}'
-                                 .format(prefix=to_printable_str(urllib.quote(cos_path)), nextmarker=to_printable_str(urllib.quote(NextMarker)), delimiter=Delimiter))
+                                 .format(prefix=urllib.quote(to_printable_str(cos_path)), nextmarker=urllib.quote(to_printable_str(NextMarker)), delimiter=Delimiter))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code == 200:
                 root = minidom.parseString(rt.content).documentElement
