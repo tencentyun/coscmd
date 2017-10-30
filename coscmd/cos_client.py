@@ -719,6 +719,112 @@ class Interface(object):
             return False
         return False
 
+    def mget(self, cos_path, local_path, _force=False):
+
+        def get_parts_data(local_path, offset, length, parts_size, idx):
+            try:
+                local_path = local_path + "_" + str(idx)
+                http_header = {}
+                http_header['Range'] = str(offset) + "-" + str(offset+length)
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), header=http_header, stream=True)
+                logger.debug("get resp, status code: {code}, headers: {headers}".format(
+                     code=rt.status_code,
+                     headers=rt.headers))
+                if 'Content-Length' in rt.headers:
+                    content_len = int(rt.headers['Content-Length'])
+                else:
+                    raise IOError("download failed without Content-Length header")
+                if rt.status_code == 200:
+                    self._pbar = tqdm(total=content_len, unit='B', unit_scale=True)
+                    file_len = 0
+                    dir_path = os.path.dirname(local_path)
+                    if os.path.isdir(dir_path) is False and dir_path != '':
+                        try:
+                            os.makedirs(dir_path)
+                        except Exception as e:
+                            logger.warn(str(e))
+                            return False
+                    with open(local_path, 'wb') as f:
+                        for chunk in rt.iter_content(chunk_size=1024):
+                            if chunk:
+                                self._pbar.update(len(chunk))
+                                file_len += len(chunk)
+                                f.write(chunk)
+                        f.flush()
+                    if file_len != content_len:
+                        raise IOError("download failed with incomplete file")
+                    self._pbar.close()
+                    return True
+                else:
+                    logger.warn(response_info(rt))
+                    return False
+            except Exception as e:
+                logger.warn(str(e))
+            return False
+
+        if _force is False and os.path.isfile(local_path) is True:
+            logger.warn("The file {file} already exists, please use -f to overwrite the file".format(file=to_printable_str(cos_path)))
+            return False
+
+        url = self._conf.uri(path=cos_path)
+        logger.info("info with : " + url)
+        cos_path = to_printable_str(cos_path)
+        try:
+            rt = self._session.head(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            logger.debug("info resp, status code: {code}, headers: {headers}".format(
+                 code=rt.status_code,
+                 headers=rt.headers))
+            if rt.status_code == 200:
+                file_size = rt.headers['Content-Length']
+            else:
+                logger.warn(response_info(rt))
+                return False
+        except Exception as e:
+            logger.warn(str(e))
+            return False
+
+        url = self._conf.uri(path=cos_path)
+        logger.debug("mget with : " + url)
+        offset = 0
+        logger.debug("file size: " + str(file_size))
+        chunk_size = 1024 * 1024 * self._conf._part_size
+        while file_size / chunk_size > 8000:
+            chunk_size = chunk_size * 10
+        parts_num = file_size / chunk_size
+        last_size = file_size - parts_num * chunk_size
+        self._have_finished = len(self._have_uploaded)
+        if last_size != 0:
+            parts_num += 1
+        _max_thread = min(self._conf._max_thread, parts_num - self._have_finished)
+        pool = SimpleThreadPool(_max_thread)
+
+        logger.debug("chunk_size: " + str(chunk_size))
+        logger.debug('upload file concurrently')
+        logger.info("uploading {file}".format(file=to_printable_str(local_path)))
+        self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
+        if chunk_size >= file_size:
+            pool.add_task(get_parts_data, local_path, offset, file_size, 1, 0)
+        else:
+            for i in range(parts_num):
+                if(str(i+1) in self._have_uploaded):
+                    offset += chunk_size
+                    self._pbar.update(chunk_size)
+                    continue
+                if i+1 == parts_num:
+                    pool.add_task(get_parts_data, local_path, offset, file_size-offset, parts_num, i+1)
+                else:
+                    pool.add_task(get_parts_data, local_path, offset, chunk_size, parts_num, i+1)
+                    offset += chunk_size
+        pool.wait_completion()
+        result = pool.get_result()
+        self._pbar.close()
+        if result['success_all']:
+            return True
+        else:
+            return False
+
+
+
     def put_object_acl(self, grant_read, grant_write, grant_full_control, cos_path):
         acl = []
         if grant_read is not None:
