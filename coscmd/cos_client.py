@@ -725,7 +725,7 @@ class Interface(object):
             try:
                 local_path = local_path + "_" + str(idx)
                 http_header = {}
-                http_header['Range'] = 'bytes=' + str(offset) + "-" + str(offset+length)
+                http_header['Range'] = 'bytes=' + str(offset) + "-" + str(offset+length-1)
                 rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), headers=http_header, stream=True)
                 logger.debug("get resp, status code: {code}, headers: {headers}".format(
                      code=rt.status_code,
@@ -744,7 +744,7 @@ class Interface(object):
                             logger.warn(str(e))
                             return False
                     with open(local_path, 'wb') as f:
-                        for chunk in rt.iter_content(chunk_size=1024):
+                        for chunk in rt.iter_content(chunk_size=1024*1024):
                             if chunk:
                                 file_len += len(chunk)
                                 f.write(chunk)
@@ -779,7 +779,7 @@ class Interface(object):
         except Exception as e:
             logger.warn(str(e))
             return False
-
+	#mget
         url = self._conf.uri(path=cos_path)
         logger.debug("mget with : " + url)
         offset = 0
@@ -793,7 +793,7 @@ class Interface(object):
             parts_num += 1
         _max_thread = min(self._conf._max_thread, parts_num - self._have_finished)
         pool = SimpleThreadPool(_max_thread)
-
+	
         logger.debug("chunk_size: " + str(chunk_size))
         logger.debug('upload file concurrently')
         logger.info("uploading {file}".format(file=to_printable_str(local_path)))
@@ -802,10 +802,6 @@ class Interface(object):
             pool.add_task(get_parts_data, local_path, offset, file_size, 1, 0)
         else:
             for i in range(parts_num):
-                if(str(i+1) in self._have_uploaded):
-                    offset += chunk_size
-                    self._pbar.update(chunk_size)
-                    continue
                 if i+1 == parts_num:
                     pool.add_task(get_parts_data, local_path, offset, file_size-offset, parts_num, i+1)
                 else:
@@ -814,19 +810,17 @@ class Interface(object):
         pool.wait_completion()
         result = pool.get_result()
         self._pbar.close()
+	#complete
         if result['success_all'] is False:
             return False
         with open(local_path, 'wb') as f:
             for i in range(parts_num):
                 idx = i + 1
                 file_name = local_path + "_" + str(idx)
-                print file_name
                 length = 1024*1024
                 offset = 0
                 with open(file_name, 'rb') as File:
                     while (offset < file_size):
-                        if offset + length >= file_size:
-                            length = file_size - offset
                         File.seek(offset, 0)
                         data = File.read(length)
                         f.write(data)
