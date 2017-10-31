@@ -798,15 +798,12 @@ class Interface(object):
         logger.debug('upload file concurrently')
         logger.info("uploading {file}".format(file=to_printable_str(local_path)))
         self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
-        if chunk_size >= file_size:
-            pool.add_task(get_parts_data, local_path, offset, file_size, 1, 0)
-        else:
-            for i in range(parts_num):
-                if i+1 == parts_num:
-                    pool.add_task(get_parts_data, local_path, offset, file_size-offset, parts_num, i+1)
-                else:
-                    pool.add_task(get_parts_data, local_path, offset, chunk_size, parts_num, i+1)
-                    offset += chunk_size
+        for i in range(parts_num):
+            if i+1 == parts_num:
+                pool.add_task(get_parts_data, local_path, offset, file_size-offset, parts_num, i+1)
+            else:
+                pool.add_task(get_parts_data, local_path, offset, chunk_size, parts_num, i+1)
+                offset += chunk_size
         pool.wait_completion()
         result = pool.get_result()
         self._pbar.close()
