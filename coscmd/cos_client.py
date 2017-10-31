@@ -719,6 +719,114 @@ class Interface(object):
             return False
         return False
 
+    def mget(self, cos_path, local_path, _force=False, _num=10):
+
+        def get_parts_data(local_path, offset, length, parts_size, idx):
+            try:
+                local_path = local_path + "_" + str(idx)
+                http_header = {}
+                http_header['Range'] = 'bytes=' + str(offset) + "-" + str(offset+length-1)
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), headers=http_header, stream=True)
+                logger.debug("get resp, status code: {code}, headers: {headers}".format(
+                     code=rt.status_code,
+                     headers=rt.headers))
+                if 'Content-Length' in rt.headers:
+                    content_len = int(rt.headers['Content-Length'])
+                else:
+                    raise IOError("download failed without Content-Length header")
+                if rt.status_code in [206, 200]:
+                    file_len = 0
+                    dir_path = os.path.dirname(local_path)
+                    if os.path.isdir(dir_path) is False and dir_path != '':
+                        try:
+                            os.makedirs(dir_path)
+                        except Exception as e:
+                            logger.warn(str(e))
+                            return False
+                    with open(local_path, 'wb') as f:
+                        for chunk in rt.iter_content(chunk_size=1024*1024):
+                            if chunk:
+                                file_len += len(chunk)
+                                f.write(chunk)
+                                self._pbar.update(len(chunk))
+                        f.flush()
+                    if file_len != content_len:
+                        raise IOError("download failed with incomplete file")
+                    return True
+                else:
+                    logger.warn(response_info(rt))
+                    return False
+            except Exception as e:
+                logger.warn(str(e))
+            return False
+
+        if _force is False and os.path.isfile(local_path) is True:
+            logger.warn("The file {file} already exists, please use -f to overwrite the file".format(file=to_printable_str(cos_path)))
+            return False
+        url = self._conf.uri(path=cos_path)
+        logger.info("info with : " + url)
+        cos_path = to_printable_str(cos_path)
+        try:
+            rt = self._session.head(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            logger.debug("info resp, status code: {code}, headers: {headers}".format(
+                 code=rt.status_code,
+                 headers=rt.headers))
+            if rt.status_code == 200:
+                file_size = int(rt.headers['Content-Length'])
+            else:
+                logger.warn(response_info(rt))
+                return False
+        except Exception as e:
+            logger.warn(str(e))
+            return False
+        # mget
+        url = self._conf.uri(path=cos_path)
+        logger.debug("mget with : " + url)
+        offset = 0
+        logger.debug("file size: " + str(file_size))
+
+        parts_num = _num
+        chunk_size = file_size / parts_num
+        last_size = file_size - parts_num * chunk_size
+        self._have_finished = 0
+        if last_size != 0:
+            parts_num += 1
+        _max_thread = min(self._conf._max_thread, parts_num - self._have_finished)
+        pool = SimpleThreadPool(_max_thread)
+
+        logger.debug("chunk_size: " + str(chunk_size))
+        logger.debug('upload file concurrently')
+        logger.info("uploading {file}".format(file=to_printable_str(local_path)))
+        self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
+        for i in range(parts_num):
+            if i+1 == parts_num:
+                pool.add_task(get_parts_data, local_path, offset, file_size-offset, parts_num, i+1)
+            else:
+                pool.add_task(get_parts_data, local_path, offset, chunk_size, parts_num, i+1)
+                offset += chunk_size
+        pool.wait_completion()
+        result = pool.get_result()
+        self._pbar.close()
+        # complete
+        logger.info('completing mget')
+        if result['success_all'] is False:
+            return False
+        with open(local_path, 'wb') as f:
+            for i in range(parts_num):
+                idx = i + 1
+                file_name = local_path + "_" + str(idx)
+                length = 1024*1024
+                offset = 0
+                with open(file_name, 'rb') as File:
+                    while (offset < file_size):
+                        File.seek(offset, 0)
+                        data = File.read(length)
+                        f.write(data)
+                        offset += length
+                os.remove(file_name)
+            f.flush()
+        return True
+
     def put_object_acl(self, grant_read, grant_write, grant_full_control, cos_path):
         acl = []
         if grant_read is not None:
