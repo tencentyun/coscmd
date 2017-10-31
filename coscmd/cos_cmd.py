@@ -430,7 +430,7 @@ def command_thread():
     parser_info.add_argument('--human', help='humanized display', action="store_true", default=False)
     parser_info.set_defaults(func=Op.info)
 
-    parser_mget = sub_parser.add_parser("mget", help="download big file from COS to local.")
+    parser_mget = sub_parser.add_parser("mget", help="download big file from COS to local(Recommand)")
     parser_mget.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_mget.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
     parser_mget.add_argument('-f', '--force', help="Overwrite the saved files", action="store_true", default=False)

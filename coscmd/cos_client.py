@@ -476,6 +476,7 @@ class Interface(object):
         if _force is False and os.path.isfile(local_path) is True:
             logger.warn("The file {file} already exists, please use -f to overwrite the file".format(file=to_printable_str(cos_path)))
             return False
+        logger.info("delete {file}".format(file=to_printable_str(cos_path)))
         url = self._conf.uri(path=cos_path)
         logger.debug("download with : " + url)
         try:
@@ -522,6 +523,7 @@ class Interface(object):
         if query_yes_no("WARN: you are deleting all files under cos_path '{cos_path}', please make sure".format(cos_path=to_printable_str(cos_path))) is False:
             return False
         self._have_finished = 0
+        self._fail_num = 0
         self._file_num = 0
         NextMarker = ""
         IsTruncated = "true"
@@ -575,9 +577,43 @@ class Interface(object):
                 logger.warn(response_info(rt))
                 logger.debug("get folder error")
                 return False
+        # Clipping
+        logger.info("Delete the remaining files again")
+        IsTruncated = "true"
+        while IsTruncated == "true":
+            data_xml = ""
+            file_list = []
+            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
+                                 .format(prefix=urllib.quote(to_printable_str(cos_path)), nextmarker=urllib.quote(to_printable_str(NextMarker))))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            if rt.status_code == 200:
+                try:
+                    root = minidom.parseString(rt.content).documentElement
+                    IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                    if IsTruncated == 'true':
+                        NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+                except Exception as e:
+                    logger.warn(str(e))
+                logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                     code=rt.status_code,
+                     headers=rt.headers,
+                     text=to_printable_str(rt.text)))
+                contentset = root.getElementsByTagName("Key")
+                for content in contentset:
+                    self._file_num += 1
+                    file_name = to_unicode(content.childNodes[0].data)
+                    if self.delete_file(file_name) is True:
+                        logger.info("delete {file}".format(file=to_printable_str(file_name)))
+                    else:
+                        logger.info("delete {file} fail".format(file=to_printable_str(file_name)))
+            else:
+                logger.warn(response_info(rt))
+                logger.debug("get folder error")
+                return False
         if self._file_num == 0:
             logger.info("The directory does not exist")
             return False
+
         logger.info("{files} files successful, {fail_files} files failed"
                     .format(files=self._have_finished, fail_files=self._fail_num))
         if self._file_num == self._have_finished:
@@ -587,7 +623,6 @@ class Interface(object):
 
     def delete_file(self, cos_path):
         url = self._conf.uri(path=cos_path)
-        logger.info("delete with : " + url)
         try:
             rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             logger.debug("init resp, status code: {code}, headers: {headers}".format(
