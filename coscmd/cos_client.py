@@ -808,6 +808,7 @@ class Interface(object):
         result = pool.get_result()
         self._pbar.close()
         # complete
+        logger.info('completing mget')
         if result['success_all'] is False:
             return False
         with open(local_path, 'wb') as f:
