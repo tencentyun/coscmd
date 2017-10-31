@@ -719,7 +719,7 @@ class Interface(object):
             return False
         return False
 
-    def mget(self, cos_path, local_path, _force=False):
+    def mget(self, cos_path, local_path, _force=False, _num=10):
 
         def get_parts_data(local_path, offset, length, parts_size, idx):
             try:
@@ -734,7 +734,7 @@ class Interface(object):
                     content_len = int(rt.headers['Content-Length'])
                 else:
                     raise IOError("download failed without Content-Length header")
-                if rt.status_code in [206,200]:
+                if rt.status_code in [206, 200]:
                     file_len = 0
                     dir_path = os.path.dirname(local_path)
                     if os.path.isdir(dir_path) is False and dir_path != '':
@@ -779,13 +779,13 @@ class Interface(object):
         except Exception as e:
             logger.warn(str(e))
             return False
-	#mget
+        # mget
         url = self._conf.uri(path=cos_path)
         logger.debug("mget with : " + url)
         offset = 0
         logger.debug("file size: " + str(file_size))
-        
-        parts_num = 10
+
+        parts_num = _num
         chunk_size = file_size / parts_num
         last_size = file_size - parts_num * chunk_size
         self._have_finished = 0
@@ -793,7 +793,7 @@ class Interface(object):
             parts_num += 1
         _max_thread = min(self._conf._max_thread, parts_num - self._have_finished)
         pool = SimpleThreadPool(_max_thread)
-	
+
         logger.debug("chunk_size: " + str(chunk_size))
         logger.debug('upload file concurrently')
         logger.info("uploading {file}".format(file=to_printable_str(local_path)))
@@ -810,7 +810,7 @@ class Interface(object):
         pool.wait_completion()
         result = pool.get_result()
         self._pbar.close()
-	#complete
+        # complete
         if result['success_all'] is False:
             return False
         with open(local_path, 'wb') as f:
@@ -828,7 +828,6 @@ class Interface(object):
                 os.remove(file_name)
             f.flush()
         return True
-
 
     def put_object_acl(self, grant_read, grant_write, grant_full_control, cos_path):
         acl = []
