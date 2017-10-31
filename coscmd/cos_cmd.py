@@ -434,7 +434,7 @@ def command_thread():
     parser_mget.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_mget.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
     parser_mget.add_argument('-f', '--force', help="Overwrite the saved files", action="store_true", default=False)
-    parser_mget.add_argument('-n', '--num', help="specify part num of files to mget", action="store_true", default=10)
+    parser_mget.add_argument('-n', '--num', help='specify part num of files to mget', type=int, default=100)
     parser_mget.set_defaults(func=Op.mget)
 
     parser_signurl = sub_parser.add_parser("signurl", help="get download url")
