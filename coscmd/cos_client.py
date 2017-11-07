@@ -476,7 +476,7 @@ class Interface(object):
         if _force is False and os.path.isfile(local_path) is True:
             logger.warn("The file {file} already exists, please use -f to overwrite the file".format(file=to_printable_str(cos_path)))
             return False
-        logger.info("delete {file}".format(file=to_printable_str(cos_path)))
+        logger.info("download {file}".format(file=to_printable_str(cos_path)))
         url = self._conf.uri(path=cos_path)
         logger.debug("download with : " + url)
         try:
@@ -830,8 +830,8 @@ class Interface(object):
         pool = SimpleThreadPool(_max_thread)
 
         logger.debug("chunk_size: " + str(chunk_size))
-        logger.debug('upload file concurrently')
-        logger.info("uploading {file}".format(file=to_printable_str(local_path)))
+        logger.debug('download file concurrently')
+        logger.info("downloading {file}".format(file=to_printable_str(local_path)))
         self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
         for i in range(parts_num):
             if i+1 == parts_num:
