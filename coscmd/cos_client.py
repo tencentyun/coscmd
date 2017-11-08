@@ -600,7 +600,6 @@ class Interface(object):
                      text=to_printable_str(rt.text)))
                 contentset = root.getElementsByTagName("Key")
                 for content in contentset:
-                    self._file_num += 1
                     file_name = to_unicode(content.childNodes[0].data)
                     if self.delete_file(file_name) is True:
                         logger.info("delete {file}".format(file=to_printable_str(file_name)))
