@@ -56,7 +56,7 @@ coscmd config -a <access_id> -s <secret_key> -u <appid> -b <bucketname> -r <regi
 | secret_key | 必选参数，APPID 对应的密钥 Key，可从控制台获取，参考 [基本概念](https://cloud.tencent.com/doc/product/436/6225)。 | 字符串  |
 | appid      | 必选参数，需要进行操作的 APPID，可从控制台获取，参考 [基本概念](https://cloud.tencent.com/doc/product/436/6225)。 | 数字   |
 | bucketname     | 必选参数，指定的存储桶名称， 需要提前在控制台建立，参考 [创建存储桶](https://cloud.tencent.com/doc/product/436/6232)。 | 字符串  |
-| region     | 必选参数，存储桶所在地域。有效值：cn-south（华南）、 cn-north（华北）、cn-east（华东）、cn-southwest（西南）、sg（新加坡），参考 [可用地域](/doc/product/436/6224)。 | 字符串  |
+| region     | 必选参数，存储桶所在地域。参考 [可用地域](https://cloud.tencent.com/doc/product/436/6224)。 | 字符串  |
 | max_thread | 可选参数，多线程上传时的最大线程数（默认为 5），有效值：1~10         | 数字   |
 | parts_size | 可选参数，分块上传的单块大小（单位为 M，默认为 1M），有效值：1~10     | 数字   |
 
