@@ -267,7 +267,7 @@ class Interface(object):
             self._upload_id = None
             self._type = _type
             self._path_md5 = get_md5_filename(local_path, cos_path)
-            logger.debug("init with : " + url)
+            logger.debug("init with : " + url)         
             if os.path.isfile(self._path_md5):
                 with open(self._path_md5, 'rb') as f:
                     self._upload_id = f.read()
@@ -280,7 +280,7 @@ class Interface(object):
             logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
                  headers=rt.headers,
-                 text=rt.text))
+                 text=to_printable_str(rt.text)))
 
             if rt.status_code == 200:
                 root = minidom.parseString(rt.content).documentElement
@@ -302,7 +302,7 @@ class Interface(object):
                     File.seek(offset, 0)
                     data = File.read(length)
                 url = self._conf.uri(path=cos_path)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=self._upload_id)
-                logger.debug("upload url: " + str(url))
+                #logger.debug("upload url: " + str(url))
                 for j in range(self._retry):
                     rt = self._session.put(url=url,
                                            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
@@ -312,7 +312,7 @@ class Interface(object):
                         round=j+1,
                         code=rt.status_code,
                         headers=rt.headers,
-                        text=rt.text))
+                        text=to_printable_str(rt.text)))
                     self._md5[idx] = rt.headers[self._etag][1:-1]
                     if rt.status_code == 200:
                         self._have_finished += 1
@@ -396,7 +396,7 @@ class Interface(object):
                     return False
             except Exception as e:
                 return False
-            return True
+            return True  
         if local_path == "":
             file_size = 0
         else:
