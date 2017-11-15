@@ -119,13 +119,13 @@ class Op(object):
             return -1
         if args.recursive:
             if os.path.isfile(args.local_path) is True:
-                rt = Interface.upload_file(args.local_path, args.cos_path)
+                rt = Interface.upload_file(args.local_path, args.cos_path, args.type)
             elif os.path.isdir(args.local_path):
                 if args.cos_path.endswith('/') is False:
                     args.cos_path += '/'
                 if args.local_path.endswith('/') is False:
                     args.local_path += '/'
-                rt = Interface.upload_folder(args.local_path, args.cos_path)
+                rt = Interface.upload_folder(args.local_path, args.cos_path, args.type)
                 logger.info("{folders} folders, {files} files successful, {fail_files} files failed"
                             .format(folders=Interface._folder_num, files=Interface._file_num, fail_files=Interface._fail_num))
             if rt:
@@ -141,7 +141,7 @@ class Op(object):
             if os.path.isfile(args.local_path) is False:
                 logger.warn(change_color("cannot stat '%s': No such file or directory" % to_printable_str(args.local_path), color_red))
                 return -1
-            if Interface.upload_file(args.local_path, args.cos_path) is True:
+            if Interface.upload_file(args.local_path, args.cos_path, args.type) is True:
                 logger.info(change_color("upload \"{file}\" successfully".format(file=to_printable_str(args.local_path)), color_green))
                 return 0
             else:
@@ -199,7 +199,7 @@ class Op(object):
                 args.cos_path += '/'
             if args.cos_path == '/':
                 args.cos_path = ''
-            if Interface.delete_folder(args.cos_path):
+            if Interface.delete_folder(args.cos_path, args.force):
                 logger.info(change_color("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)), color_green))
                 return 0
             else:
@@ -403,6 +403,7 @@ def command_thread():
     parser_upload.add_argument('local_path', help="local file path as /tmp/a.txt or directory", type=str)
     parser_upload.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_upload.add_argument('-r', '--recursive', help="upload recursively when upload directory", action="store_true", default=False)
+    parser_upload.add_argument('-t', '--type', help='specify x-cos-storage-class of files to upload', type=str, choices=['STANDARD', 'STANDARD_IA', 'NEARLINE'], default='STANDARD')
     parser_upload.set_defaults(func=Op.upload)
 
     parser_download = sub_parser.add_parser("download", help="download file from COS to local.")
@@ -415,6 +416,7 @@ def command_thread():
     parser_delete = sub_parser.add_parser("delete", help="delete file or files on COS")
     parser_delete.add_argument("cos_path", nargs='?', help="cos_path as a/b.txt", type=str, default='')
     parser_delete.add_argument('-r', '--recursive', help="delete files recursively, WARN: all files with the prefix will be deleted!", action="store_true", default=False)
+    parser_delete.add_argument('-f', '--force', help="Delete directly without confirmation", action="store_true", default=False)
     parser_delete.set_defaults(func=Op.delete)
 
     parser_list = sub_parser.add_parser("list", help='list files on COS')

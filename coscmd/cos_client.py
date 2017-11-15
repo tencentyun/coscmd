@@ -170,7 +170,7 @@ class Interface(object):
         req = requests.Request('GET',  url)
         prepped = s.prepare_request(req)
         signature = CosS3Auth(self._conf._access_id, self._conf._access_key, timeout).__call__(prepped).headers['Authorization']
-        return url + '?sign=' + urllib.quote(signature)
+        return url + '?sign=' + urllib.quote(to_printable_str(signature))
 
     def list_part(self, cos_path):
         logger.debug("getting uploaded parts")
@@ -201,7 +201,7 @@ class Interface(object):
         logger.debug("list parts error")
         return True
 
-    def upload_folder(self, local_path, cos_path):
+    def upload_folder(self, local_path, cos_path, _type='Standard'):
 
         local_path = to_unicode(local_path)
         cos_path = to_unicode(cos_path)
@@ -211,15 +211,16 @@ class Interface(object):
         if local_path[-1] != '/':
             local_path += '/'
         cos_path = cos_path.lstrip('/')
+        self._type = _type
         self._folder_num += 1
         ret_code = True  # True means 0, False means -1
         for filename in filelist:
             filepath = os.path.join(local_path, filename)
             if os.path.isdir(filepath):
-                if not self.upload_folder(filepath, cos_path+filename):
+                if not self.upload_folder(filepath, cos_path+filename, _type):
                     ret_code = False
             else:
-                if self.upload_file(local_path=filepath, cos_path=cos_path+filename) is False:
+                if self.upload_file(local_path=filepath, cos_path=cos_path+filename, _type=_type) is False:
                     logger.info("upload {file} fail".format(file=to_printable_str(filepath)))
                     self._fail_num += 1
                     ret_code = False
@@ -228,9 +229,10 @@ class Interface(object):
                     logger.debug("upload {file} success".format(file=to_printable_str(filepath)))
         return ret_code
 
-    def upload_file(self, local_path, cos_path):
+    def upload_file(self, local_path, cos_path, _type='Standard'):
 
         def single_upload():
+            self._type = _type
             if len(local_path) == 0:
                 data = ""
             else:
@@ -239,8 +241,10 @@ class Interface(object):
             url = self._conf.uri(path=cos_path)
             for j in range(self._retry):
                 try:
+                    http_header = dict()
+                    http_header['x-cos-storage-class'] = self._type
                     rt = self._session.put(url=url,
-                                           auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=data)
+                                           auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=data, headers=http_header)
                     if rt.status_code == 200:
                         if local_path != '':
                             logger.info("upload {file} with {per}%".format(file=to_printable_str(local_path), per="{0:5.2f}".format(100)))
@@ -261,6 +265,7 @@ class Interface(object):
             self._have_finished = 0
             self._have_uploaded = []
             self._upload_id = None
+            self._type = _type
             self._path_md5 = get_md5_filename(local_path, cos_path)
             logger.debug("init with : " + url)
             if os.path.isfile(self._path_md5):
@@ -269,7 +274,9 @@ class Interface(object):
                 if self.list_part(cos_path) is True:
                     logger.info("continue uploading from last breakpoint")
                     return True
-            rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            http_header = dict()
+            http_header['x-cos-storage-class'] = self._type
+            rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._access_id, self._conf._access_key), headers=http_header)
             logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
                  headers=rt.headers,
@@ -390,7 +397,6 @@ class Interface(object):
             except Exception as e:
                 return False
             return True
-
         if local_path == "":
             file_size = 0
         else:
@@ -516,12 +522,13 @@ class Interface(object):
             logger.warn(str(e))
         return False
 
-    def delete_folder(self, cos_path):
+    def delete_folder(self, cos_path, _force=False):
 
         cos_path = to_unicode(cos_path)
         # make sure
-        if query_yes_no("WARN: you are deleting all files under cos_path '{cos_path}', please make sure".format(cos_path=to_printable_str(cos_path))) is False:
-            return False
+        if _force is False:
+            if query_yes_no("WARN: you are deleting all files under cos_path '{cos_path}', please make sure".format(cos_path=to_printable_str(cos_path))) is False:
+                return False
         self._have_finished = 0
         self._fail_num = 0
         self._file_num = 0
