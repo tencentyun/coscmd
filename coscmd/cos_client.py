@@ -75,15 +75,19 @@ def query_yes_no(question, default="no"):
 
 def response_info(rt):
     messgae = ""
+    request_id = "null"
     code = rt.status_code
     try:
         root = minidom.parseString(rt.content).documentElement
         message = root.getElementsByTagName("Message")[0].childNodes[0].data
+        request_id = root.getElementsByTagName("RequestId")[0].childNodes[0].data
     except Exception:
         message = "Not Found"
-    return ("error: [code {code}] {message}".format(
+    return ('''Error: [code {code}] {message}
+RequestId: {request_id}'''.format(
                      code=code,
-                     message=to_printable_str(message)))
+                     message=to_printable_str(message),
+                     request_id=to_printable_str(request_id)))
 
 
 def utc_to_local(utc_time_str, utc_format='%Y-%m-%dT%H:%M:%S.000Z'):
@@ -482,7 +486,7 @@ class Interface(object):
         if _force is False and os.path.isfile(local_path) is True:
             logger.warn("The file {file} already exists, please use -f to overwrite the file".format(file=to_printable_str(cos_path)))
             return False
-        logger.info("download {file}".format(file=to_printable_str(cos_path)))
+        #logger.info("download {file}".format(file=to_printable_str(cos_path)))
         url = self._conf.uri(path=cos_path)
         logger.debug("download with : " + url)
         try:
