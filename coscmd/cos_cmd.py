@@ -142,10 +142,10 @@ class Op(object):
                 logger.warn(change_color("cannot stat '%s': No such file or directory" % to_printable_str(args.local_path), color_red))
                 return -1
             if Interface.upload_file(args.local_path, args.cos_path, args.type) is True:
-                logger.info(change_color("upload \"{file}\" successfully".format(file=to_printable_str(args.local_path)), color_green))
+                # logger.info(change_color("upload \"{file}\" successfully".format(file=to_printable_str(args.local_path)), color_green))
                 return 0
             else:
-                logger.warn(change_color("upload \"{file}\" failed".format(file=to_printable_str(args.local_path)), color_red))
+                # logger.warn(change_color("upload \"{file}\" failed".format(file=to_printable_str(args.local_path)), color_red))
                 return -1
         return -1
 
@@ -176,10 +176,10 @@ class Op(object):
                 return -1
         else:
             if Interface.download_file(args.cos_path, args.local_path, args.force) is True:
-                logger.info(change_color("download \"{file}\" successfully".format(file=to_printable_str(args.cos_path)), color_green))
+                # logger.info(change_color("download \"{file}\" successfully".format(file=to_printable_str(args.cos_path)), color_green))
                 return 0
             else:
-                logger.warn(change_color("download \"{file}\" failed".format(file=to_printable_str(args.cos_path)), color_red))
+                # logger.warn(change_color("download \"{file}\" failed".format(file=to_printable_str(args.cos_path)), color_red))
                 return -1
         return -1
 
@@ -226,7 +226,8 @@ class Op(object):
         if Interface.list_objects(cos_path=args.cos_path, _recursive=args.recursive, _all=args.all, _num=args.num, _human=args.human):
             return 0
         else:
-            logger.warn(change_color("list failed!", color_red))
+            # logger.warn(change_color("list failed!", color_red))
+            return -1
 
     @staticmethod
     def info(args):
@@ -241,7 +242,7 @@ class Op(object):
         if Interface.info_object(args.cos_path, _human=args.human):
             return 0
         else:
-            logger.warn(change_color("info failed!", color_red))
+            # logger.warn(change_color("info failed!", color_red))
             return -1
 
     @staticmethod
