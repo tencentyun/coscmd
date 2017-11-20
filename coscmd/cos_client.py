@@ -271,7 +271,7 @@ class Interface(object):
             self._upload_id = None
             self._type = _type
             self._path_md5 = get_md5_filename(local_path, cos_path)
-            logger.debug("init with : " + url)         
+            logger.debug("init with : " + url)
             if os.path.isfile(self._path_md5):
                 with open(self._path_md5, 'rb') as f:
                     self._upload_id = f.read()
@@ -306,7 +306,7 @@ class Interface(object):
                     File.seek(offset, 0)
                     data = File.read(length)
                 url = self._conf.uri(path=cos_path)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=self._upload_id)
-                #logger.debug("upload url: " + str(url))
+                # logger.debug("upload url: " + str(url))
                 for j in range(self._retry):
                     rt = self._session.put(url=url,
                                            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
@@ -400,7 +400,7 @@ class Interface(object):
                     return False
             except Exception as e:
                 return False
-            return True  
+            return True
         if local_path == "":
             file_size = 0
         else:
@@ -486,7 +486,7 @@ class Interface(object):
         if _force is False and os.path.isfile(local_path) is True:
             logger.warn("The file {file} already exists, please use -f to overwrite the file".format(file=to_printable_str(cos_path)))
             return False
-        #logger.info("download {file}".format(file=to_printable_str(cos_path)))
+        # logger.info("download {file}".format(file=to_printable_str(cos_path)))
         url = self._conf.uri(path=cos_path)
         logger.debug("download with : " + url)
         try:
