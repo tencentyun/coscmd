@@ -169,18 +169,27 @@ coscmd putbucketacl --grant-read 12345678,12345678/11111 --grant-write anyone --
 ```
 * ACL设置指南
  --grant-read代表读的权限。
+ 
 --grant-write代表写的权限。
+
 --grant-full-control代表读写的权限。
+
 GRANT_READ / GRANT_WRITE / GRANT_FILL_CONTORL代表被赋权的帐号。
+
 若赋权根帐号，使用rootid的形式；
+
 若赋权子账户，使用rootid/subid的形式；
+
 若需要对所有人赋权，使用anyone的形式。
+
 同时赋权的多个帐号用逗号(,)隔开。
+
 请将参数替换为您所需要删除的cos上文件的路径(cospath)。
+
 具体用法详见示例。
 
 ### 获取访问控制(ACL)
-
+使用如下命令设置bucket的访问控制：
 ```
 coscmd getbucketacl //命令格式
 coscmd getbucketacl //操作示例
