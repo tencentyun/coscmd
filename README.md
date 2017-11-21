@@ -168,6 +168,7 @@ coscmd putbucketacl [--grant-read GRANT_READ] [--grant-write GRANT_WRITE] [--gra
 coscmd putbucketacl --grant-read 12345678,12345678/11111 --grant-write anyone --grant-full-control 12345678/22222 aaa/aaa.txt //操作示例
 ```
 * ACL设置指南
+
  --grant-read代表读的权限。
  
 --grant-write代表写的权限。
