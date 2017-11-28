@@ -129,12 +129,12 @@ class Op(object):
                 rt = Interface.upload_folder(args.local_path, args.cos_path, args.type)
                 logger.info("{folders} folders, {files} files successful, {fail_files} files failed"
                             .format(folders=Interface._folder_num, files=Interface._file_num, fail_files=Interface._fail_num))
-            if rt:
-                logger.debug(change_color("upload all files under \"{file}\" directory successfully".format(file=to_printable_str(args.local_path)), color_green))
-                return 0
-            else:
-                logger.debug(change_color("upload all files under \"{file}\" directory failed".format(file=to_printable_str(args.local_path)), color_red))
-                return -1
+                if rt:
+                    logger.debug(change_color("upload all files under \"{file}\" directory successfully".format(file=to_printable_str(args.local_path)), color_green))
+                    return 0
+                else:
+                    logger.debug(change_color("upload all files under \"{file}\" directory failed".format(file=to_printable_str(args.local_path)), color_red))
+                    return -1
         else:
             if os.path.isdir(args.local_path):
                 logger.warn(change_color("\"{path}\" is a directory, use \'-r\' option to upload it please.".format(path=to_printable_str(args.local_path)), color_red))
