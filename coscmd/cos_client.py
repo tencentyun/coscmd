@@ -449,11 +449,11 @@ class Interface(object):
             else:
                 self._fail_num += 1
 
-        cos_path = cos_path.lstrip('/')
         if cos_path.endswith('/') is False:
             cos_path += '/'
         if local_path.endswith('/') is False:
             local_path += '/'
+        cos_path = cos_path.lstrip('/')
         NextMarker = ""
         IsTruncated = "true"
         self._file_num = 0
@@ -491,6 +491,10 @@ class Interface(object):
             return False
 
     def download_file(self, cos_path, local_path, _force=False):
+        cos_path = cos_path.lstrip('/')
+        if cos_path == "":
+            logger.warn("'/' is a directory, use \'-r\' option to download it please.")
+            return False
         if _force is False and os.path.isfile(local_path) is True:
             logger.warn("The file {file} already exists, please use -f to overwrite the file".format(file=to_printable_str(cos_path)))
             return False
