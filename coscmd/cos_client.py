@@ -377,7 +377,7 @@ class Interface(object):
                 return False
 
         def complete_multiupload():
-            logger.info('completing multiupload, please wati')
+            logger.info('completing multiupload, please wait')
             doc = minidom.Document()
             root = doc.createElement("CompleteMultipartUpload")
             list_md5 = sorted(self._md5.items(), key=lambda d: d[0])
@@ -492,9 +492,6 @@ class Interface(object):
 
     def download_file(self, cos_path, local_path, _force=False):
         cos_path = cos_path.lstrip('/')
-        if cos_path == "":
-            logger.warn("'/' is a directory, use \'-r\' option to download it please.")
-            return False
         if _force is False and os.path.isfile(local_path) is True:
             logger.warn("The file {file} already exists, please use -f to overwrite the file".format(file=to_printable_str(cos_path)))
             return False
@@ -545,6 +542,8 @@ class Interface(object):
     def delete_folder(self, cos_path, _force=False):
 
         cos_path = to_unicode(cos_path)
+        if cos_path == "/":
+            cos_path = ""
         # make sure
         if _force is False:
             if query_yes_no("WARN: you are deleting all files under cos_path '{cos_path}', please make sure".format(cos_path=to_printable_str(cos_path))) is False:
