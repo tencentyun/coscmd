@@ -129,10 +129,10 @@ class Op(object):
                 logger.info("{folders} folders, {files} files successful, {fail_files} files failed"
                             .format(folders=Interface._folder_num, files=Interface._file_num, fail_files=Interface._fail_num))
             if rt:
-                logger.info(change_color("upload all files under \"{file}\" directory successfully".format(file=to_printable_str(args.local_path)), color_green))
+                logger.debug(change_color("upload all files under \"{file}\" directory successfully".format(file=to_printable_str(args.local_path)), color_green))
                 return 0
             else:
-                logger.warn(change_color("upload all files under \"{file}\" directory failed".format(file=to_printable_str(args.local_path)), color_red))
+                logger.debug(change_color("upload all files under \"{file}\" directory failed".format(file=to_printable_str(args.local_path)), color_red))
                 return -1
         else:
             if os.path.isdir(args.local_path):
@@ -169,10 +169,10 @@ class Op(object):
                 args.local_path += '/'
             rt = Interface.download_folder(args.cos_path, args.local_path, args.force)
             if rt:
-                logger.info(change_color("download all files under \"{file}\" directory successfully".format(file=to_printable_str(args.cos_path)), color_green))
+                logger.debug(change_color("download all files under \"{file}\" directory successfully".format(file=to_printable_str(args.cos_path)), color_green))
                 return 0
             else:
-                logger.warn(change_color("download all files under \"{file}\" directory failed".format(file=to_printable_str(args.cos_path)), color_red))
+                logger.debug(change_color("download all files under \"{file}\" directory failed".format(file=to_printable_str(args.cos_path)), color_red))
                 return -1
         else:
             if Interface.download_file(args.cos_path, args.local_path, args.force) is True:
@@ -200,17 +200,17 @@ class Op(object):
             if args.cos_path == '/':
                 args.cos_path = ''
             if Interface.delete_folder(args.cos_path, args.force):
-                logger.info(change_color("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)), color_green))
+                logger.debug(change_color("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)), color_green))
                 return 0
             else:
-                logger.warn(change_color("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)), color_red))
+                logger.debug(change_color("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)), color_red))
                 return -1
         else:
-            if Interface.delete_file(args.cos_path):
-                logger.info(change_color("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)), color_green))
+            if Interface.delete_file(args.cos_path, args.force):
+                logger.debug(change_color("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)), color_green))
                 return 0
             else:
-                logger.warn(change_color("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)), color_red))
+                logger.debug(change_color("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)), color_red))
                 return -1
 
     @staticmethod
@@ -259,10 +259,10 @@ class Op(object):
             args.cos_path = args.cos_path.decode(fs_coding)
 
         if Interface.mget(args.cos_path, args.local_path, args.force, args.num) is True:
-            logger.info(change_color("mget \"{file}\" successfully".format(file=to_printable_str(args.cos_path)), color_green))
+            logger.debug(change_color("mget \"{file}\" successfully".format(file=to_printable_str(args.cos_path)), color_green))
             return 0
         else:
-            logger.warn(change_color("mget \"{file}\" failed".format(file=to_printable_str(args.cos_path)), color_red))
+            logger.debug(change_color("mget \"{file}\" failed".format(file=to_printable_str(args.cos_path)), color_red))
             return -1
         return -1
 
