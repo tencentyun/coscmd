@@ -612,7 +612,7 @@ class Interface(object):
                 contentset = root.getElementsByTagName("Key")
                 for content in contentset:
                     file_name = to_unicode(content.childNodes[0].data)
-                    if self.delete_file(file_name) is True:
+                    if self.delete_file(file_name, True) is True:
                         logger.info("delete {file}".format(file=to_printable_str(file_name)))
                     else:
                         logger.info("delete {file} fail".format(file=to_printable_str(file_name)))
@@ -631,7 +631,10 @@ class Interface(object):
         else:
             return False
 
-    def delete_file(self, cos_path):
+    def delete_file(self, cos_path, _force=False):
+        if _force is False:
+            if query_yes_no("WARN: you are deleting the file in the '{cos_path}' cos_path, please make sure".format(cos_path=to_printable_str(cos_path))) is False:
+                return False
         url = self._conf.uri(path=cos_path)
         try:
             rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
