@@ -210,9 +210,9 @@ class Interface(object):
         local_path = to_unicode(local_path)
         cos_path = to_unicode(cos_path)
         filelist = os.listdir(local_path)
-        if cos_path[-1] != '/':
-            cos_path += '/'
-        if local_path[-1] != '/':
+        if cos_path.endswith('/') is False:
+            cos_path += "/"
+        if local_path.endswith('/') is False:
             local_path += '/'
         cos_path = cos_path.lstrip('/')
         self._type = _type
@@ -251,7 +251,10 @@ class Interface(object):
                                            auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=data, headers=http_header)
                     if rt.status_code == 200:
                         if local_path != '':
-                            logger.info("upload {file} with {per}%".format(file=to_printable_str(local_path), per="{0:5.2f}".format(100)))
+                            logger.info("upload {local_path}   =>   cos://{bucket}/{cos_path}  [100%]".format(
+                                                                    bucket=self._conf._bucket,
+                                                                    local_path=to_printable_str(local_path),
+                                                                    cos_path=to_printable_str(cos_path)))
                         return True
                     else:
                         time.sleep(2**j)
@@ -347,7 +350,10 @@ class Interface(object):
 
             logger.debug("chunk_size: " + str(chunk_size))
             logger.debug('upload file concurrently')
-            logger.info("uploading {file}".format(file=to_printable_str(local_path)))
+            logger.info("upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
+                                                    bucket=self._conf._bucket,
+                                                    local_path=to_printable_str(local_path),
+                                                    cos_path=to_printable_str(cos_path)))
             self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
             if chunk_size >= file_size:
                 pool.add_task(multiupload_parts_data, local_path, offset, file_size, 1, 0)
@@ -439,13 +445,15 @@ class Interface(object):
 
         def download_file(_cos_path, _local_path, _force):
             if self.download_file(_cos_path, _local_path, _force) is True:
-                logger.info("download {file}".format(file=to_printable_str(_cos_path)))
                 self._have_finished += 1
             else:
-                logger.info("download {file} fail".format(file=to_printable_str(_cos_path)))
                 self._fail_num += 1
 
         cos_path = cos_path.lstrip('/')
+        if cos_path.endswith('/') is False:
+            cos_path += '/'
+        if local_path.endswith('/') is False:
+            local_path += '/'
         NextMarker = ""
         IsTruncated = "true"
         self._file_num = 0
@@ -488,7 +496,10 @@ class Interface(object):
             return False
         # logger.info("download {file}".format(file=to_printable_str(cos_path)))
         url = self._conf.uri(path=cos_path)
-        logger.debug("download with : " + url)
+        logger.info("download cos://{bucket}/{cos_path}   =>   {local_path}".format(
+                                                        bucket=self._conf._bucket,
+                                                        local_path=to_printable_str(local_path),
+                                                        cos_path=to_printable_str(cos_path)))
         try:
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), stream=True)
             logger.debug("get resp, status code: {code}, headers: {headers}".format(
@@ -499,31 +510,32 @@ class Interface(object):
             else:
                 raise IOError("download failed without Content-Length header")
             if rt.status_code == 200:
-                self._pbar = tqdm(total=content_len, unit='B', unit_scale=True)
-                file_len = 0
-                dir_path = os.path.dirname(local_path)
-                if os.path.isdir(dir_path) is False and dir_path != '':
-                    try:
-                        os.makedirs(dir_path)
-                    except Exception as e:
-                        logger.warn(str(e))
-                        return False
-                with open(local_path, 'wb') as f:
-                    for chunk in rt.iter_content(chunk_size=1024):
-                        if chunk:
-                            self._pbar.update(len(chunk))
-                            file_len += len(chunk)
-                            f.write(chunk)
-                    f.flush()
-                if file_len != content_len:
-                    raise IOError("download failed with incomplete file")
-                self._pbar.close()
-                return True
+                with tqdm(total=content_len, unit='B', unit_scale=True) as self._pbar:
+                    file_len = 0
+                    dir_path = os.path.dirname(local_path)
+                    if os.path.isdir(dir_path) is False and dir_path != '':
+                        try:
+                            print dir_path
+                            os.makedirs(dir_path)
+                        except Exception as e:
+                            logger.warn("unable to create the corresponding folder")
+                            return False
+                    with open(local_path, 'wb') as f:
+                        for chunk in rt.iter_content(chunk_size=1024):
+                            if chunk:
+                                self._pbar.update(len(chunk))
+                                file_len += len(chunk)
+                                f.write(chunk)
+                        f.flush()
+                    if file_len != content_len:
+                        raise IOError("download failed with incomplete file")
+                    return True
             else:
                 logger.warn(response_info(rt))
                 return False
         except Exception as e:
             logger.warn(str(e))
+            return False
         return False
 
     def delete_folder(self, cos_path, _force=False):
