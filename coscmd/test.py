@@ -8,8 +8,8 @@ import os
 reload(sys)
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
-access_id = os.environ["ACCESS_ID"]
-access_key = os.environ["ACCESS_KEY"]
+access_id = os.environ["COS_KEY"]
+access_key = os.environ["COS_SECRET"]
 test_num = 2
 file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
 conf = cos_client.CosConfig(
@@ -30,7 +30,8 @@ def setUp():
 
 
 def tearDown():
-    print "test over"
+    """delete testbucket"""
+    rt = op_int.delete_folder(cos_path="", _force=True)
 
 
 def gen_file(path, size):
@@ -71,7 +72,7 @@ def test_delete_file():
     file_name = "tmp" + file_id + "_Bigfile"
     print "Test delete " + file_name
     sys.stdout.flush()
-    rt = op_int.delete_file(file_name)
+    rt = op_int.delete_file(file_name, _force=True)
     assert rt
 
 
@@ -96,10 +97,10 @@ def test_download_folder():
     shutil.rmtree('testfolder/')
 
 
-# def test_delete_folder():
-#     print "Test delete folder"
-#     sys.stdout.flush()
-#     rt = op_int.delete_folder('testfolder')
+def test_delete_folder():
+    print "Test delete folder"
+    sys.stdout.flush()
+    rt = op_int.delete_folder(cos_path='', _force=True)
 
 
 if __name__ == "__main__":
