@@ -76,11 +76,14 @@ part_size = 1
 ```
 coscmd upload <localpath> <cospath>  //命令格式
 coscmd upload /home/aaa/123.txt bbb/123.txt  //操作示例
+coscmd upload /home/aaa/123.txt bbb/  //操作示例
 ```
 - 上传文件夹命令如下：
 ```
 coscmd upload -r <localpath> <cospath>  //命令格式
+coscmd upload -r /home/aaa/ bbb/aaa  //操作示例
 coscmd upload -r /home/aaa/ bbb/  //操作示例
+coscmd upload -r /home/aaa/ /  //上传到bucket根目录
 ```
 
 请将 "<>" 中的参数替换为您需要上传的本地文件路径（localpath），以及 COS 上存储的路径（cospath）。
@@ -93,11 +96,14 @@ coscmd upload -r /home/aaa/ bbb/  //操作示例
 ```
 coscmd download <cospath> <localpath>  //命令格式
 coscmd download bbb/123.txt /home/aaa/111.txt  //操作示例
+coscmd download bbb/123.txt /home/aaa/  //操作示例
 ```
 - 如下下载文件夹命令如下：
 ```
 coscmd download-r <cospath> <localpath> //命令格式
+coscmd download -r /home/aaa/ bbb/aaa  //操作示例
 coscmd download -r /home/aaa/ bbb/  //操作示例
+coscmd download -r / bbb/aaa  //下载当前bucket根目录下所有的文件
 ```
 请将 "<>" 中的参数替换为您需要下载的 COS 上文件的路径（cospath），以及本地存储路径（localpath）。
 **注意：** 
@@ -114,6 +120,7 @@ coscmd delete bbb/123.txt  //操作示例
 ```
 coscmd delete -r <cospath>  //命令格式
 coscmd delete -r bbb/  //操作示例
+coscmd delete -r /  //操作示例
 ```
 
 请将"<>"中的参数替换为您需要删除的 COS 上文件的路径（cospath）。工具会提示用户是否确认进行删除操作。
