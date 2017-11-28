@@ -377,7 +377,7 @@ class Interface(object):
                 return False
 
         def complete_multiupload():
-            logger.info('completing multiupload')
+            logger.info('completing multiupload, please wati')
             doc = minidom.Document()
             root = doc.createElement("CompleteMultipartUpload")
             list_md5 = sorted(self._md5.items(), key=lambda d: d[0])
