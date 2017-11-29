@@ -7,7 +7,7 @@
 ### 系统环境
 Windows 或 Linux 系统
 ### 软件依赖
-Python 2.6/2.7
+Python 2.7
 并装有最新版本的pip
 #### 安装及配置
 环境安装与配置详细操作请参考 [Python 安装与配置](https://cloud.tencent.com/document/product/436/10866)。
