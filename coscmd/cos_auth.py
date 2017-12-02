@@ -36,8 +36,6 @@ class CosS3Auth(AuthBase):
         tmp_r = r.headers
         r.headers = {}
         r.headers['Host'] = rt.netloc
-        #print v
-        #v = v.replace("+","%2B")
         headers = dict([(k.lower(), quote(v).lower()) for k, v in r.headers.items()])
         format_str = "{method}\n{host}\n{params}\n{headers}\n".format(
             method=method.lower(),
