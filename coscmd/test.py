@@ -11,13 +11,13 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s -
 access_id = os.environ["COS_KEY"]
 access_key = os.environ["COS_SECRET"]
 test_num = 2
-file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
+file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000)) + "中文"
 conf = cos_client.CosConfig(
         appid="1252448703",
         bucket="lewzylu06",
         region="cn-north",
-        access_id=access_id,
-        access_key=access_key,
+        secret_id=access_id,
+        secret_key=access_key,
         part_size=1,
         max_thread=5
     )
@@ -45,37 +45,39 @@ def test_upload_small_file():
     file_name = "tmp" + file_id + "_Smallfile"
     print "Test upload " + file_name
     sys.stdout.flush()
-    gen_file(file_name, 1.1)
-    rt = op_int.upload_file(file_name, file_name)
+    gen_file("tmp", 1.1)
+    rt = op_int.upload_file("tmp", file_name)
     assert rt
-
-
+    os.remove("tmp")
+ 
+ 
 def test_upload_big_file():
     file_name = "tmp" + file_id + "_Bigfile"
     print "Test upload " + file_name
     sys.stdout.flush()
-    gen_file(file_name, 5.1)
-    rt = op_int.upload_file(file_name, file_name)
+    gen_file("tmp", 5.1)
+    rt = op_int.upload_file("tmp", file_name)
     assert rt
-
-
+    os.remove("tmp")
+ 
+ 
 def test_download_file():
     file_name = "tmp" + file_id + "_Bigfile"
     print "Test download " + file_name
     sys.stdout.flush()
-    rt = op_int.download_file(file_name, file_name, True)
+    rt = op_int.download_file(file_name, "tmp", True)
     assert rt
-    os.remove(file_name)
-
-
+    os.remove("tmp")
+ 
+ 
 def test_delete_file():
     file_name = "tmp" + file_id + "_Bigfile"
     print "Test delete " + file_name
     sys.stdout.flush()
     rt = op_int.delete_file(file_name, _force=True)
     assert rt
-
-
+ 
+ 
 def test_upload_folder():
     if os.path.isdir('testfolder') is False:
         os.mkdir('testfolder')
@@ -88,15 +90,15 @@ def test_upload_folder():
     sys.stdout.flush()
     rt = op_int.upload_folder('testfolder', 'testfolder')
     shutil.rmtree('testfolder/')
-
-
+ 
+ 
 def test_download_folder():
     print "Test download folder"
     sys.stdout.flush()
     rt = op_int.download_folder('testfolder', 'testfolder')
     shutil.rmtree('testfolder/')
-
-
+ 
+ 
 def test_delete_folder():
     print "Test delete folder"
     sys.stdout.flush()
