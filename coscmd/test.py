@@ -49,8 +49,8 @@ def test_upload_small_file():
     rt = op_int.upload_file("tmp", file_name)
     assert rt
     os.remove("tmp")
- 
- 
+
+
 def test_upload_big_file():
     file_name = "tmp" + file_id + "_Bigfile"
     print "Test upload " + file_name
@@ -59,8 +59,8 @@ def test_upload_big_file():
     rt = op_int.upload_file("tmp", file_name)
     assert rt
     os.remove("tmp")
- 
- 
+
+
 def test_download_file():
     file_name = "tmp" + file_id + "_Bigfile"
     print "Test download " + file_name
@@ -68,16 +68,16 @@ def test_download_file():
     rt = op_int.download_file(file_name, "tmp", True)
     assert rt
     os.remove("tmp")
- 
- 
+
+
 def test_delete_file():
     file_name = "tmp" + file_id + "_Bigfile"
     print "Test delete " + file_name
     sys.stdout.flush()
     rt = op_int.delete_file(file_name, _force=True)
     assert rt
- 
- 
+
+
 def test_upload_folder():
     if os.path.isdir('testfolder') is False:
         os.mkdir('testfolder')
@@ -90,15 +90,15 @@ def test_upload_folder():
     sys.stdout.flush()
     rt = op_int.upload_folder('testfolder', 'testfolder')
     shutil.rmtree('testfolder/')
- 
- 
+
+
 def test_download_folder():
     print "Test download folder"
     sys.stdout.flush()
     rt = op_int.download_folder('testfolder', 'testfolder')
     shutil.rmtree('testfolder/')
- 
- 
+
+
 def test_delete_folder():
     print "Test delete folder"
     sys.stdout.flush()
