@@ -81,13 +81,13 @@ def load_conf():
         else:
             max_thread = 5
         try:
-            access_key = cp.get('common', 'secret_id')
+            secret_id = cp.get('common', 'secret_id')
         except Exception:
-            access_key = cp.get('common', 'access_id')
+            secret_id = cp.get('common', 'access_id')
         conf = CosConfig(
             appid=cp.get('common', 'appid'),
-            access_id=access_key,
-            access_key=cp.get('common', 'secret_key'),
+            secret_id=secret_id,
+            secret_key=cp.get('common', 'secret_key'),
             region=compatible(cp.get('common', 'region')),
             bucket=cp.get('common', 'bucket'),
             part_size=part_size,
