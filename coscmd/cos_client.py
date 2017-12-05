@@ -420,7 +420,6 @@ class Interface(object):
             return False
         else:
             for i in range(self._retry):
-
                 rt = init_multiupload()
                 if rt:
                     break
@@ -428,11 +427,8 @@ class Interface(object):
                 return False
             logger.debug("Init multipart upload ok")
 
-            for i in range(self._retry):
-                rt = multiupload_parts()
-                if rt:
-                    break
-            else:
+            rt = multiupload_parts()
+            if rt is False:
                 return False
             logger.debug("multipart upload ok")
             for i in range(self._retry):
