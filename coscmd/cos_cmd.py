@@ -84,12 +84,27 @@ def load_conf():
             secret_id = cp.get('common', 'secret_id')
         except Exception:
             secret_id = cp.get('common', 'access_id')
+        try:
+            appid = cp.get('common', 'appid')
+            bucket = cp.get('common', 'bucket')
+            if bucket.endswith("-"+str(appid)):
+                bucket = bucket.rstrip(appid)
+                bucket = bucket[:-1]
+        except Exception:
+            try:
+                bucket = cp.get('common', 'bucket')
+                appid = bucket.split('-')[-1]
+                bucket = bucket.rstrip(appid)
+                bucket = bucket[:-1]
+            except:
+                logger.error("The configuration file is wrong. Please reconfirm")
+        print appid,bucket
         conf = CosConfig(
-            appid=cp.get('common', 'appid'),
+            appid=appid,
             secret_id=secret_id,
             secret_key=cp.get('common', 'secret_key'),
             region=compatible(cp.get('common', 'region')),
-            bucket=cp.get('common', 'bucket'),
+            bucket=bucket,
             part_size=part_size,
             max_thread=max_thread
         )
