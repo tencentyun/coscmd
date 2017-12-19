@@ -49,7 +49,6 @@ def get_md5_filename(local_path, cos_path):
     m = md5()
     m.update(to_printable_str(ori_file))
     return os.path.expanduser('~/.tmp/' + m.hexdigest())
-    #return os.path.expanduser('~/.tmp/' + binascii.b2a_hex(base64.encodestring(to_printable_str(ori_file)))[0:20])
 
 
 def query_yes_no(question, default="no"):

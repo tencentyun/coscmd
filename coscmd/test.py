@@ -45,7 +45,7 @@ def test_upload_small_file():
     file_name = "tmp" + file_id + "_Smallfile"
     print "Test upload " + file_name
     sys.stdout.flush()
-    gen_file("tmp", 1.1)    
+    gen_file("tmp", 1.1)
     rt = op_int.upload_file("tmp", file_name)
     assert rt
     os.remove("tmp")
