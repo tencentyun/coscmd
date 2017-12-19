@@ -96,9 +96,8 @@ def load_conf():
                 appid = bucket.split('-')[-1]
                 bucket = bucket.rstrip(appid)
                 bucket = bucket[:-1]
-            except:
+            except Exception:
                 logger.error("The configuration file is wrong. Please reconfirm")
-        print appid,bucket
         conf = CosConfig(
             appid=appid,
             secret_id=secret_id,
