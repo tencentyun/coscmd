@@ -12,11 +12,11 @@ import logging
 import sys
 import os
 import base64
-import binascii
 import datetime
 import pytz
 import urllib
 from tqdm import tqdm
+from wsgiref.handlers import format_date_time
 
 logger = logging.getLogger(__name__)
 fs_coding = sys.getfilesystemencoding()
@@ -889,6 +889,34 @@ class Interface(object):
                 os.remove(file_name)
             f.flush()
         return True
+
+    def restore_object(self, cos_path, _day, _tier):
+        cos_path = to_printable_str(cos_path)
+        url = self._conf.uri(path=cos_path+"?restore")
+        data_xml = '''<RestoreRequest>
+   <Days>{day}</Days>
+   <GlacierJobParameter>
+     <Tier>{tier}</Tier>
+   </GlacierJobParameter>
+</RestoreRequest>'''.format(day=_day, tier=_tier)
+        http_header = dict()
+        now = datetime.datetime.now()
+        stamp = time.mktime(now.timetuple())
+        http_header['Date'] = format_date_time(stamp)
+        try:
+            rt = self._session.post(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), data=data_xml, headers=http_header)
+            logger.debug("init resp, status code: {code}, headers: {headers}".format(
+                 code=rt.status_code,
+                 headers=rt.headers))
+            if rt.status_code == 202 or rt.status_code == 200:
+                return True
+            else:
+                logger.warn(response_info(rt))
+                return False
+        except Exception as e:
+            logger.warn(str(e))
+            return False
+        return False
 
     def put_object_acl(self, grant_read, grant_write, grant_full_control, cos_path):
         acl = []

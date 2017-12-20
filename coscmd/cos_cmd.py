@@ -277,6 +277,22 @@ class Op(object):
         return -1
 
     @staticmethod
+    def restore(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        while args.cos_path.startswith('/'):
+            args.cos_path = args.cos_path[1:]
+
+        if not isinstance(args. cos_path, unicode):
+            args.cos_path = args.cos_path.decode(fs_coding)
+        Interface = client.op_int()
+        if Interface.restore_object(cos_path=args.cos_path, _day=args.day, _tier=args.tier):
+            return 0
+        else:
+            # logger.warn(change_color("list failed!", color_red))
+            return -1
+
+    @staticmethod
     def signurl(args):
         conf = load_conf()
         client = CosS3Client(conf)
@@ -449,6 +465,12 @@ def command_thread():
     parser_mget.add_argument('-f', '--force', help="Overwrite the saved files", action="store_true", default=False)
     parser_mget.add_argument('-n', '--num', help='specify part num of files to mget', type=int, default=100)
     parser_mget.set_defaults(func=Op.mget)
+
+    parser_restore = sub_parser.add_parser("restore", help="restore")
+    parser_restore.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_restore.add_argument('-d', '--day', help='specify lifetime of the restored (active) copy', type=int, default=1)
+    parser_restore.add_argument('-t', '--tier', help='specify the data access tier', type=str, choices=['Expedited', 'Standard', 'Bulk'], default='Standard')
+    parser_restore.set_defaults(func=Op.restore)
 
     parser_signurl = sub_parser.add_parser("signurl", help="get download url")
     parser_signurl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
