@@ -207,6 +207,16 @@ coscmd getbucketacl //操作示例
 coscmd putbucketacl <cospath> //命令格式
 coscmd getobjectacl aaa/aaa.txt //操作示例
 ```
+### 恢复归档文件
+- 命令如下：
+```
+coscmd restore <cospath>  //命令格式
+coscmd restore a.txt -d 3 -t  Expedited//操作示例
+coscmd restore a.txt -d 3 -t  Bulk///操作示例
+```
+请将"<>"中的参数替换为您需要打印文件列表的 COS 上文件的路径（cospath）。
+* 使用 `-d day` 设置临时副本的过期时间
+* 使用 `-t tier` 具体复原过程类型，枚举值： Expedited ，Standard ，Bulk；默认值：Standard
 
 ### debug 模式执行命令
 在各命令前加上`-d`或者`-debug`，在命令执行的过程中，会显示详细的操作信息 。示例如下：
