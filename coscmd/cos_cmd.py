@@ -468,7 +468,7 @@ def command_thread():
 
     parser_restore = sub_parser.add_parser("restore", help="restore")
     parser_restore.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_restore.add_argument('-d', '--day', help='specify lifetime of the restored (active) copy', type=int, default=1)
+    parser_restore.add_argument('-d', '--day', help='specify lifetime of the restored (active) copy', type=int, default=7)
     parser_restore.add_argument('-t', '--tier', help='specify the data access tier', type=str, choices=['Expedited', 'Standard', 'Bulk'], default='Standard')
     parser_restore.set_defaults(func=Op.restore)
 
