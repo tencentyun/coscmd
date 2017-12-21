@@ -895,9 +895,9 @@ class Interface(object):
         url = self._conf.uri(path=cos_path+"?restore")
         data_xml = '''<RestoreRequest>
    <Days>{day}</Days>
-   <GlacierJobParameter>
+   <CASJobParameters>
      <Tier>{tier}</Tier>
-   </GlacierJobParameter>
+   </CASJobParameters>
 </RestoreRequest>'''.format(day=_day, tier=_tier)
         http_header = dict()
         now = datetime.datetime.now()
