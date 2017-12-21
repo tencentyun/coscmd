@@ -215,7 +215,7 @@ coscmd restore a.txt -d 3 -t  Expedited//操作示例
 coscmd restore a.txt -d 3 -t  Bulk///操作示例
 ```
 请将"<>"中的参数替换为您需要打印文件列表的 COS 上文件的路径（cospath）。
-* 使用 `-d day` 设置临时副本的过期时间
+* 使用 `-d day` 设置临时副本的过期时间；默认值：7
 * 使用 `-t tier` 具体复原过程类型，枚举值： Expedited ，Standard ，Bulk；默认值：Standard
 
 ### debug 模式执行命令
