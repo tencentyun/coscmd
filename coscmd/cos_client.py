@@ -76,7 +76,6 @@ def query_yes_no(question, default="no"):
 
 
 def response_info(rt):
-    messgae = ""
     request_id = "null"
     code = rt.status_code
     try:
@@ -266,7 +265,7 @@ class Interface(object):
                         continue
                     if j+1 == self._retry:
                         return False
-                except Exception as e:
+                except Exception:
                     logger.warn("upload file failed")
             return False
 
@@ -408,7 +407,7 @@ class Interface(object):
                 else:
                     logger.warn(response_info(rt))
                     return False
-            except Exception as e:
+            except Exception:
                 return False
             return True
         if local_path == "":
@@ -416,12 +415,12 @@ class Interface(object):
         else:
             file_size = os.path.getsize(local_path)
         if file_size < 5*1024*1024:
-            for i in range(self._retry):
+            for _ in range(self._retry):
                 if single_upload() is True:
                     return True
             return False
         else:
-            for i in range(self._retry):
+            for _ in range(self._retry):
                 rt = init_multiupload()
                 if rt:
                     break
@@ -433,7 +432,7 @@ class Interface(object):
             if rt is False:
                 return False
             logger.debug("multipart upload ok")
-            for i in range(self._retry):
+            for _ in range(self._retry):
                 rt = complete_multiupload()
                 if rt:
                     logger.debug("complete multipart upload ok")
@@ -717,7 +716,7 @@ class Interface(object):
                         break
                 try:
                     print unicode(table)
-                except Exception as e:
+                except Exception:
                     print table
                 if self._file_num == _num:
                     break

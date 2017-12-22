@@ -358,7 +358,6 @@ class Op(object):
         client = CosS3Client(conf)
         Interface = client.op_int()
         if Interface.create_bucket():
-            logger.info(change_color("create success!", color_green))
             return 0
         else:
             logger.warn(change_color("create fail!", color_red))
@@ -369,12 +368,7 @@ class Op(object):
         conf = load_conf()
         client = CosS3Client(conf)
         Interface = client.op_int()
-        if args.force is True:
-            if Interface.delete_folder("") is False:
-                logger.warn(change_color("delete files in bucket fail", color_red))
-                return -1
         if Interface.delete_bucket():
-            logger.info(change_color("delete success!", color_green))
             return 0
         else:
             logger.warn(change_color("delete fail!", color_red))
@@ -489,12 +483,11 @@ def command_thread():
     parser_signurl.add_argument('-t', '--timeout', help='specify the signature valid time', type=int, default=10000)
     parser_signurl.set_defaults(func=Op.signurl)
 
-#     parser_create_bucket = sub_parser.add_parser("createbucket", help='coscmd createbucket [-h]')
-#     parser_create_bucket.set_defaults(func=Op.create_bucket)
-#
-#     parser_delete_bucket = sub_parser.add_parser("deletebucket", help='coscmd deletebucket [-h] [-f]')
-#     parser_delete_bucket.add_argument('-f', '--force', help="force delete bucket", action="store_true", default=False)
-#     parser_delete_bucket.set_defaults(func=Op.delete_bucket)
+    parser_create_bucket = sub_parser.add_parser("createbucket", help='create bucket')
+    parser_create_bucket.set_defaults(func=Op.create_bucket)
+
+    parser_delete_bucket = sub_parser.add_parser("deletebucket", help='delete bucket')
+    parser_delete_bucket.set_defaults(func=Op.delete_bucket)
 #
 #
     parser_put_object_acl = sub_parser.add_parser("putobjectacl", help='''set object acl''')
@@ -538,7 +531,6 @@ def command_thread():
     except Exception:
         logger.warn("set bucket error")
 
-    print pre_bucket 
     res = args.func(args)
     return res
 
