@@ -20,9 +20,10 @@ pre_appid = ""
 pre_bucket = ""
 global res
 
+
 def concat_path(sorce_path, target_path):
-    sorce_path = sorce_path.replace('\\','/')
-    target_path = target_path.replace('\\','/')
+    sorce_path = sorce_path.replace('\\', '/')
+    target_path = target_path.replace('\\', '/')
     if sorce_path.endswith('/') is False:
         sorce_path += '/'
     if target_path.endswith('/') is True:
@@ -30,11 +31,13 @@ def concat_path(sorce_path, target_path):
     sorce_path = sorce_path[:-1]
     return sorce_path, target_path
 
+
 def to_printable_str(s):
     if isinstance(s, unicode):
         return s.encode(fs_coding)
     else:
         return s
+
 
 def change_color(s, color):
     return "\033[1;" + color + ";40m" + s + "\033[0m"
@@ -522,7 +525,7 @@ def command_thread():
     else:
         coloredlogs.install(level='INFO', logger=logger, fmt='%(message)s')
 
-    global pre_appid,pre_bucket
+    global pre_appid, pre_bucket
     pre_bucket = args.bucket
     try:
         pre_appid = pre_bucket.split('-')[-1]
