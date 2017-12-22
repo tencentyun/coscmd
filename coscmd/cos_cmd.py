@@ -16,7 +16,20 @@ fs_coding = sys.getfilesystemencoding()
 color_red = "31"
 color_green = "32"
 color_yello = "33"
+pre_appid = ""
+pre_bucket = ""
 global res
+
+
+def concat_path(sorce_path, target_path):
+    sorce_path = sorce_path.replace('\\', '/')
+    target_path = target_path.replace('\\', '/')
+    if sorce_path.endswith('/') is False:
+        sorce_path += '/'
+    if target_path.endswith('/') is True:
+        target_path += sorce_path.split('/')[-2]
+    sorce_path = sorce_path[:-1]
+    return sorce_path, target_path
 
 
 def to_printable_str(s):
@@ -98,6 +111,10 @@ def load_conf():
                 bucket = bucket[:-1]
             except Exception:
                 logger.error("The configuration file is wrong. Please reconfirm")
+        if pre_appid != "":
+            appid = pre_appid
+        if pre_bucket != "":
+            bucket = pre_bucket
         conf = CosConfig(
             appid=appid,
             secret_id=secret_id,
@@ -131,11 +148,7 @@ class Op(object):
         if not os.access(args.local_path, os.R_OK):
             logger.warn('local_path %s is not readable!' % to_printable_str(args.local_path))
             return -1
-        if args.local_path.endswith('/') is False:
-            args.local_path += '/'
-        if args.cos_path.endswith('/') is True:
-            args.cos_path += args.local_path.split('/')[-2]
-        args.local_path = args.local_path[:-1]
+        args.local_path, args.cos_path = concat_path(args.local_path, args.cos_path)
         if args.recursive:
             if os.path.isfile(args.local_path) is True:
                 rt = Interface.upload_file(args.local_path, args.cos_path, args.type)
@@ -173,11 +186,12 @@ class Op(object):
         if not isinstance(args. cos_path, unicode):
             args.cos_path = args.cos_path.decode(fs_coding)
 
-        if args.cos_path.endswith('/') is False:
-            args.cos_path += '/'
-        if args.local_path.endswith('/') is True:
-            args.local_path += args.cos_path.split('/')[-2]
-        args.cos_path = args.cos_path[:-1]
+#         if args.cos_path.endswith('/') is False:
+#             args.cos_path += '/'
+#         if args.local_path.endswith('/') is True:
+#             args.local_path += args.cos_path.split('/')[-2]
+#         args.cos_path = args.cos_path[:-1]
+        args.cos_path, args.local_path = concat_path(args.cos_path, args.local_path)
         if args.recursive:
             rt = Interface.download_folder(args.cos_path, args.local_path, args.force)
             if rt:
@@ -303,7 +317,7 @@ class Op(object):
             rt = Interface.sign_url(args.cos_path, args.timeout)
             logger.info(rt)
             return True
-        except Exception as e:
+        except Exception:
             logger.warn('geturl failed')
             return False
 
@@ -347,7 +361,6 @@ class Op(object):
         client = CosS3Client(conf)
         Interface = client.op_int()
         if Interface.create_bucket():
-            logger.info(change_color("create success!", color_green))
             return 0
         else:
             logger.warn(change_color("create fail!", color_red))
@@ -358,12 +371,7 @@ class Op(object):
         conf = load_conf()
         client = CosS3Client(conf)
         Interface = client.op_int()
-        if args.force is True:
-            if Interface.delete_folder("") is False:
-                logger.warn(change_color("delete files in bucket fail", color_red))
-                return -1
         if Interface.delete_bucket():
-            logger.info(change_color("delete success!", color_green))
             return 0
         else:
             logger.warn(change_color("delete fail!", color_red))
@@ -414,6 +422,7 @@ def command_thread():
               try \'coscmd sub-command -h\' to learn all command usage, likes \'coscmd upload -h\'"""
     parser = ArgumentParser(description=desc)
     parser.add_argument('-d', '--debug', help="debug mode", action="store_true", default=False)
+    parser.add_argument('-b', '--bucket', help="set bucket", type=str, default="")
 
     sub_parser = parser.add_subparsers()
     parser_config = sub_parser.add_parser("config", help="config your information at first.")
@@ -477,12 +486,11 @@ def command_thread():
     parser_signurl.add_argument('-t', '--timeout', help='specify the signature valid time', type=int, default=10000)
     parser_signurl.set_defaults(func=Op.signurl)
 
-#     parser_create_bucket = sub_parser.add_parser("createbucket", help='coscmd createbucket [-h]')
-#     parser_create_bucket.set_defaults(func=Op.create_bucket)
-#
-#     parser_delete_bucket = sub_parser.add_parser("deletebucket", help='coscmd deletebucket [-h] [-f]')
-#     parser_delete_bucket.add_argument('-f', '--force', help="force delete bucket", action="store_true", default=False)
-#     parser_delete_bucket.set_defaults(func=Op.delete_bucket)
+    parser_create_bucket = sub_parser.add_parser("createbucket", help='create bucket')
+    parser_create_bucket.set_defaults(func=Op.create_bucket)
+
+    parser_delete_bucket = sub_parser.add_parser("deletebucket", help='delete bucket')
+    parser_delete_bucket.set_defaults(func=Op.delete_bucket)
 #
 #
     parser_put_object_acl = sub_parser.add_parser("putobjectacl", help='''set object acl''')
@@ -517,6 +525,15 @@ def command_thread():
     else:
         coloredlogs.install(level='INFO', logger=logger, fmt='%(message)s')
 
+    global pre_appid, pre_bucket
+    pre_bucket = args.bucket
+    try:
+        pre_appid = pre_bucket.split('-')[-1]
+        pre_bucket = pre_bucket.rstrip(pre_appid)
+        pre_bucket = pre_bucket[:-1]
+    except Exception:
+        logger.warn("set bucket error")
+
     res = args.func(args)
     return res
 
@@ -547,7 +564,7 @@ def _main():
         while thread_.is_alive():
             thread_.join(2)
     except KeyboardInterrupt:
-        print 'exiting'
+        logger.info('exiting')
         return 1
     global res
     return res
