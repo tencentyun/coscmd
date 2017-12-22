@@ -16,15 +16,25 @@ fs_coding = sys.getfilesystemencoding()
 color_red = "31"
 color_green = "32"
 color_yello = "33"
+pre_appid = ""
+pre_bucket = ""
 global res
 
+def concat_path(sorce_path, target_path):
+    sorce_path = sorce_path.replace('\\','/')
+    target_path = target_path.replace('\\','/')
+    if sorce_path.endswith('/') is False:
+        sorce_path += '/'
+    if target_path.endswith('/') is True:
+        target_path += sorce_path.split('/')[-2]
+    sorce_path = sorce_path[:-1]
+    return sorce_path, target_path
 
 def to_printable_str(s):
     if isinstance(s, unicode):
         return s.encode(fs_coding)
     else:
         return s
-
 
 def change_color(s, color):
     return "\033[1;" + color + ";40m" + s + "\033[0m"
@@ -98,6 +108,10 @@ def load_conf():
                 bucket = bucket[:-1]
             except Exception:
                 logger.error("The configuration file is wrong. Please reconfirm")
+        if pre_appid != "":
+            appid = pre_appid
+        if pre_bucket != "":
+            bucket = pre_bucket
         conf = CosConfig(
             appid=appid,
             secret_id=secret_id,
@@ -131,11 +145,7 @@ class Op(object):
         if not os.access(args.local_path, os.R_OK):
             logger.warn('local_path %s is not readable!' % to_printable_str(args.local_path))
             return -1
-        if args.local_path.endswith('/') is False:
-            args.local_path += '/'
-        if args.cos_path.endswith('/') is True:
-            args.cos_path += args.local_path.split('/')[-2]
-        args.local_path = args.local_path[:-1]
+        args.local_path, args.cos_path = concat_path(args.local_path, args.cos_path)
         if args.recursive:
             if os.path.isfile(args.local_path) is True:
                 rt = Interface.upload_file(args.local_path, args.cos_path, args.type)
@@ -173,11 +183,12 @@ class Op(object):
         if not isinstance(args. cos_path, unicode):
             args.cos_path = args.cos_path.decode(fs_coding)
 
-        if args.cos_path.endswith('/') is False:
-            args.cos_path += '/'
-        if args.local_path.endswith('/') is True:
-            args.local_path += args.cos_path.split('/')[-2]
-        args.cos_path = args.cos_path[:-1]
+#         if args.cos_path.endswith('/') is False:
+#             args.cos_path += '/'
+#         if args.local_path.endswith('/') is True:
+#             args.local_path += args.cos_path.split('/')[-2]
+#         args.cos_path = args.cos_path[:-1]
+        args.cos_path, args.local_path = concat_path(args.cos_path, args.local_path)
         if args.recursive:
             rt = Interface.download_folder(args.cos_path, args.local_path, args.force)
             if rt:
@@ -303,7 +314,7 @@ class Op(object):
             rt = Interface.sign_url(args.cos_path, args.timeout)
             logger.info(rt)
             return True
-        except Exception as e:
+        except Exception:
             logger.warn('geturl failed')
             return False
 
@@ -414,6 +425,7 @@ def command_thread():
               try \'coscmd sub-command -h\' to learn all command usage, likes \'coscmd upload -h\'"""
     parser = ArgumentParser(description=desc)
     parser.add_argument('-d', '--debug', help="debug mode", action="store_true", default=False)
+    parser.add_argument('-b', '--bucket', help="set bucket", type=str, default="")
 
     sub_parser = parser.add_subparsers()
     parser_config = sub_parser.add_parser("config", help="config your information at first.")
@@ -517,6 +529,16 @@ def command_thread():
     else:
         coloredlogs.install(level='INFO', logger=logger, fmt='%(message)s')
 
+    global pre_appid,pre_bucket
+    pre_bucket = args.bucket
+    try:
+        pre_appid = pre_bucket.split('-')[-1]
+        pre_bucket = pre_bucket.rstrip(pre_appid)
+        pre_bucket = pre_bucket[:-1]
+    except Exception:
+        logger.warn("set bucket error")
+
+    print pre_bucket 
     res = args.func(args)
     return res
 
@@ -547,7 +569,7 @@ def _main():
         while thread_.is_alive():
             thread_.join(2)
     except KeyboardInterrupt:
-        print 'exiting'
+        logger.info('exiting')
         return 1
     global res
     return res
