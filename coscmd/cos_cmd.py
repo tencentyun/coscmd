@@ -356,7 +356,7 @@ class Op(object):
             return -1
 
     @staticmethod
-    def create_bucket(args):
+    def create_bucket():
         conf = load_conf()
         client = CosS3Client(conf)
         Interface = client.op_int()
@@ -367,7 +367,7 @@ class Op(object):
             return -1
 
     @staticmethod
-    def delete_bucket(args):
+    def delete_bucket():
         conf = load_conf()
         client = CosS3Client(conf)
         Interface = client.op_int()
@@ -401,7 +401,7 @@ class Op(object):
             return -1
 
     @staticmethod
-    def get_bucket_acl(args):
+    def get_bucket_acl():
         conf = load_conf()
         client = CosS3Client(conf)
         Interface = client.op_int()
@@ -428,11 +428,11 @@ def command_thread():
     parser_config = sub_parser.add_parser("config", help="config your information at first.")
     parser_config.add_argument('-a', '--secret_id', help='specify your secret id', type=str, required=True)
     parser_config.add_argument('-s', '--secret_key', help='specify your secret key', type=str, required=True)
-    parser_config.add_argument('-u', '--appid', help='specify your appid', type=str, required=True)
     parser_config.add_argument('-b', '--bucket', help='specify your bucket', type=str, required=True)
     parser_config.add_argument('-r', '--region', help='specify your region', type=str, required=True)
     parser_config.add_argument('-m', '--max_thread', help='specify the number of threads (default 5)', type=int, default=5)
-    parser_config.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1)
+    parser_config.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1)    
+    parser_config.add_argument('-u', '--appid', help='specify your appid', type=str, default="")
     parser_config.set_defaults(func=config)
 
     parser_upload = sub_parser.add_parser("upload", help="upload file or directory to COS.")
