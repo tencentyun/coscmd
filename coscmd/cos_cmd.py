@@ -431,7 +431,7 @@ def command_thread():
     parser_config.add_argument('-b', '--bucket', help='specify your bucket', type=str, required=True)
     parser_config.add_argument('-r', '--region', help='specify your region', type=str, required=True)
     parser_config.add_argument('-m', '--max_thread', help='specify the number of threads (default 5)', type=int, default=5)
-    parser_config.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1)    
+    parser_config.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1)
     parser_config.add_argument('-u', '--appid', help='specify your appid', type=str, default="")
     parser_config.set_defaults(func=config)
 
