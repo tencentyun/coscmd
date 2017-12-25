@@ -44,9 +44,9 @@ help 信息如下图所示：
 coscmd upload -h  //查看 upload 命令使用方法
 ```
 ### 配置参数
-COSCMD 工具在使用前需要进行参数配置。用户可以直接编辑`~/.cos.conf`文件，也可以通过如下命令来配置：
+COSCMD 工具在使用前需要进行参数配置。用户可以通过如下命令来配置：
 ```
-coscmd config -a <access_id> -s <secret_key> -u <appid> -b <bucketname> -r <region> [-m <max_thread>] [-p <parts_size>]      
+coscmd config -a <access_id> -s <secret_key> -b <bucket> -r <region> [-m <max_thread>] [-p <parts_size>]      
 ```
 上述示例中使用"<>"的字段为必选参数，使用"[]"的字段为可选参数。其中：
 
@@ -54,22 +54,45 @@ coscmd config -a <access_id> -s <secret_key> -u <appid> -b <bucketname> -r <regi
 | :---------: | :----------------------------------------: | :----: |
 | secret_id  | 必选参数，APPID 对应的密钥 ID，可从控制台获取，参考 [基本概念](https://cloud.tencent.com/doc/product/436/6225)。 | 字符串  |
 | secret_key | 必选参数，APPID 对应的密钥 Key，可从控制台获取，参考 [基本概念](https://cloud.tencent.com/doc/product/436/6225)。 | 字符串  |
-| appid      | 必选参数，需要进行操作的 APPID，可从控制台获取，参考 [基本概念](https://cloud.tencent.com/doc/product/436/6225)。 | 数字   |
-| bucketname     | 必选参数，指定的存储桶名称， 需要提前在控制台建立，参考 [创建存储桶](https://cloud.tencent.com/doc/product/436/6232)。 | 字符串  |
+| bucket     | 必选参数，指定的存储桶名称，bucket的命名规则为{name}-{appid} ，参考 [创建存储桶](https://cloud.tencent.com/doc/product/436/6232)。 | 字符串  |
 | region     | 必选参数，存储桶所在地域。参考 [可用地域](https://cloud.tencent.com/doc/product/436/6224)。 | 字符串  |
 | max_thread | 可选参数，多线程上传时的最大线程数（默认为 5），有效值：1~10         | 数字   |
 | parts_size | 可选参数，分块上传的单块大小（单位为 M，默认为 1M），有效值：1~10     | 数字   |
 
+也可以直接编辑`~/.cos.conf`文件 （对于windows环境下，该文件是位于`我的文档`下的一个隐藏文件）。
 配置完成之后的`.cos.conf`文件内容示例如下所示：
 ```
  [common]
 secret_id = AChT4ThiXAbpBDEFGhT4ThiXAbpHIJK
 secret_key = WE54wreefvds3462refgwewerewr
-appid = 1234567890
-bucket = ABC
+bucket = ABC-1234567890
 region = cn-south
 max_thread = 5
 part_size = 1
+```
+### 指定bucket的命令
+-  通过`-b <bucket> 可以指定bucket`
+- bucket的命名规则为`{name}-{appid}` ，此处填写的存储桶名称必须为此格式
+```
+coscmd -b <bucket> method ...  //命令格式
+coscmd -b AAA-12345567 upload a.txt b.txt  //操作示例-上传文件
+coscmd -b AAA-12344567 createbucket  //操作示例-创建bucket
+```
+
+### 创建bucket
+-  建议配合`-b <bucket> 指定bucket`使用
+```
+coscmd -b <bucket> createbucket //命令格式
+coscmd createbucket  //操作示例
+coscmd -b AAA-12344567 createbucket  //操作示例
+```
+
+### 删除bucket
+-  建议配合`-b <bucket> 指定bucket`使用
+```
+coscmd -b <bucket> deletebucket //命令格式
+coscmd createbucket  //操作示例
+coscmd -b AAA-12344567 deletebucket  //操作示例
 ```
 ### 上传文件或文件夹
 - 上传文件命令如下：
