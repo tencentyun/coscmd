@@ -312,7 +312,6 @@ class Interface(object):
                     File.seek(offset, 0)
                     data = File.read(length)
                 url = self._conf.uri(path=cos_path)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=self._upload_id)
-                # logger.debug("upload url: " + str(url))
                 for j in range(self._retry):
                     rt = self._session.put(url=url,
                                            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
@@ -324,10 +323,16 @@ class Interface(object):
                         headers=rt.headers,
                         text=to_printable_str(rt.text)))
                     self._md5[idx] = rt.headers[self._etag][1:-1]
+                    logger.debug("local md5: {key}".format(key=self._md5[idx]))
+                    logger.debug("cos md5: {key}".format(key=md5(data).hexdigest()))
                     if rt.status_code == 200:
-                        self._have_finished += 1
-                        self._pbar.update(length)
-                        break
+                        if(self._md5[idx] == md5(data).hexdigest()):
+                            self._have_finished += 1
+                            self._pbar.update(length)
+                            break
+                        else:
+                            logger.warn("md5 verification is inconsistent")
+                            continue
                     else:
                         logger.warn(response_info(rt))
                         time.sleep(2**j)
