@@ -356,7 +356,7 @@ class Op(object):
             return -1
 
     @staticmethod
-    def create_bucket():
+    def create_bucket(args):
         conf = load_conf()
         client = CosS3Client(conf)
         Interface = client.op_int()
@@ -367,7 +367,7 @@ class Op(object):
             return -1
 
     @staticmethod
-    def delete_bucket():
+    def delete_bucket(args):
         conf = load_conf()
         client = CosS3Client(conf)
         Interface = client.op_int()
@@ -401,7 +401,7 @@ class Op(object):
             return -1
 
     @staticmethod
-    def get_bucket_acl():
+    def get_bucket_acl(args):
         conf = load_conf()
         client = CosS3Client(conf)
         Interface = client.op_int()
