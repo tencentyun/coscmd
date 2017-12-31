@@ -8,7 +8,8 @@ import coloredlogs
 import os
 from threading import Thread
 import cos_global
-
+reload(sys)
+sys.setdefaultencoding('utf-8') 
 logger = logging.getLogger(__name__)
 
 fs_coding = sys.getfilesystemencoding()
