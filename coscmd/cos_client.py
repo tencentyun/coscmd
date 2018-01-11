@@ -17,8 +17,6 @@ import pytz
 import urllib
 from tqdm import tqdm
 from wsgiref.handlers import format_date_time
-reload(sys)
-sys.setdefaultencoding('utf-8') 
 logger = logging.getLogger(__name__)
 fs_coding = sys.getfilesystemencoding()
 
