@@ -54,11 +54,12 @@ def config(args):
         cp.add_section("common")
         cp.set('common', 'secret_id', args.secret_id)
         cp.set('common', 'secret_key', args.secret_key)
-        cp.set('common', 'appid', args.appid)
         cp.set('common', 'bucket', args.bucket)
         cp.set('common', 'region', args.region)
         cp.set('common', 'max_thread', str(args.max_thread))
         cp.set('common', 'part_size', str(args.part_size))
+        if args.appid != "":
+            cp.set('common', 'appid', args.appid)
         cp.write(f)
         logger.info("Created configuration file in {path}".format(path=to_printable_str(conf_path)))
 
