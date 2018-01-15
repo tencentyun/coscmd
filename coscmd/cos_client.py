@@ -668,12 +668,14 @@ class Interface(object):
                     NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
                 fileset = root.getElementsByTagName("Contents")
                 for _file in fileset:
-                    self._file_num += 1
                     _cos_path = _file.getElementsByTagName("Key")[0].childNodes[0].data
                     _local_path = local_path + _cos_path[len(cos_path):]
                     _cos_path = to_unicode(_cos_path)
                     _local_path = to_unicode(_local_path)
+                    if _cos_path.endswith('/'):
+                        continue
                     download_file(_cos_path, _local_path, _force)
+                    self._file_num += 1
             else:
                 logger.warn(response_info(rt))
                 return False
