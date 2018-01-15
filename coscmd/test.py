@@ -61,18 +61,6 @@ def test_upload_big_file():
     os.remove("tmp")
 
 
-def test_copy_big_file():
-    file_name = "tmp" + file_id + "_Bigfile"
-    print "Test upload " + file_name
-    sys.stdout.flush()
-    gen_file("tmp", 10.1)
-    rt = op_int.upload_file("tmp", file_name)
-    assert rt
-    rt = op_int.copy_file("lewzylu06-1252448703.cos.ap-guangzhou.myqcloud.com/"+file_name, "11111")
-    assert rt
-    os.remove("tmp")
-
-
 def test_download_file():
     file_name = "tmp" + file_id + "_Bigfile"
     print "Test download " + file_name
