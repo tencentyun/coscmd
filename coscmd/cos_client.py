@@ -453,7 +453,7 @@ class Interface(object):
                 try:
                     http_header = dict()
                     http_header['x-cos-storage-class'] = self._type
-                    http_header['x-cos-source'] = source_path
+                    http_header['x-cos-copy-source'] = source_path
                     rt = self._session.put(url=url,
                                            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
                     if rt.status_code == 200:
@@ -608,6 +608,9 @@ class Interface(object):
             return True
 
         rt = self._session.head(url="http://"+source_path, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+        if rt.status_code != 200:
+            logger.warn("Replication sources do not exist")
+            return False
         file_size = int(rt.headers['Content-Length'])
         if file_size < 10*1024*1024:
             for _ in range(self._retry):

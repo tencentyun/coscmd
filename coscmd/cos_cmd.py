@@ -207,6 +207,23 @@ class Op(object):
         return -1
 
     @staticmethod
+    def copy(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        while args.cos_path.startswith('/'):
+            args.cos_path = args.cos_path[1:]
+        Interface = client.op_int()
+
+        if not isinstance(args.source_path, unicode):
+            args.source_path = args.source_path.decode(fs_coding)
+        if not isinstance(args.cos_path, unicode):
+            args.cos_path = args.cos_path.decode(fs_coding)
+        if Interface.copy_file(args.source_path, args.cos_path, args.type) is True:
+            return 0
+        else:
+            return -1
+
+    @staticmethod
     def delete(args):
         conf = load_conf()
         client = CosS3Client(conf)
@@ -448,11 +465,17 @@ def command_thread():
     parser_download.add_argument('-r', '--recursive', help="download recursively when upload directory", action="store_true", default=False)
     parser_download.set_defaults(func=Op.download)
 
-    parser_delete = sub_parser.add_parser("delete", help="delete file or files on COS")
-    parser_delete.add_argument("cos_path", nargs='?', help="cos_path as a/b.txt", type=str, default='')
-    parser_delete.add_argument('-r', '--recursive', help="delete files recursively, WARN: all files with the prefix will be deleted!", action="store_true", default=False)
-    parser_delete.add_argument('-f', '--force', help="Delete directly without confirmation", action="store_true", default=False)
-    parser_delete.set_defaults(func=Op.delete)
+    parser_copy = sub_parser.add_parser("delete", help="delete file or files on COS")
+    parser_copy.add_argument("cos_path", nargs='?', help="cos_path as a/b.txt", type=str, default='')
+    parser_copy.add_argument('-r', '--recursive', help="delete files recursively, WARN: all files with the prefix will be deleted!", action="store_true", default=False)
+    parser_copy.add_argument('-f', '--force', help="Delete directly without confirmation", action="store_true", default=False)
+    parser_copy.set_defaults(func=Op.delete)
+
+    parser_upload = sub_parser.add_parser("copy", help="copy file from COS to COS.")
+    parser_upload.add_argument('source_path', help="source file path as 'bucket-appid.cos.ap-guangzhou.myqcloud.com/a.txt'", type=str)
+    parser_upload.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_upload.add_argument('-t', '--type', help='specify x-cos-storage-class of files to upload', type=str, choices=['STANDARD', 'STANDARD_IA', 'NEARLINE'], default='STANDARD')
+    parser_upload.set_defaults(func=Op.copy)
 
     parser_list = sub_parser.add_parser("list", help='list files on COS')
     parser_list.add_argument("cos_path", nargs='?', help="cos_path as a/b.txt", type=str, default='')
