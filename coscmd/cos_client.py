@@ -17,8 +17,6 @@ import pytz
 import urllib
 from tqdm import tqdm
 from wsgiref.handlers import format_date_time
-reload(sys)
-sys.setdefaultencoding('utf-8') 
 logger = logging.getLogger(__name__)
 fs_coding = sys.getfilesystemencoding()
 
@@ -444,6 +442,200 @@ class Interface(object):
                     logger.debug("complete multipart upload ok")
                     return True
             logger.warn("complete multipart upload failed")
+            return False
+
+    def copy_file(self, source_path, cos_path, _type='Standard'):
+
+        def single_copy():
+            self._type = _type
+            url = self._conf.uri(path=cos_path)
+            for j in range(self._retry):
+                try:
+                    http_header = dict()
+                    http_header['x-cos-storage-class'] = self._type
+                    http_header['x-cos-copy-source'] = source_path
+                    rt = self._session.put(url=url,
+                                           auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
+                    if rt.status_code == 200:
+                        logger.info("copy {source_path}   =>   cos://{bucket}/{cos_path}  [100%]".format(
+                                                                    bucket=self._conf._bucket,
+                                                                    source_path=to_printable_str(source_path),
+                                                                    cos_path=to_printable_str(cos_path)))
+                        return True
+                    else:
+                        time.sleep(2**j)
+                        logger.warn(response_info(rt))
+                        continue
+                    if j+1 == self._retry:
+                        return False
+                except Exception:
+                    logger.warn("copy file failed")
+            return False
+
+        def init_multiupload():
+            url = self._conf.uri(path=cos_path)
+            self._md5 = {}
+            self._have_finished = 0
+            self._upload_id = None
+            self._type = _type
+            http_header = dict()
+            http_header['x-cos-storage-class'] = self._type
+            rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
+            logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                 code=rt.status_code,
+                 headers=rt.headers,
+                 text=to_printable_str(rt.text)))
+
+            if rt.status_code == 200:
+                root = minidom.parseString(rt.content).documentElement
+                self._upload_id = root.getElementsByTagName("UploadId")[0].childNodes[0].data
+                return True
+            else:
+                logger.warn(response_info(rt))
+                return False
+            return True
+
+        def copy_parts(file_size):
+
+            def source_path_parser():
+                # <Bucketname>-<APPID>.cos.<Region>.myqcloud.com/filepath
+                try:
+                    tmp = source_path.split('.')
+                    source_bucket = tmp[0]
+                    source_appid = source_bucket.split('-')[1]
+                    source_bucket = source_bucket.split('-')[0]
+                    source_region = tmp[2]
+                    source_cospath = tmp[-1]
+                except Exception:
+                    logger.warn("Source path format error")
+                return source_bucket, source_appid, source_region, source_cospath
+
+            def copy_parts_data(local_path, offset, length, parts_size, idx):
+                url = self._conf.uri(path=cos_path)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=self._upload_id)
+                http_header = dict()
+                http_header['x-cos-copy-source'] = source_path
+                http_header['x-cos-copy-source-range'] = "bytes="+str(offset)+"-"+str(offset+length-1)
+                for j in range(self._retry):
+                    rt = self._session.put(url=url,
+                                           auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
+                                           headers=http_header)
+                    logger.debug("copy part result: part{part}, round{round}, code: {code}, headers: {headers}, text: {text}".format(
+                        part=idx,
+                        round=j+1,
+                        code=rt.status_code,
+                        headers=rt.headers,
+                        text=to_printable_str(rt.text)))
+                    root = minidom.parseString(rt.content).documentElement
+                    self._md5[idx] = root.getElementsByTagName("ETag")[0].childNodes[0].data
+                    if rt.status_code == 200:
+                        self._have_finished += 1
+                        self._pbar.update(length)
+                        break
+                    else:
+                        logger.warn(response_info(rt))
+                        time.sleep(2**j)
+                        continue
+                    if j+1 == self._retry:
+                        logger.warn("upload part failed: part{part}, round{round}, code: {code}".format(part=idx, round=j+1, code=rt.status_code))
+                        return False
+                return True
+
+            offset = 0
+            logger.debug("file size: " + str(file_size))
+            chunk_size = 1024 * 1024 * 5
+            while file_size / chunk_size > 8000:
+                chunk_size = chunk_size * 10
+            parts_num = file_size / chunk_size
+            last_size = file_size - parts_num * chunk_size
+            if last_size != 0:
+                parts_num += 1
+            _max_thread = min(self._conf._max_thread, parts_num)
+            pool = SimpleThreadPool(_max_thread)
+
+            logger.debug("chunk_size: " + str(chunk_size))
+            logger.debug('copy file concurrently')
+            logger.info("copy {source_path}   =>   cos://{bucket}/{cos_path}".format(
+                                                    bucket=self._conf._bucket,
+                                                    source_path=to_printable_str(source_path),
+                                                    cos_path=to_printable_str(cos_path)))
+            self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
+            if chunk_size >= file_size:
+                pool.add_task(copy_parts_data, source_path, offset, file_size, 1, 0)
+            else:
+                for i in range(parts_num):
+                    if i+1 == parts_num:
+                        pool.add_task(copy_parts_data, source_path, offset, file_size-offset, parts_num, i+1)
+                    else:
+                        pool.add_task(copy_parts_data, source_path, offset, chunk_size, parts_num, i+1)
+                        offset += chunk_size
+            pool.wait_completion()
+            result = pool.get_result()
+            self._pbar.close()
+            if result['success_all']:
+                return True
+            else:
+                return False
+
+        def complete_multiupload():
+            logger.info('completing multicopy, please wait')
+            doc = minidom.Document()
+            root = doc.createElement("CompleteMultipartUpload")
+            list_md5 = sorted(self._md5.items(), key=lambda d: d[0])
+            for i, v in list_md5:
+                t = doc.createElement("Part")
+                t1 = doc.createElement("PartNumber")
+                t1.appendChild(doc.createTextNode(str(i)))
+                t2 = doc.createElement("ETag")
+                t2.appendChild(doc.createTextNode('{v}'.format(v=v)))
+                t.appendChild(t1)
+                t.appendChild(t2)
+                root.appendChild(t)
+                data = root.toxml()
+                url = self._conf.uri(path=cos_path)+"?uploadId={uploadid}".format(uploadid=self._upload_id)
+                logger.debug('complete url: ' + url)
+                logger.debug("complete data: " + data)
+            try:
+                with closing(self._session.post(url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), data=data, stream=True)) as rt:
+                    logger.debug("complete status code: {code}".format(code=rt.status_code))
+                    logger.debug("complete headers: {headers}".format(headers=rt.headers))
+                if rt.status_code == 200:
+                    return True
+                else:
+                    logger.warn(response_info(rt))
+                    return False
+            except Exception:
+                return False
+            return True
+
+        rt = self._session.head(url="http://"+source_path, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+        if rt.status_code != 200:
+            logger.warn("Replication sources do not exist")
+            return False
+        file_size = int(rt.headers['Content-Length'])
+        if file_size < 10*1024*1024:
+            for _ in range(self._retry):
+                if single_copy() is True:
+                    return True
+            return False
+        else:
+            for _ in range(self._retry):
+                rt = init_multiupload()
+                if rt:
+                    break
+            else:
+                return False
+            logger.debug("Init multipart copy ok")
+
+            rt = copy_parts(file_size=file_size)
+            if rt is False:
+                return False
+            logger.debug("multipart copy ok")
+            for _ in range(self._retry):
+                rt = complete_multiupload()
+                if rt:
+                    logger.debug("complete multipart copy ok")
+                    return True
+            logger.warn("complete multipart copy failed")
             return False
 
     def download_folder(self, cos_path, local_path, _force=False):
