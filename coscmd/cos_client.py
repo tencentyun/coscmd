@@ -384,7 +384,7 @@ class Interface(object):
                 return False
 
         def complete_multiupload():
-            logger.info('completing multiupload, please wait')
+            print('completing multiupload, please wait')
             doc = minidom.Document()
             root = doc.createElement("CompleteMultipartUpload")
             list_md5 = sorted(self._md5.items(), key=lambda d: d[0])
@@ -577,7 +577,7 @@ class Interface(object):
                 return False
 
         def complete_multiupload():
-            logger.info('completing multicopy, please wait')
+            print('completing multicopy, please wait')
             doc = minidom.Document()
             root = doc.createElement("CompleteMultipartUpload")
             list_md5 = sorted(self._md5.items(), key=lambda d: d[0])

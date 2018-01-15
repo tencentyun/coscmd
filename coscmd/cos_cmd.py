@@ -259,7 +259,6 @@ class Op(object):
         if Interface.list_objects(cos_path=args.cos_path, _recursive=args.recursive, _all=args.all, _num=args.num, _human=args.human):
             return 0
         else:
-            # logger.warn(change_color("list failed!", color_red))
             return -1
 
     @staticmethod
@@ -275,7 +274,6 @@ class Op(object):
         if Interface.info_object(args.cos_path, _human=args.human):
             return 0
         else:
-            # logger.warn(change_color("info failed!", color_red))
             return -1
 
     @staticmethod
@@ -312,7 +310,6 @@ class Op(object):
         if Interface.restore_object(cos_path=args.cos_path, _day=args.day, _tier=args.tier):
             return 0
         else:
-            # logger.warn(change_color("list failed!", color_red))
             return -1
 
     @staticmethod
@@ -534,10 +531,12 @@ def command_thread():
 
     logger = logging.getLogger('')
     if args.debug:
-        logging.basicConfig(level='DEBUG', logger=logger, fmt='%(asctime)s - %(message)s')
+        logging.basicConfig(level='DEBUG', logger=logger, format='%(asctime)s - [%(levelname)s]:  %(message)s', filename=os.path.expanduser('~/.cos.log'), filemode='a')
     else:
-        logging.basicConfig(level='INFO', logger=logger, fmt='%(asctime)s - %(message)s')
-
+        logging.basicConfig(level='INFO', logger=logger, format='%(asctime)s - [%(levelname)s]:  %(message)s', filename=os.path.expanduser('~/.cos.log'), filemode='a')
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    logging.getLogger('').addHandler(console)
     global pre_appid, pre_bucket
     pre_bucket = args.bucket
     try:
