@@ -1,4 +1,4 @@
-## 功能说明
+﻿## 功能说明
 使用 COSCMD 工具，用户可通过简单的命令行指令实现对对象（Object）的批量上传、下载、删除等操作。
 ## 使用限制
 1. 适用于 COS V4、V5 版本；
@@ -36,7 +36,7 @@ pip install coscmd -U
 ```
 coscmd -h  //查看当面版本信息
 ```
-help 信息如下图所示：
+help 信息如下所示：
 ```
 usage: coscmd [-h] [-d] [-b BUCKET] [-v]
               {config,upload,download,delete,list,info,mget,restore,signurl,createbucket,deletebucket,putobjectacl,getobjectacl,putbucketacl,getbucketacl}
@@ -183,6 +183,18 @@ coscmd delete -r /  //操作示例
 **注意：** 
 1. 批量删除需要输入确定，使用 `-f` 参数跳过确认 
 
+### 复制文件
+- 复制文件命令如下：
+```
+coscmd copy <sourcepath> <cospath>  //命令格式
+coscmd copybucket-appid.cos.ap-guangzhou.myqcloud.com/a.txt aaa/123.txt  //操作示例
+```
+
+请将"<>"中的参数替换为您需要复制的 COS 上文件的路径（sourcepath），和您需要复制到 COS 上文件的路径（cospath）。
+
+**注意：** 
+1. sourcepath的样式如下：<bucketname>-<appid>.cos.<region>.myqcloud.com/<cospath>
+
 ### 打印文件列表
 - 打印命令如下：
 ```
@@ -192,7 +204,7 @@ coscmd list bbb/123.txt  -r -n 10 //操作示例
 ```
 请将"<>"中的参数替换为您需要打印文件列表的 COS 上文件的路径（cospath）。
 * 使用`-a`打印全部文件
-* 使用 `-r` 递归打印
+* 使用 `-r` 递归打印，并且会在末尾返回列出文件的数量和大小之和
 * 使用 `-n num` 设置打印数量的最大值
 
 **注意：** 
