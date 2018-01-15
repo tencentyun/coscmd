@@ -1,42 +1,42 @@
-## 功能说明
-使用 COSCMD 工具，用户可通过简单的命令行指令实现对对象（Object）的批量上传、下载、删除等操作。
-## 使用限制
-1. 适用于 COS V4、V5 版本；
+## ����˵��
+ʹ�� COSCMD ���ߣ��û���ͨ���򵥵�������ָ��ʵ�ֶԶ���Object���������ϴ������ء�ɾ���Ȳ�����
+## ʹ������
+1. ������ COS V4��V5 �汾��
 
-## 使用环境
-### 系统环境
-Windows 或 Linux 系统
-### 软件依赖
+## ʹ�û���
+### ϵͳ����
+Windows �� Linux ϵͳ
+### ��������
 Python 2.7
-并装有最新版本的pip
-#### 安装及配置
-环境安装与配置详细操作请参考 [Python 安装与配置](https://cloud.tencent.com/document/product/436/10866)。
-## 下载与安装
-- **手动安装**
-下载链接：[GitHub 链接](https://github.com/tencentyun/coscmd.git)
-在该项目根目录下使用如下命令安装
+��װ�����°汾��pip
+#### ��װ������
+������װ��������ϸ������ο� [Python ��װ������](https://cloud.tencent.com/document/product/436/10866)��
+## �����밲װ
+- **�ֶ���װ**
+�������ӣ�[GitHub ����](https://github.com/tencentyun/coscmd.git)
+�ڸ���Ŀ��Ŀ¼��ʹ���������װ
 ```
 python setup.py install
 ```
-- **pip 安装**
-执行`pip`命令进行安装：
+- **pip ��װ**
+ִ��`pip`������а�װ��
 ```
 pip install coscmd
 ```
-安装成功之后，用户可以通过`-v`或者`--version`命令查看当前的版本信息。
-- **pip 更新**
-下执行`pip`命令进行更新：
+��װ�ɹ�֮���û�����ͨ��`-v`����`--version`����鿴��ǰ�İ汾��Ϣ��
+- **pip ����**
+��ִ��`pip`������и��£�
 ```
 pip install coscmd -U
 ```
-**注意不论是在linux还是windows环境下，都可以通过以上的方法安装或更新**
-## 使用方法
-### 查看 help
-用户可通过`-h`或`--help`命令来查看工具的 help 信息。
+**ע�ⲻ������linux����windows�����£�������ͨ�����ϵķ�����װ�����**
+## ʹ�÷���
+### �鿴 help
+�û���ͨ��`-h`��`--help`�������鿴���ߵ� help ��Ϣ��
 ```
-coscmd -h  //查看当面版本信息
+coscmd -h  //�鿴����汾��Ϣ
 ```
-help 信息如下图所示：
+help ��Ϣ������ʾ��
 ```
 usage: coscmd [-h] [-d] [-b BUCKET] [-v]
               {config,upload,download,delete,list,info,mget,restore,signurl,createbucket,deletebucket,putobjectacl,getobjectacl,putbucketacl,getbucketacl}
@@ -71,28 +71,28 @@ optional arguments:
                         set bucket
   -v, --version         show program's version number and exit
 ```
-除此之外，用户还可以在每个命令后（不加参数）输入`-h`查看该命令的具体用法，例如：
+����֮�⣬�û���������ÿ������󣨲��Ӳ���������`-h`�鿴������ľ����÷������磺
 ```
-coscmd upload -h  //查看 upload 命令使用方法
+coscmd upload -h  //�鿴 upload ����ʹ�÷���
 ```
-### 配置参数
-COSCMD 工具在使用前需要进行参数配置。用户可以通过如下命令来配置：
+### ���ò���
+COSCMD ������ʹ��ǰ��Ҫ���в������á��û�����ͨ���������������ã�
 ```
 coscmd config -a <access_id> -s <secret_key> -b <bucket> -r <region> [-m <max_thread>] [-p <parts_size>]      
 ```
-上述示例中使用"<>"的字段为必选参数，使用"[]"的字段为可选参数。其中：
+����ʾ����ʹ��"<>"���ֶ�Ϊ��ѡ������ʹ��"[]"���ֶ�Ϊ��ѡ���������У�
 
-| 名称         | 描述                                       | 有效值  |
+| ����         | ����                                       | ��Чֵ  |
 | :---------: | :----------------------------------------: | :----: |
-| secret_id  | 必选参数，APPID 对应的密钥 ID，可从控制台获取，参考 [基本概念](https://cloud.tencent.com/doc/product/436/6225)。 | 字符串  |
-| secret_key | 必选参数，APPID 对应的密钥 Key，可从控制台获取，参考 [基本概念](https://cloud.tencent.com/doc/product/436/6225)。 | 字符串  |
-| bucket     | 必选参数，指定的存储桶名称，bucket的命名规则为{name}-{appid} ，参考 [创建存储桶](https://cloud.tencent.com/doc/product/436/6232)。 | 字符串  |
-| region     | 必选参数，存储桶所在地域。参考 [可用地域](https://cloud.tencent.com/doc/product/436/6224)。 | 字符串  |
-| max_thread | 可选参数，多线程上传时的最大线程数（默认为 5），有效值：1~10         | 数字   |
-| parts_size | 可选参数，分块上传的单块大小（单位为 M，默认为 1M），有效值：1~10     | 数字   |
+| secret_id  | ��ѡ������APPID ��Ӧ����Կ ID���ɴӿ���̨��ȡ���ο� [��������](https://cloud.tencent.com/doc/product/436/6225)�� | �ַ���  |
+| secret_key | ��ѡ������APPID ��Ӧ����Կ Key���ɴӿ���̨��ȡ���ο� [��������](https://cloud.tencent.com/doc/product/436/6225)�� | �ַ���  |
+| bucket     | ��ѡ������ָ���Ĵ洢Ͱ���ƣ�bucket����������Ϊ{name}-{appid} ���ο� [�����洢Ͱ](https://cloud.tencent.com/doc/product/436/6232)�� | �ַ���  |
+| region     | ��ѡ�������洢Ͱ���ڵ��򡣲ο� [���õ���](https://cloud.tencent.com/doc/product/436/6224)�� | �ַ���  |
+| max_thread | ��ѡ���������߳��ϴ�ʱ������߳�����Ĭ��Ϊ 5������Чֵ��1~10         | ����   |
+| parts_size | ��ѡ�������ֿ��ϴ��ĵ����С����λΪ M��Ĭ��Ϊ 1M������Чֵ��1~10     | ����   |
 
-也可以直接编辑`~/.cos.conf`文件 （对于windows环境下，该文件是位于`我的文档`下的一个隐藏文件）。
-配置完成之后的`.cos.conf`文件内容示例如下所示：
+Ҳ����ֱ�ӱ༭`~/.cos.conf`�ļ� ������windows�����£����ļ���λ��`�ҵ��ĵ�`�µ�һ�������ļ�����
+�������֮���`.cos.conf`�ļ�����ʾ��������ʾ��
 ```
  [common]
 secret_id = AChT4ThiXAbpBDEFGhT4ThiXAbpHIJK
@@ -102,182 +102,194 @@ region = cn-south
 max_thread = 5
 part_size = 1
 ```
-### 指定bucket的命令
--  通过`-b <bucket> 可以指定bucket`
-- bucket的命名规则为`{name}-{appid}` ，此处填写的存储桶名称必须为此格式
+### ָ��bucket������
+-  ͨ��`-b <bucket> ����ָ��bucket`
+- bucket����������Ϊ`{name}-{appid}` ���˴���д�Ĵ洢Ͱ���Ʊ���Ϊ�˸�ʽ
 ```
-coscmd -b <bucket> method ...  //命令格式
-coscmd -b AAA-12345567 upload a.txt b.txt  //操作示例-上传文件
-coscmd -b AAA-12344567 createbucket  //操作示例-创建bucket
-```
-
-### 创建bucket
--  建议配合`-b <bucket> 指定bucket`使用
-```
-coscmd -b <bucket> createbucket //命令格式
-coscmd createbucket  //操作示例
-coscmd -b AAA-12344567 createbucket  //操作示例
+coscmd -b <bucket> method ...  //�����ʽ
+coscmd -b AAA-12345567 upload a.txt b.txt  //����ʾ��-�ϴ��ļ�
+coscmd -b AAA-12344567 createbucket  //����ʾ��-����bucket
 ```
 
-### 删除bucket
--  建议配合`-b <bucket> 指定bucket`使用
+### ����bucket
+-  �������`-b <bucket> ָ��bucket`ʹ��
 ```
-coscmd -b <bucket> deletebucket //命令格式
-coscmd createbucket  //操作示例
-coscmd -b AAA-12344567 deletebucket  //操作示例
-```
-### 上传文件或文件夹
-- 上传文件命令如下：
-```
-coscmd upload <localpath> <cospath>  //命令格式
-coscmd upload /home/aaa/123.txt bbb/123.txt  //操作示例
-coscmd upload /home/aaa/123.txt bbb/  //操作示例
-```
-- 上传文件夹命令如下：
-```
-coscmd upload -r <localpath> <cospath>  //命令格式
-coscmd upload -r /home/aaa/ bbb/aaa  //操作示例
-coscmd upload -r /home/aaa/ bbb/  //操作示例
-coscmd upload -r /home/aaa/ /  //上传到bucket根目录
+coscmd -b <bucket> createbucket //�����ʽ
+coscmd createbucket  //����ʾ��
+coscmd -b AAA-12344567 createbucket  //����ʾ��
 ```
 
-请将 "<>" 中的参数替换为您需要上传的本地文件路径（localpath），以及 COS 上存储的路径（cospath）。
-**注意：** 
-1. 上传文件时需要将cos上的路径包括文件(夹)的名字补全(参考例子)。
-2. COSCMD 支持大文件断点上传功能。当分片上传大文件失败时，重新上传该文件只会上传失败的分块，而不会从头开始（请保证重新上传的文件的目录以及内容和上传的目录保持一致）。
-3. COSCMD 分块上传时会对每一块进行md5校验
-
-### 下载文件或文件夹
-下载文件命令如下：
+### ɾ��bucket
+-  �������`-b <bucket> ָ��bucket`ʹ��
 ```
-coscmd download <cospath> <localpath>  //命令格式
-coscmd download bbb/123.txt /home/aaa/111.txt  //操作示例
-coscmd download bbb/123.txt /home/aaa/  //操作示例
+coscmd -b <bucket> deletebucket //�����ʽ
+coscmd createbucket  //����ʾ��
+coscmd -b AAA-12344567 deletebucket  //����ʾ��
 ```
-- 如下下载文件夹命令如下：
+### �ϴ��ļ����ļ���
+- �ϴ��ļ��������£�
 ```
-coscmd download-r <cospath> <localpath> //命令格式
-coscmd download -r /home/aaa/ bbb/aaa  //操作示例
-coscmd download -r /home/aaa/ bbb/  //操作示例
-coscmd download -r / bbb/aaa  //下载当前bucket根目录下所有的文件
+coscmd upload <localpath> <cospath>  //�����ʽ
+coscmd upload /home/aaa/123.txt bbb/123.txt  //����ʾ��
+coscmd upload /home/aaa/123.txt bbb/  //����ʾ��
 ```
-请将 "<>" 中的参数替换为您需要下载的 COS 上文件的路径（cospath），以及本地存储路径（localpath）。
-**注意：** 
-1. 若本地存在同名文件，则会下载失败。使用 `-f` 参数覆盖本地文件
-2. 将以上命令中的 `download` 替换为 `mget`， 则可以使用分块下载，在带宽足够的条件下速度会提升2-3倍。
-
-### 删除文件或文件夹
-- 删除文件命令如下：
+- �ϴ��ļ����������£�
 ```
-coscmd delete <cospath>  //命令格式
-coscmd delete bbb/123.txt  //操作示例
-```
-- 如下删除文件夹命令如下：
-```
-coscmd delete -r <cospath>  //命令格式
-coscmd delete -r bbb/  //操作示例
-coscmd delete -r /  //操作示例
+coscmd upload -r <localpath> <cospath>  //�����ʽ
+coscmd upload -r /home/aaa/ bbb/aaa  //����ʾ��
+coscmd upload -r /home/aaa/ bbb/  //����ʾ��
+coscmd upload -r /home/aaa/ /  //�ϴ���bucket��Ŀ¼
 ```
 
-请将"<>"中的参数替换为您需要删除的 COS 上文件的路径（cospath）。工具会提示用户是否确认进行删除操作。
-**注意：** 
-1. 批量删除需要输入确定，使用 `-f` 参数跳过确认 
+�뽫 "<>" �еĲ����滻Ϊ����Ҫ�ϴ��ı����ļ�·����localpath�����Լ� COS �ϴ洢��·����cospath����
+**ע�⣺** 
+1. �ϴ��ļ�ʱ��Ҫ��cos�ϵ�·�������ļ�(��)�����ֲ�ȫ(�ο�����)��
+2. COSCMD ֧�ִ��ļ��ϵ��ϴ����ܡ�����Ƭ�ϴ����ļ�ʧ��ʱ�������ϴ����ļ�ֻ���ϴ�ʧ�ܵķֿ飬�������ͷ��ʼ���뱣֤�����ϴ����ļ���Ŀ¼�Լ����ݺ��ϴ���Ŀ¼����һ�£���
+3. COSCMD �ֿ��ϴ�ʱ���ÿһ�����md5У��
 
-### 打印文件列表
-- 打印命令如下：
+### �����ļ����ļ���
+�����ļ��������£�
 ```
-coscmd list <cospath>  //命令格式
-coscmd list -a //操作示例
-coscmd list bbb/123.txt  -r -n 10 //操作示例
+coscmd download <cospath> <localpath>  //�����ʽ
+coscmd download bbb/123.txt /home/aaa/111.txt  //����ʾ��
+coscmd download bbb/123.txt /home/aaa/  //����ʾ��
 ```
-请将"<>"中的参数替换为您需要打印文件列表的 COS 上文件的路径（cospath）。
-* 使用`-a`打印全部文件
-* 使用 `-r` 递归打印
-* 使用 `-n num` 设置打印数量的最大值
+- ���������ļ����������£�
+```
+coscmd download-r <cospath> <localpath> //�����ʽ
+coscmd download -r /home/aaa/ bbb/aaa  //����ʾ��
+coscmd download -r /home/aaa/ bbb/  //����ʾ��
+coscmd download -r / bbb/aaa  //���ص�ǰbucket��Ŀ¼�����е��ļ�
+```
+�뽫 "<>" �еĲ����滻Ϊ����Ҫ���ص� COS ���ļ���·����cospath�����Լ����ش洢·����localpath����
+**ע�⣺** 
+1. �����ش���ͬ���ļ����������ʧ�ܡ�ʹ�� `-f` �������Ǳ����ļ�
+2. �����������е� `download` �滻Ϊ `mget`�� �����ʹ�÷ֿ����أ��ڴ����㹻���������ٶȻ�����2-3����
 
-**注意：** 
-1. <cospath>为空默认打印当前Bucket根目录
+### ɾ���ļ����ļ���
+- ɾ���ļ��������£�
+```
+coscmd delete <cospath>  //�����ʽ
+coscmd delete bbb/123.txt  //����ʾ��
+```
+- ����ɾ���ļ����������£�
+```
+coscmd delete -r <cospath>  //�����ʽ
+coscmd delete -r bbb/  //����ʾ��
+coscmd delete -r /  //����ʾ��
+```
 
-### 显示文件信息
-- 命令如下：
-```
-coscmd info <cospath>  //命令格式
-coscmd info bbb/123.txt //操作示例
-```
-请将"<>"中的参数替换为您需要显示的 COS 上文件的路径（cospath）。
+�뽫"<>"�еĲ����滻Ϊ����Ҫɾ���� COS ���ļ���·����cospath�������߻���ʾ�û��Ƿ�ȷ�Ͻ���ɾ��������
+**ע�⣺** 
+1. ����ɾ����Ҫ����ȷ����ʹ�� `-f` ��������ȷ�� 
 
-### 获取带签名的下载url
-- 命令如下：
+### �����ļ�
+- �����ļ��������£�
 ```
-coscmd sigurl<cospath>  //命令格式
-coscmd signurl bbb/123.txt //操作示例
-coscmd signurl bbb/123.txt -t 100//操作示例
+coscmd copy <sourcepath> <cospath>  //�����ʽ
+coscmd copybucket-appid.cos.ap-guangzhou.myqcloud.com/a.txt aaa/123.txt  //����ʾ��
 ```
-请将"<>"中的参数替换为您需要获取下载url的 COS 上文件的路径（cospath）。
-* 使用 `-t time` 设置打印签名的有效时间(单位为秒)
 
-### 设置访问控制(ACL)
-- 命令如下：
+�뽫"<>"�еĲ����滻Ϊ����Ҫ���Ƶ� COS ���ļ���·����sourcepath����������Ҫ���Ƶ� COS ���ļ���·����cospath����
 
-使用如下命令设置bucket的访问控制：
+**ע�⣺** 
+1. sourcepath����ʽ���£�<bucketname>-<appid>.cos.<region>.myqcloud.com/<cospath>
+
+### ��ӡ�ļ��б�
+- ��ӡ�������£�
+```
+coscmd list <cospath>  //�����ʽ
+coscmd list -a //����ʾ��
+coscmd list bbb/123.txt  -r -n 10 //����ʾ��
+```
+�뽫"<>"�еĲ����滻Ϊ����Ҫ��ӡ�ļ��б��� COS ���ļ���·����cospath����
+* ʹ��`-a`��ӡȫ���ļ�
+* ʹ�� `-r` �ݹ��ӡ�����һ���ĩβ�����г��ļ��������ʹ�С֮��
+* ʹ�� `-n num` ���ô�ӡ���������ֵ
+
+**ע�⣺** 
+1. <cospath>Ϊ��Ĭ�ϴ�ӡ��ǰBucket��Ŀ¼
+
+### ��ʾ�ļ���Ϣ
+- �������£�
+```
+coscmd info <cospath>  //�����ʽ
+coscmd info bbb/123.txt //����ʾ��
+```
+�뽫"<>"�еĲ����滻Ϊ����Ҫ��ʾ�� COS ���ļ���·����cospath����
+
+### ��ȡ��ǩ��������url
+- �������£�
+```
+coscmd sigurl<cospath>  //�����ʽ
+coscmd signurl bbb/123.txt //����ʾ��
+coscmd signurl bbb/123.txt -t 100//����ʾ��
+```
+�뽫"<>"�еĲ����滻Ϊ����Ҫ��ȡ����url�� COS ���ļ���·����cospath����
+* ʹ�� `-t time` ���ô�ӡǩ������Чʱ��(��λΪ��)
+
+### ���÷��ʿ���(ACL)
+- �������£�
+
+ʹ��������������bucket�ķ��ʿ��ƣ�
 
 ```
-coscmd putbucketacl [--grant-read GRANT_READ]  [--grant-write GRANT_WRITE] [--grant-full-control GRANT_FULL_CONTROL] //命令格式
-coscmd putbucketacl --grant-read 12345678,12345678/11111 --grant-write anyone --grant-full-control 12345678/22222 //操作示例
+coscmd putbucketacl [--grant-read GRANT_READ]  [--grant-write GRANT_WRITE] [--grant-full-control GRANT_FULL_CONTROL] //�����ʽ
+coscmd putbucketacl --grant-read 12345678,12345678/11111 --grant-write anyone --grant-full-control 12345678/22222 //����ʾ��
 ```
-使用如下命令设置object的访问控制：
+ʹ��������������object�ķ��ʿ��ƣ�
 ```
-coscmd putbucketacl [--grant-read GRANT_READ] [--grant-write GRANT_WRITE] [--grant-full-control GRANT_FULL_CONTROL] <cospath> //命令格式
-coscmd putbucketacl --grant-read 12345678,12345678/11111 --grant-write anyone --grant-full-control 12345678/22222 aaa/aaa.txt //操作示例
+coscmd putbucketacl [--grant-read GRANT_READ] [--grant-write GRANT_WRITE] [--grant-full-control GRANT_FULL_CONTROL] <cospath> //�����ʽ
+coscmd putbucketacl --grant-read 12345678,12345678/11111 --grant-write anyone --grant-full-control 12345678/22222 aaa/aaa.txt //����ʾ��
 ```
-* ACL设置指南
+* ACL����ָ��
 
- --grant-read代表读的权限。
+ --grant-read��������Ȩ�ޡ�
  
---grant-write代表写的权限。
+--grant-write����д��Ȩ�ޡ�
 
---grant-full-control代表读写的权限。
+--grant-full-control������д��Ȩ�ޡ�
 
-GRANT_READ / GRANT_WRITE / GRANT_FILL_CONTORL代表被赋权的帐号。
+GRANT_READ / GRANT_WRITE / GRANT_FILL_CONTORL��������Ȩ���ʺš�
 
-若赋权根帐号，使用rootid的形式；
+����Ȩ���ʺţ�ʹ��rootid����ʽ��
 
-若赋权子账户，使用rootid/subid的形式；
+����Ȩ���˻���ʹ��rootid/subid����ʽ��
 
-若需要对所有人赋权，使用anyone的形式。
+����Ҫ�������˸�Ȩ��ʹ��anyone����ʽ��
 
-同时赋权的多个帐号用逗号(,)隔开。
+ͬʱ��Ȩ�Ķ���ʺ��ö���(,)������
 
-请将参数替换为您所需要删除的cos上文件的路径(cospath)。
+�뽫�����滻Ϊ������Ҫɾ����cos���ļ���·��(cospath)��
 
-具体用法详见示例。
+�����÷����ʾ����
 
-### 获取访问控制(ACL)
-使用如下命令设置bucket的访问控制：
+### ��ȡ���ʿ���(ACL)
+ʹ��������������bucket�ķ��ʿ��ƣ�
 ```
-coscmd getbucketacl //命令格式
-coscmd getbucketacl //操作示例
+coscmd getbucketacl //�����ʽ
+coscmd getbucketacl //����ʾ��
 ```
-使用如下命令设置object的访问控制：
+ʹ��������������object�ķ��ʿ��ƣ�
 ```
-coscmd putbucketacl <cospath> //命令格式
-coscmd getobjectacl aaa/aaa.txt //操作示例
+coscmd putbucketacl <cospath> //�����ʽ
+coscmd getobjectacl aaa/aaa.txt //����ʾ��
 ```
-### 恢复归档文件
-- 命令如下：
+### �ָ��鵵�ļ�
+- �������£�
 ```
-coscmd restore <cospath>  //命令格式
-coscmd restore a.txt -d 3 -t  Expedited//操作示例
-coscmd restore a.txt -d 3 -t  Bulk///操作示例
+coscmd restore <cospath>  //�����ʽ
+coscmd restore a.txt -d 3 -t  Expedited//����ʾ��
+coscmd restore a.txt -d 3 -t  Bulk///����ʾ��
 ```
-请将"<>"中的参数替换为您需要打印文件列表的 COS 上文件的路径（cospath）。
-* 使用 `-d day` 设置临时副本的过期时间；默认值：7
-* 使用 `-t tier` 具体复原过程类型，枚举值： Expedited ，Standard ，Bulk；默认值：Standard
+�뽫"<>"�еĲ����滻Ϊ����Ҫ��ӡ�ļ��б��� COS ���ļ���·����cospath����
+* ʹ�� `-d day` ������ʱ�����Ĺ���ʱ�䣻Ĭ��ֵ��7
+* ʹ�� `-t tier` ���帴ԭ�������ͣ�ö��ֵ�� Expedited ��Standard ��Bulk��Ĭ��ֵ��Standard
 
-### debug 模式执行命令
-在各命令前加上`-d`或者`-debug`，在命令执行的过程中，会显示详细的操作信息 。示例如下：
+### debug ģʽִ������
+�ڸ�����ǰ����`-d`����`-debug`��������ִ�еĹ����У�����ʾ��ϸ�Ĳ�����Ϣ ��ʾ�����£�
 ```
-//显示upload的详细操作信息
-coscmd -d upload <localpath> <cospath>  //命令格式
-coscmd -d upload /home/aaa/123.txt bbb/123.txt  //操作示例
+//��ʾupload����ϸ������Ϣ
+coscmd -d upload <localpath> <cospath>  //�����ʽ
+coscmd -d upload /home/aaa/123.txt bbb/123.txt  //����ʾ��
 ```
