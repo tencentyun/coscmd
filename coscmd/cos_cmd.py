@@ -4,7 +4,6 @@ from ConfigParser import SafeConfigParser
 from argparse import ArgumentParser
 import sys
 import logging
-import coloredlogs
 import os
 from threading import Thread
 import cos_global
@@ -12,9 +11,6 @@ logger = logging.getLogger(__name__)
 
 fs_coding = sys.getfilesystemencoding()
 
-color_red = "31"
-color_green = "32"
-color_yello = "33"
 pre_appid = ""
 pre_bucket = ""
 global res
@@ -36,10 +32,6 @@ def to_printable_str(s):
         return s.encode(fs_coding)
     else:
         return s
-
-
-def change_color(s, color):
-    return "\033[1;" + color + ";40m" + s + "\033[0m"
 
 
 def config(args):
@@ -142,7 +134,7 @@ class Op(object):
             args.cos_path = args.cos_path.decode(fs_coding)
 
         if not os.path.exists(args.local_path):
-            logger.warn(change_color("cannot stat '%s': No such file or directory" % to_printable_str(args.local_path), color_red))
+            logger.warn("cannot stat '%s': No such file or directory" % to_printable_str(args.local_path))
             return -1
 
         if not os.access(args.local_path, os.R_OK):
@@ -157,17 +149,17 @@ class Op(object):
                 logger.info("{folders} folders, {files} files successful, {fail_files} files failed"
                             .format(folders=Interface._folder_num, files=Interface._file_num, fail_files=Interface._fail_num))
                 if rt:
-                    logger.debug(change_color("upload all files under \"{file}\" directory successfully".format(file=to_printable_str(args.local_path)), color_green))
+                    logger.debug("upload all files under \"{file}\" directory successfully".format(file=to_printable_str(args.local_path)))
                     return 0
                 else:
-                    logger.debug(change_color("upload all files under \"{file}\" directory failed".format(file=to_printable_str(args.local_path)), color_red))
+                    logger.debug("upload all files under \"{file}\" directory failed".format(file=to_printable_str(args.local_path)))
                     return -1
         else:
             if os.path.isdir(args.local_path):
-                logger.warn(change_color("\"{path}\" is a directory, use \'-r\' option to upload it please.".format(path=to_printable_str(args.local_path)), color_red))
+                logger.warn("\"{path}\" is a directory, use \'-r\' option to upload it please.".format(path=to_printable_str(args.local_path)))
                 return -1
             if os.path.isfile(args.local_path) is False:
-                logger.warn(change_color("cannot stat '%s': No such file or directory" % to_printable_str(args.local_path), color_red))
+                logger.warn("cannot stat '%s': No such file or directory" % to_printable_str(args.local_path))
                 return -1
             if Interface.upload_file(args.local_path, args.cos_path, args.type) is True:
                 return 0
@@ -195,10 +187,10 @@ class Op(object):
         if args.recursive:
             rt = Interface.download_folder(args.cos_path, args.local_path, args.force)
             if rt:
-                logger.debug(change_color("download all files under \"{file}\" directory successfully".format(file=to_printable_str(args.cos_path)), color_green))
+                logger.debug("download all files under \"{file}\" directory successfully".format(file=to_printable_str(args.cos_path)))
                 return 0
             else:
-                logger.debug(change_color("download all files under \"{file}\" directory failed".format(file=to_printable_str(args.cos_path)), color_red))
+                logger.debug("download all files under \"{file}\" directory failed".format(file=to_printable_str(args.cos_path)))
                 return -1
         else:
             if Interface.download_file(args.cos_path, args.local_path, args.force) is True:
@@ -241,17 +233,17 @@ class Op(object):
             if args.cos_path == '/':
                 args.cos_path = ''
             if Interface.delete_folder(args.cos_path, args.force):
-                logger.debug(change_color("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)), color_green))
+                logger.debug("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)))
                 return 0
             else:
-                logger.debug(change_color("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)), color_red))
+                logger.debug("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)))
                 return -1
         else:
             if Interface.delete_file(args.cos_path, args.force):
-                logger.debug(change_color("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)), color_green))
+                logger.debug("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)))
                 return 0
             else:
-                logger.debug(change_color("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)), color_red))
+                logger.debug("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)))
                 return -1
 
     @staticmethod
@@ -267,7 +259,6 @@ class Op(object):
         if Interface.list_objects(cos_path=args.cos_path, _recursive=args.recursive, _all=args.all, _num=args.num, _human=args.human):
             return 0
         else:
-            # logger.warn(change_color("list failed!", color_red))
             return -1
 
     @staticmethod
@@ -283,7 +274,6 @@ class Op(object):
         if Interface.info_object(args.cos_path, _human=args.human):
             return 0
         else:
-            # logger.warn(change_color("info failed!", color_red))
             return -1
 
     @staticmethod
@@ -300,10 +290,10 @@ class Op(object):
             args.cos_path = args.cos_path.decode(fs_coding)
 
         if Interface.mget(args.cos_path, args.local_path, args.force, args.num) is True:
-            logger.debug(change_color("mget \"{file}\" successfully".format(file=to_printable_str(args.cos_path)), color_green))
+            logger.debug("mget \"{file}\" successfully".format(file=to_printable_str(args.cos_path)))
             return 0
         else:
-            logger.debug(change_color("mget \"{file}\" failed".format(file=to_printable_str(args.cos_path)), color_red))
+            logger.debug("mget \"{file}\" failed".format(file=to_printable_str(args.cos_path)))
             return -1
         return -1
 
@@ -320,7 +310,6 @@ class Op(object):
         if Interface.restore_object(cos_path=args.cos_path, _day=args.day, _tier=args.tier):
             return 0
         else:
-            # logger.warn(change_color("list failed!", color_red))
             return -1
 
     @staticmethod
@@ -349,10 +338,10 @@ class Op(object):
         Interface = client.op_int()
         rt = Interface.put_object_acl(args.grant_read, args.grant_write, args.grant_full_control, args.cos_path)
         if rt is True:
-            logger.info(change_color("put success!", color_green))
+            logger.info("put success!")
             return 0
         else:
-            logger.warn(change_color("put fail!", color_red))
+            logger.warn("put fail!")
             return -1
 
     @staticmethod
@@ -369,7 +358,7 @@ class Op(object):
         if rt is True:
             return 0
         else:
-            logger.warn(change_color("get fail!", color_red))
+            logger.warn("get fail!")
             return -1
 
     @staticmethod
@@ -380,7 +369,7 @@ class Op(object):
         if Interface.create_bucket():
             return 0
         else:
-            logger.warn(change_color("create fail!", color_red))
+            logger.warn("create fail!")
             return -1
 
     @staticmethod
@@ -391,7 +380,7 @@ class Op(object):
         if Interface.delete_bucket():
             return 0
         else:
-            logger.warn(change_color("delete fail!", color_red))
+            logger.warn("delete fail!")
             return -1
 
     @staticmethod
@@ -402,7 +391,7 @@ class Op(object):
         if Interface.get_bucket(args.cos_path):
             return 0
         else:
-            logger.warn(change_color("list fail!", color_red))
+            logger.warn("list fail!")
             return -1
 
     @staticmethod
@@ -414,7 +403,7 @@ class Op(object):
         if rt is True:
             return 0
         else:
-            logger.warn(change_color("put fail!", color_red))
+            logger.warn("put fail!")
             return -1
 
     @staticmethod
@@ -424,10 +413,10 @@ class Op(object):
         Interface = client.op_int()
         rt = Interface.get_bucket_acl()
         if rt is True:
-            logger.info(change_color("get success!", color_green))
+            logger.info("get success!")
             return 0
         else:
-            logger.warn(change_color("get fail!", color_red))
+            logger.warn("get fail!")
             return -1
 
 
@@ -541,13 +530,13 @@ def command_thread():
     args = parser.parse_args()
 
     logger = logging.getLogger('')
-#     coloredlogs.DEFAULT_FIELD_STYLES = {'hostname': {'color': 'white'}, 'name': {'color': 'white'}, 'levelname': {'color': 'white', 'bold': True}, 'asctime': {'color': 'white'}}
-#     coloredlogs.DEFAULT_LEVEL_STYLES = {'info': {'color': 'white'}, 'warning': {'color': 'white', 'bold': True}}
     if args.debug:
-        coloredlogs.install(level='DEBUG', logger=logger, fmt='%(asctime)s - %(message)s')
+        logging.basicConfig(level='DEBUG', logger=logger, format='%(asctime)s - [%(levelname)s]:  %(message)s', filename=os.path.expanduser('~/.cos.log'), filemode='a')
     else:
-        coloredlogs.install(level='INFO', logger=logger, fmt='%(message)s')
-
+        logging.basicConfig(level='INFO', logger=logger, format='%(asctime)s - [%(levelname)s]:  %(message)s', filename=os.path.expanduser('~/.cos.log'), filemode='a')
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    logging.getLogger('').addHandler(console)
     global pre_appid, pre_bucket
     pre_bucket = args.bucket
     try:

@@ -384,7 +384,7 @@ class Interface(object):
                 return False
 
         def complete_multiupload():
-            logger.info('completing multiupload, please wait')
+            print('completing multiupload, please wait')
             doc = minidom.Document()
             root = doc.createElement("CompleteMultipartUpload")
             list_md5 = sorted(self._md5.items(), key=lambda d: d[0])
@@ -577,7 +577,7 @@ class Interface(object):
                 return False
 
         def complete_multiupload():
-            logger.info('completing multicopy, please wait')
+            print('completing multicopy, please wait')
             doc = minidom.Document()
             root = doc.createElement("CompleteMultipartUpload")
             list_md5 = sorted(self._md5.items(), key=lambda d: d[0])
@@ -668,12 +668,14 @@ class Interface(object):
                     NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
                 fileset = root.getElementsByTagName("Contents")
                 for _file in fileset:
-                    self._file_num += 1
                     _cos_path = _file.getElementsByTagName("Key")[0].childNodes[0].data
                     _local_path = local_path + _cos_path[len(cos_path):]
                     _cos_path = to_unicode(_cos_path)
                     _local_path = to_unicode(_local_path)
+                    if _cos_path.endswith('/'):
+                        continue
                     download_file(_cos_path, _local_path, _force)
+                    self._file_num += 1
             else:
                 logger.warn(response_info(rt))
                 return False
