@@ -872,6 +872,7 @@ class Interface(object):
         if _all is True:
             _num = -1
         self._file_num = 0
+        self._total_size = 0
         cos_path = to_printable_str(cos_path)
         while IsTruncated == "true":
             table = PrettyTable(["Path", "Size/Type", "Time"])
@@ -906,6 +907,7 @@ class Interface(object):
                     _time = time.localtime(utc_to_local(_time))
                     _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
                     _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
+                    self._total_size += int(_size)
                     if _human is True:
                         _size = change_to_human(_size)
                     _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
@@ -921,7 +923,13 @@ class Interface(object):
             else:
                 logger.warn(response_info(rt))
                 return False
-
+        if _human:
+            self._total_size = change_to_human(str(self._total_size))
+        else:
+            self._total_size = str(self._total_size)
+        if _recursive:
+            logger.info(" Files num: {file_num}".format(file_num=str(self._file_num)))
+            logger.info(" Files size: {file_size}".format(file_size=self._total_size))
         if _all is False and self._file_num == _num:
             logger.info("Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
         return True
