@@ -2,6 +2,7 @@
 from cos_client import CosConfig, CosS3Client
 from ConfigParser import SafeConfigParser
 from argparse import ArgumentParser
+from logging.handlers import RotatingFileHandler
 import sys
 import logging
 import os
@@ -530,12 +531,15 @@ def command_thread():
     args = parser.parse_args()
 
     logger = logging.getLogger('')
-    if args.debug:
-        logging.basicConfig(level='DEBUG', logger=logger, format='%(asctime)s - [%(levelname)s]:  %(message)s', filename=os.path.expanduser('~/.cos.log'), filemode='a')
-    else:
-        logging.basicConfig(level='INFO', logger=logger, format='%(asctime)s - [%(levelname)s]:  %(message)s', filename=os.path.expanduser('~/.cos.log'), filemode='a')
+    logger.setLevel(logging.INFO)
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+        console.setLevel(logging.DEBUG)
+    handler = RotatingFileHandler(os.path.expanduser('~/.cos.log'), maxBytes=20*1024*1024, backupCount=1)
+    handler.setFormatter(logging.Formatter('%(asctime)s - [%(levelname)s]:  %(message)s'))
+    logger.addHandler(handler)
     logging.getLogger('').addHandler(console)
     global pre_appid, pre_bucket
     pre_bucket = args.bucket
