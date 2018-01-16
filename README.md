@@ -193,7 +193,7 @@ coscmd copybucket-appid.cos.ap-guangzhou.myqcloud.com/a.txt aaa/123.txt  //操�
 请将"<>"中的参数替换为您需要复制的 COS 上文件的路径（sourcepath），和您需要复制到 COS 上文件的路径（cospath）。
 
 **注意：** 
-1. sourcepath的样式如下：<bucketname>-<appid>.cos.<region>.myqcloud.com/<cospath>
+1. sourcepath的样式如下：```<bucketname>-<appid>.cos.<region>.myqcloud.com/<cospath>```
 
 ### 打印文件列表
 - 打印命令如下：
