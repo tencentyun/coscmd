@@ -123,6 +123,7 @@ class CosConfig(object):
         self._secret_key = secret_key
         self._part_size = min(10, part_size)
         self._max_thread = min(10, max_thread)
+        self._schema = "https"
         logger.debug("config parameter-> appid: {appid}, region: {region}, bucket: {bucket}, part_size: {part_size}, max_thread: {max_thread}".format(
                  appid=appid,
                  region=region,
@@ -132,14 +133,16 @@ class CosConfig(object):
 
     def uri(self, path=None):
         if path:
-            url = u"http://{bucket}-{uid}.cos.{region}.myqcloud.com/{path}".format(
+            url = u"{schema}://{bucket}-{uid}.cos.{region}.myqcloud.com/{path}".format(
+                schema=self._schema,
                 bucket=self._bucket,
                 uid=self._appid,
                 region=self._region,
                 path=to_unicode(path)
             )
         else:
-            url = u"http://{bucket}-{uid}.cos.{region}.myqcloud.com".format(
+            url = u"{schema}://{bucket}-{uid}.cos.{region}.myqcloud.com".format(
+                schema=self._schema,
                 bucket=self._bucket,
                 uid=self._appid,
                 region=self._region
