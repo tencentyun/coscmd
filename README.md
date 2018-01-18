@@ -89,9 +89,11 @@ coscmd config -a <access_id> -s <secret_key> -b <bucket> -r <region> [-m <max_th
 | bucket     | 必选参数，指定的存储桶名称，bucket的命名规则为{name}-{appid} ，参考 [创建存储桶](https://cloud.tencent.com/doc/product/436/6232)。 | 字符串  |
 | region     | 必选参数，存储桶所在地域。参考 [可用地域](https://cloud.tencent.com/doc/product/436/6224)。 | 字符串  |
 | max_thread | 可选参数，多线程上传时的最大线程数（默认为 5），有效值：1~10         | 数字   |
-| parts_size | 可选参数，分块上传的单块大小（单位为 M，默认为 1M），有效值：1~10     | 数字   |
+| parts_size | 可选参数，分块上传的单块大小（单位为 M，默认为 1M），有效值：1~10     | 数字   |
 
-也可以直接编辑`~/.cos.conf`文件 （对于windows环境下，该文件是位于`我的文档`下的一个隐藏文件）。
+**注意：** 
+1. 目前`coscmd`已全部采用`https`协议, 请不要使用像 `cn-north/cn-south`...较老的region
+2. 可以直接编辑`~/.cos.conf`文件 （对于windows环境下，该文件是位于`我的文档`下的一个隐藏文件）。
 配置完成之后的`.cos.conf`文件内容示例如下所示：
 ```
  [common]
