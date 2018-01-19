@@ -14,6 +14,7 @@ fs_coding = sys.getfilesystemencoding()
 
 pre_appid = ""
 pre_bucket = ""
+pre_region = ""
 global res
 
 
@@ -108,11 +109,15 @@ def load_conf():
             appid = pre_appid
         if pre_bucket != "":
             bucket = pre_bucket
+        if pre_region != "":
+            region = compatible(pre_region)
+        else:
+            region = compatible(cp.get('common', 'region'))
         conf = CosConfig(
             appid=appid,
             secret_id=secret_id,
             secret_key=cp.get('common', 'secret_key'),
-            region=compatible(cp.get('common', 'region')),
+            region=region,
             bucket=bucket,
             part_size=part_size,
             max_thread=max_thread
@@ -430,6 +435,7 @@ def command_thread():
     parser = ArgumentParser(description=desc)
     parser.add_argument('-d', '--debug', help="debug mode", action="store_true", default=False)
     parser.add_argument('-b', '--bucket', help="set bucket", type=str, default="")
+    parser.add_argument('-R', '--region', help="set region", dest='region', type=str, default="")
 
     sub_parser = parser.add_subparsers()
     parser_config = sub_parser.add_parser("config", help="config your information at first.")
@@ -541,8 +547,9 @@ def command_thread():
     handler.setFormatter(logging.Formatter('%(asctime)s - [%(levelname)s]:  %(message)s'))
     logger.addHandler(handler)
     logging.getLogger('').addHandler(console)
-    global pre_appid, pre_bucket
+    global pre_appid, pre_bucket, pre_region
     pre_bucket = args.bucket
+    pre_region = args.region
     try:
         pre_appid = pre_bucket.split('-')[-1]
         pre_bucket = pre_bucket.rstrip(pre_appid)
