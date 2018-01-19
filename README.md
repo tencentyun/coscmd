@@ -38,7 +38,7 @@ coscmd -h  //查看当面版本信息
 ```
 help 信息如下所示：
 ```
-usage: coscmd [-h] [-d] [-b BUCKET] [-v]
+usage: coscmd [-h] [-d] [-b BUCKET] [-R REGION] [-v]
               {config,upload,download,delete,list,info,mget,restore,signurl,createbucket,deletebucket,putobjectacl,getobjectacl,putbucketacl,getbucketacl}
               ...
 
@@ -69,6 +69,8 @@ optional arguments:
   -d, --debug           debug mode
   -b BUCKET, --bucket BUCKET
                         set bucket
+  -R REGION, --region REGION
+                        set region
   -v, --version         show program's version number and exit
 ```
 除此之外，用户还可以在每个命令后（不加参数）输入`-h`查看该命令的具体用法，例如：
