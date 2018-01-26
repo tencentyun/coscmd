@@ -1,13 +1,14 @@
 ﻿## 功能说明
 使用 COSCMD 工具，用户可通过简单的命令行指令实现对对象（Object）的批量上传、下载、删除等操作。
 ## 使用限制
-1. 适用于 COS V4、V5 版本；
+适用于 COS V4、V5 版本；
 
 ## 使用环境
 ### 系统环境
 Windows 或 Linux 系统
 ### 软件依赖
-Python 2.7
+Python 2.7 
+
 并装有最新版本的pip
 #### 安装及配置
 环境安装与配置详细操作请参考 [Python 安装与配置](https://cloud.tencent.com/document/product/436/10866)。
@@ -29,7 +30,7 @@ pip install coscmd
 ```
 pip install coscmd -U
 ```
-**注意不论是在linux还是windows环境下，都可以通过以上的方法安装或更新**
+**注意：** 不论是在 Linux 还是 Windows 环境下，都可以通过以上的方法安装或更新
 ## 使用方法
 ### 查看 help
 用户可通过`-h`或`--help`命令来查看工具的 help 信息。
@@ -104,7 +105,7 @@ region = cn-south
 max_thread = 5
 part_size = 1
 ```
-### 指定bucket的命令
+### 指定 Bucket 的命令
 -  通过`-b <bucket> 可以指定bucket`
 - bucket的命名规则为`{name}-{appid}` ，此处填写的存储桶名称必须为此格式
 ```
@@ -113,7 +114,7 @@ coscmd -b AAA-12345567 upload a.txt b.txt  //操作示例-上传文件
 coscmd -b AAA-12344567 createbucket  //操作示例-创建bucket
 ```
 
-### 创建bucket
+### 创建 Bucket
 -  建议配合`-b <bucket> 指定bucket`使用
 ```
 coscmd -b <bucket> createbucket //命令格式
@@ -121,7 +122,7 @@ coscmd createbucket  //操作示例
 coscmd -b AAA-12344567 createbucket  //操作示例
 ```
 
-### 删除bucket
+### 删除 Bucket
 -  建议配合`-b <bucket> 指定bucket`使用
 ```
 coscmd -b <bucket> deletebucket //命令格式
@@ -145,18 +146,18 @@ coscmd upload -r /home/aaa/ /  //上传到bucket根目录
 
 请将 "<>" 中的参数替换为您需要上传的本地文件路径（localpath），以及 COS 上存储的路径（cospath）。
 **注意：** 
-1. 上传文件时需要将cos上的路径包括文件(夹)的名字补全(参考例子)。
-2. COSCMD 支持大文件断点上传功能。当分片上传大文件失败时，重新上传该文件只会上传失败的分块，而不会从头开始（请保证重新上传的文件的目录以及内容和上传的目录保持一致）。
-3. COSCMD 分块上传时会对每一块进行md5校验
+* 上传文件时需要将cos上的路径包括文件(夹)的名字补全(参考例子)。
+* COSCMD 支持大文件断点上传功能。当分片上传大文件失败时，重新上传该文件只会上传失败的分块，而不会从头开始（请保证重新上传的文件的目录以及内容和上传的目录保持一致）。
+* COSCMD 分块上传时会对每一块进行 MD5 校验
 
 ### 下载文件或文件夹
-下载文件命令如下：
+- 下载文件命令如下：
 ```
 coscmd download <cospath> <localpath>  //命令格式
 coscmd download bbb/123.txt /home/aaa/111.txt  //操作示例
 coscmd download bbb/123.txt /home/aaa/  //操作示例
 ```
-- 如下下载文件夹命令如下：
+- 下载文件夹命令如下：
 ```
 coscmd download-r <cospath> <localpath> //命令格式
 coscmd download -r /home/aaa/ bbb/aaa  //操作示例
@@ -165,8 +166,8 @@ coscmd download -r / bbb/aaa  //下载当前bucket根目录下所有的文件
 ```
 请将 "<>" 中的参数替换为您需要下载的 COS 上文件的路径（cospath），以及本地存储路径（localpath）。
 **注意：** 
-1. 若本地存在同名文件，则会下载失败。使用 `-f` 参数覆盖本地文件
-2. 将以上命令中的 `download` 替换为 `mget`， 则可以使用分块下载，在带宽足够的条件下速度会提升2-3倍。
+* 若本地存在同名文件，则会下载失败。使用 `-f` 参数覆盖本地文件
+* 将以上命令中的 `download` 替换为 `mget`， 则可以使用分块下载，在带宽足够的条件下速度会提升2-3倍。
 
 ### 删除文件或文件夹
 - 删除文件命令如下：
@@ -174,7 +175,7 @@ coscmd download -r / bbb/aaa  //下载当前bucket根目录下所有的文件
 coscmd delete <cospath>  //命令格式
 coscmd delete bbb/123.txt  //操作示例
 ```
-- 如下删除文件夹命令如下：
+- 删除文件夹命令如下：
 ```
 coscmd delete -r <cospath>  //命令格式
 coscmd delete -r bbb/  //操作示例
@@ -183,7 +184,7 @@ coscmd delete -r /  //操作示例
 
 请将"<>"中的参数替换为您需要删除的 COS 上文件的路径（cospath）。工具会提示用户是否确认进行删除操作。
 **注意：** 
-1. 批量删除需要输入确定，使用 `-f` 参数跳过确认 
+* 批量删除需要输入确定，使用 `-f` 参数跳过确认 
 
 ### 复制文件
 - 复制文件命令如下：
@@ -195,7 +196,7 @@ coscmd copybucket-appid.cos.ap-guangzhou.myqcloud.com/a.txt aaa/123.txt  //操�
 请将"<>"中的参数替换为您需要复制的 COS 上文件的路径（sourcepath），和您需要复制到 COS 上文件的路径（cospath）。
 
 **注意：** 
-1. sourcepath的样式如下：```<bucketname>-<appid>.cos.<region>.myqcloud.com/<cospath>```
+* sourcepath的样式如下：```<bucketname>-<appid>.cos.<region>.myqcloud.com/<cospath>```
 
 ### 打印文件列表
 - 打印命令如下：
@@ -210,7 +211,7 @@ coscmd list bbb/123.txt  -r -n 10 //操作示例
 * 使用 `-n num` 设置打印数量的最大值
 
 **注意：** 
-1. <cospath>为空默认打印当前Bucket根目录
+* <cospath>为空默认打印当前Bucket根目录
 
 ### 显示文件信息
 - 命令如下：
@@ -220,7 +221,7 @@ coscmd info bbb/123.txt //操作示例
 ```
 请将"<>"中的参数替换为您需要显示的 COS 上文件的路径（cospath）。
 
-### 获取带签名的下载url
+### 获取带签名的下载 URL
 - 命令如下：
 ```
 coscmd sigurl<cospath>  //命令格式
@@ -246,33 +247,25 @@ coscmd putbucketacl --grant-read 12345678,12345678/11111 --grant-write anyone --
 ```
 * ACL设置指南
 
- --grant-read代表读的权限。
- 
---grant-write代表写的权限。
+*  --grant-read代表读的权限。
+* --grant-write代表写的权限。
+* --grant-full-control代表读写的权限。
+* GRANT_READ / GRANT_WRITE / GRANT_FILL_CONTORL代表被赋权的帐号。
 
---grant-full-control代表读写的权限。
-
-GRANT_READ / GRANT_WRITE / GRANT_FILL_CONTORL代表被赋权的帐号。
-
-若赋权根帐号，使用rootid的形式；
-
-若赋权子账户，使用rootid/subid的形式；
-
-若需要对所有人赋权，使用anyone的形式。
-
-同时赋权的多个帐号用逗号(,)隔开。
-
-请将参数替换为您所需要删除的cos上文件的路径(cospath)。
-
+* 若赋权根帐号，使用 rootid 的形式；
+* 若赋权子账户，使用 rootid/subid 的形式；
+* 若需要对所有人赋权，使用 anyone 的形式。
+* 同时赋权的多个帐号用逗号(,)隔开。
+* 请将参数替换为您所需要删除的cos上文件的路径(cospath)。
 具体用法详见示例。
 
 ### 获取访问控制(ACL)
-使用如下命令设置bucket的访问控制：
+- 使用如下命令设置 Bucket 的访问控制：
 ```
 coscmd getbucketacl //命令格式
 coscmd getbucketacl //操作示例
 ```
-使用如下命令设置object的访问控制：
+- 使用如下命令设置object的访问控制：
 ```
 coscmd putbucketacl <cospath> //命令格式
 coscmd getobjectacl aaa/aaa.txt //操作示例
@@ -288,7 +281,7 @@ coscmd restore a.txt -d 3 -t  Bulk///操作示例
 * 使用 `-d day` 设置临时副本的过期时间；默认值：7
 * 使用 `-t tier` 具体复原过程类型，枚举值： Expedited ，Standard ，Bulk；默认值：Standard
 
-### debug 模式执行命令
+### Debug 模式执行命令
 在各命令前加上`-d`或者`-debug`，在命令执行的过程中，会显示详细的操作信息 。示例如下：
 ```
 //显示upload的详细操作信息
