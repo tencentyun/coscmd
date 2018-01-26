@@ -78,7 +78,7 @@ coscmd upload -h  //查看 upload 命令使用方法
 ### 配置参数
 COSCMD 工具在使用前需要进行参数配置。用户可以通过如下命令来配置：
 ```
-coscmd config -a <access_id> -s <secret_key> -b <bucket> -r <region> [-m <max_thread>] [-p <parts_size>]      
+coscmd config -a <secret_id> -s <secret_key> -b <bucket> -r <region> [-m <max_thread>] [-p <parts_size>]      
 ```
 上述示例中使用"<>"的字段为必选参数，使用"[]"的字段为可选参数。其中：
 
