@@ -105,13 +105,16 @@ region = cn-south
 max_thread = 5
 part_size = 1
 ```
-### 指定 Bucket 的命令
--  通过`-b <bucket> 可以指定bucket`
+### 指定 Bucket / Region / Config_Path / Log_Path 的命令
+-  通过`-b <bucket>` 可以指定bucket
+-  通过`-r <region>` 可以指定园区
+-  通过`-c <config_path>` 可以指定配置文件的路径
+-  通过`-l <log_path>` 可以指定日志的保存路径
 - bucket的命名规则为`{name}-{appid}` ，此处填写的存储桶名称必须为此格式
 ```
-coscmd -b <bucket> method ...  //命令格式
-coscmd -b AAA-12345567 upload a.txt b.txt  //操作示例-上传文件
-coscmd -b AAA-12344567 createbucket  //操作示例-创建bucket
+coscmd -b <bucket> -r <region> -c <config_path> -l <log_path>  method ...  //命令格式
+coscmd -b AAA-12345567 -r ap-beijing -c E:/a.conf -l a.log upload a.txt b.txt  //操作示例-上传文件
+coscmd -b AAA-12345567 -r ap-beijing -c E:/a.conf -l a.log createbucket  //操作示例-创建bucket
 ```
 
 ### 创建 Bucket
