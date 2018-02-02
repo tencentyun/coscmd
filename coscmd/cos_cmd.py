@@ -14,6 +14,7 @@ fs_coding = sys.getfilesystemencoding()
 
 pre_appid = ""
 pre_bucket = ""
+config_path = ""
 global res
 
 
@@ -38,7 +39,7 @@ def to_printable_str(s):
 def config(args):
     logger.debug("config: " + str(args))
 
-    conf_path = os.path.expanduser('~/.cos.conf')
+    conf_path = os.path.expanduser(config_path)
 
     with open(conf_path, 'w+') as f:
         cp = SafeConfigParser()
@@ -57,7 +58,8 @@ def config(args):
 
 def compatible(region):
     _dict = {'tj': 'ap-beijing-1', 'bj': 'ap-beijing', 'gz': 'ap-guangzhou', 'sh': 'ap-shanghai',
-             'cd': 'ap-chengdu', 'spg': 'ap-singapore', 'hk': 'ap-hongkong', 'ca': 'na-toronto', 'ger': 'eu-frankfurt'}
+             'cd': 'ap-chengdu', 'spg': 'ap-singapore', 'hk': 'ap-hongkong', 'ca': 'na-toronto', 'ger': 'eu-frankfurt',
+             'cn-south': 'ap-guangzhou', 'cn-north': 'ap-beijing-1'}
     if region.startswith('cos.'):
         region = region[4:]
     if region in _dict:
@@ -67,7 +69,7 @@ def compatible(region):
 
 def load_conf():
 
-    conf_path = os.path.expanduser('~/.cos.conf')
+    conf_path = os.path.expanduser(config_path)
     if not os.path.exists(conf_path):
         logger.warn("{conf} couldn't be found, please use \'coscmd config -h\' to learn how to config coscmd!".format(conf=to_printable_str(conf_path)))
         raise IOError
@@ -104,15 +106,18 @@ def load_conf():
                 bucket = bucket[:-1]
             except Exception:
                 logger.error("The configuration file is wrong. Please reconfirm")
+        region = cp.get('common', 'region')
         if pre_appid != "":
             appid = pre_appid
         if pre_bucket != "":
             bucket = pre_bucket
+        if pre_region != "":
+            region = pre_region
         conf = CosConfig(
             appid=appid,
             secret_id=secret_id,
             secret_key=cp.get('common', 'secret_key'),
-            region=compatible(cp.get('common', 'region')),
+            region=compatible(region),
             bucket=bucket,
             part_size=part_size,
             max_thread=max_thread
@@ -430,6 +435,9 @@ def command_thread():
     parser = ArgumentParser(description=desc)
     parser.add_argument('-d', '--debug', help="debug mode", action="store_true", default=False)
     parser.add_argument('-b', '--bucket', help="set bucket", type=str, default="")
+    parser.add_argument('-r', '--region', help="set region", type=str, default="")
+    parser.add_argument('-c', '--config_path', help="set config_path", type=str, default="~/.cos.log")
+    parser.add_argument('-l', '--log_path', help="set log_path", type=str, default="~/。cos.conf")
 
     sub_parser = parser.add_subparsers()
     parser_config = sub_parser.add_parser("config", help="config your information at first.")
@@ -504,8 +512,8 @@ def command_thread():
 
     parser_delete_bucket = sub_parser.add_parser("deletebucket", help='delete bucket')
     parser_delete_bucket.set_defaults(func=Op.delete_bucket)
-#
-#
+
+
     parser_put_object_acl = sub_parser.add_parser("putobjectacl", help='''set object acl''')
     parser_put_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_put_object_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
@@ -537,12 +545,14 @@ def command_thread():
     if args.debug:
         logger.setLevel(logging.DEBUG)
         console.setLevel(logging.DEBUG)
-    handler = RotatingFileHandler(os.path.expanduser('~/.cos.log'), maxBytes=20*1024*1024, backupCount=1)
+    handler = RotatingFileHandler(os.path.expanduser(args.log_path), maxBytes=20*1024*1024, backupCount=1)
     handler.setFormatter(logging.Formatter('%(asctime)s - [%(levelname)s]:  %(message)s'))
     logger.addHandler(handler)
     logging.getLogger('').addHandler(console)
-    global pre_appid, pre_bucket
+    global pre_appid, pre_bucket, pre_region, config_path
+    config_path = args.config_path
     pre_bucket = args.bucket
+    pre_region = args.region
     try:
         pre_appid = pre_bucket.split('-')[-1]
         pre_bucket = pre_bucket.rstrip(pre_appid)
