@@ -513,7 +513,6 @@ def command_thread():
     parser_delete_bucket = sub_parser.add_parser("deletebucket", help='delete bucket')
     parser_delete_bucket.set_defaults(func=Op.delete_bucket)
 
-
     parser_put_object_acl = sub_parser.add_parser("putobjectacl", help='''set object acl''')
     parser_put_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_put_object_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
