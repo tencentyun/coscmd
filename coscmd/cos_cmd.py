@@ -322,6 +322,8 @@ class Op(object):
     def signurl(args):
         conf = load_conf()
         client = CosS3Client(conf)
+        if not isinstance(args.cos_path, unicode):
+            args.cos_path = args.cos_path.decode(fs_coding)
         while args.cos_path.startswith('/'):
             args.cos_path = args.cos_path[1:]
         try:
