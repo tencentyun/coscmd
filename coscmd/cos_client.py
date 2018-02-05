@@ -173,9 +173,9 @@ class Interface(object):
             self._session = session
 
     def sign_url(self, cos_path, timeout=10000):
+        cos_path = to_printable_str(cos_path)
         url = self._conf.uri(path=cos_path)
         s = requests.Session()
-        print url
         req = requests.Request('GET',  url)
         prepped = s.prepare_request(req)
         signature = CosS3Auth(self._conf._secret_id, self._conf._secret_key, timeout).__call__(prepped).headers['Authorization']
