@@ -436,8 +436,8 @@ def command_thread():
     parser.add_argument('-d', '--debug', help="debug mode", action="store_true", default=False)
     parser.add_argument('-b', '--bucket', help="set bucket", type=str, default="")
     parser.add_argument('-r', '--region', help="set region", type=str, default="")
-    parser.add_argument('-c', '--config_path', help="set config_path", type=str, default="~/.cos.log")
-    parser.add_argument('-l', '--log_path', help="set log_path", type=str, default="~/。cos.conf")
+    parser.add_argument('-c', '--config_path', help="set config_path", type=str, default="~/.cos.conf")
+    parser.add_argument('-l', '--log_path', help="set log_path", type=str, default="~/。cos.log")
 
     sub_parser = parser.add_subparsers()
     parser_config = sub_parser.add_parser("config", help="config your information at first.")
