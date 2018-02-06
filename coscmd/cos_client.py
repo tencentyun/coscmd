@@ -174,12 +174,13 @@ class Interface(object):
 
     def sign_url(self, cos_path, timeout=10000):
         cos_path = to_printable_str(cos_path)
-        url = self._conf.uri(path=cos_path)
+        url = self._conf.uri(path=urllib.quote(to_printable_str(cos_path)))
         s = requests.Session()
         req = requests.Request('GET',  url)
         prepped = s.prepare_request(req)
         signature = CosS3Auth(self._conf._secret_id, self._conf._secret_key, timeout).__call__(prepped).headers['Authorization']
-        return url + '?sign=' + urllib.quote(to_printable_str(signature))
+
+        return to_printable_str(url + '?sign=' + urllib.quote(signature))
 
     def list_part(self, cos_path):
         logger.debug("getting uploaded parts")
