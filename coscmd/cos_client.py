@@ -211,7 +211,7 @@ class Interface(object):
         logger.debug("list parts error")
         return True
 
-    def upload_folder(self, local_path, cos_path, _type='Standard'):
+    def upload_folder(self, local_path, cos_path, _type='Standard', _encryption=''):
 
         local_path = to_unicode(local_path)
         cos_path = to_unicode(cos_path)
@@ -227,10 +227,10 @@ class Interface(object):
         for filename in filelist:
             filepath = os.path.join(local_path, filename)
             if os.path.isdir(filepath):
-                if not self.upload_folder(filepath, cos_path+filename, _type):
+                if not self.upload_folder(filepath, cos_path+filename, _type, _encryption):
                     ret_code = False
             else:
-                if self.upload_file(local_path=filepath, cos_path=cos_path+filename, _type=_type) is False:
+                if self.upload_file(local_path=filepath, cos_path=cos_path+filename, _type=_type, _encryption=_encryption) is False:
                     logger.info("upload {file} fail".format(file=to_printable_str(filepath)))
                     self._fail_num += 1
                     ret_code = False
@@ -239,10 +239,11 @@ class Interface(object):
                     logger.debug("upload {file} success".format(file=to_printable_str(filepath)))
         return ret_code
 
-    def upload_file(self, local_path, cos_path, _type='Standard'):
+    def upload_file(self, local_path, cos_path, _type='Standard', _encryption=''):
 
         def single_upload():
             self._type = _type
+            self._encryption = _encryption
             if len(local_path) == 0:
                 data = ""
             else:
@@ -253,6 +254,8 @@ class Interface(object):
                 try:
                     http_header = dict()
                     http_header['x-cos-storage-class'] = self._type
+                    if _encryption != '':
+                        http_header['x-cos-server-side-encryption'] = self._encryption
                     rt = self._session.put(url=url,
                                            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), data=data, headers=http_header)
                     if rt.status_code == 200:
@@ -280,6 +283,7 @@ class Interface(object):
             self._upload_id = None
             self._type = _type
             self._path_md5 = get_md5_filename(local_path, cos_path)
+            self._encryption = _encryption
             logger.debug("init with : " + url)
             if os.path.isfile(self._path_md5):
                 with open(self._path_md5, 'rb') as f:
@@ -289,6 +293,8 @@ class Interface(object):
                     return True
             http_header = dict()
             http_header['x-cos-storage-class'] = self._type
+            if _encryption != '':
+                http_header['x-cos-server-side-encryption'] = self._encryption
             rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
             logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
