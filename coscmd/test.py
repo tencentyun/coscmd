@@ -31,12 +31,13 @@ def setUp():
     op_int.create_bucket()
     time.sleep(5)
 
+
 def tearDown():
     """delete testbucket"""
     op_int.delete_folder(cos_path="", _force=True)
     op_int.delete_bucket()
     time.sleep(5)
-    
+
 
 def gen_file(path, size):
     _file = open(path, 'w')
@@ -101,12 +102,14 @@ def test_delete_folder():
     """test delete folder"""
     op_int.delete_folder(cos_path='', _force=True)
 
+
 def test_bucketacl():
     """test bucketacl"""
     op_int.put_bucket_acl("anyone", "anyone", "327874225")
     time.sleep(60)
-    rt = op_int.get_bucket_acl() 
+    rt = op_int.get_bucket_acl()
     assert rt
+
 
 def test_objectacl():
     """test objectacl"""
@@ -116,7 +119,7 @@ def test_objectacl():
     os.remove("tmp")
     op_int.put_object_acl("3210232098/327874225", "anyone", "", file_name)
     time.sleep(60)
-    rt = op_int.get_object_acl(file_name) 
+    rt = op_int.get_object_acl(file_name)
     assert rt
 
 if __name__ == "__main__":
