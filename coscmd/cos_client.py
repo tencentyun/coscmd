@@ -626,7 +626,7 @@ class Interface(object):
             logger.warn("Replication sources do not exist")
             return False
         file_size = int(rt.headers['Content-Length'])
-        if file_size < 10*1024*1024:
+        if file_size < self._conf._part_size*1024*1024:
             for _ in range(self._retry):
                 if single_copy() is True:
                     return True
