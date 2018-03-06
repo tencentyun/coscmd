@@ -106,7 +106,6 @@ def test_delete_folder():
 def test_bucketacl():
     """test bucketacl"""
     op_int.put_bucket_acl("anyone", "anyone", "327874225")
-    time.sleep(60)
     rt = op_int.get_bucket_acl()
     assert rt
 
@@ -118,9 +117,9 @@ def test_objectacl():
     op_int.upload_file("tmp", file_name)
     os.remove("tmp")
     op_int.put_object_acl("3210232098/327874225", "anyone", "", file_name)
-    time.sleep(60)
     rt = op_int.get_object_acl(file_name)
     assert rt
 
 if __name__ == "__main__":
+    tearDown()
     setUp()
