@@ -1184,13 +1184,13 @@ class Interface(object):
             <Permission>{permissiontype}</Permission>
         </Grant>'''.format(rootid=rootid, subid=subid, accounttype=accounttype, permissiontype=Type)
 
-            data = '''<secretControlPolicy>
+            data = '''<AccessControlPolicy>
     <Owner>
         <ID>{id}</ID>
     </Owner>
-    <secretControlList>'''.format(id=owner_id)+grants+'''
-    </secretControlList>
-</secretControlPolicy>
+    <AccessControlList>'''.format(id=owner_id)+grants+'''
+    </AccessControlList>
+</AccessControlPolicy>
 '''
 
             logger.debug(data)
@@ -1367,13 +1367,13 @@ class Interface(object):
             <Permission>{permissiontype}</Permission>
         </Grant>'''.format(rootid=rootid, subid=subid, accounttype=accounttype, permissiontype=Type)
 
-            data = '''<secretControlPolicy>
+            data = '''<AccessControlPolicy>
     <Owner>
         <ID>{id}</ID>
     </Owner>
-    <secretControlList>'''.format(id=owner_id)+grants+'''
-    </secretControlList>
-</secretControlPolicy>
+    <AccessControlList>'''.format(id=owner_id)+grants+'''
+    </AccessControlList>
+</AccessControlPolicy>
 '''
 
             logger.debug(data)
