@@ -189,9 +189,9 @@ class Interface(object):
         cos_path = to_printable_str(cos_path)
         try:
             while IsTruncated == "true":
-                url = self._conf.uri(path=cos_path+'?uploadId={UploadId}&upload&max-parts=1000&part-number-marker={nextmarker}'.format(UploadId=self._upload_id, nextmarker=NextMarker))
+                url = self._conf.uri(path=cos_path+
+                    '?uploadId={UploadId}&upload&max-parts=1000&part-number-marker={nextmarker}'.format(UploadId=self._upload_id, nextmarker=NextMarker))
                 rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
-    
                 if rt.status_code == 200:
                     root = minidom.parseString(rt.content).documentElement
                     IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
