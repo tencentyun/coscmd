@@ -346,7 +346,6 @@ class Op(object):
         Interface = client.op_int()
         rt = Interface.put_object_acl(args.grant_read, args.grant_write, args.grant_full_control, args.cos_path)
         if rt is True:
-            logger.info("put success!")
             return 0
         else:
             logger.warn("put fail!")
@@ -421,7 +420,6 @@ class Op(object):
         Interface = client.op_int()
         rt = Interface.get_bucket_acl()
         if rt is True:
-            logger.info("get success!")
             return 0
         else:
             logger.warn("get fail!")
