@@ -187,28 +187,32 @@ class Interface(object):
         NextMarker = ""
         IsTruncated = "true"
         cos_path = to_printable_str(cos_path)
-        while IsTruncated == "true":
-            url = self._conf.uri(path=cos_path+'?uploadId={UploadId}&upload&max-parts=1000&part-number-marker={nextmarker}'.format(UploadId=self._upload_id, nextmarker=NextMarker))
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
-
-            if rt.status_code == 200:
-                root = minidom.parseString(rt.content).documentElement
-                IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                if IsTruncated == 'true':
-                    NextMarker = root.getElementsByTagName("NextPartNumberMarker")[0].childNodes[0].data
-                logger.debug("list resp, status code: {code}, headers: {headers}, text: {text}".format(
-                     code=rt.status_code,
-                     headers=rt.headers,
-                     text=to_printable_str(rt.text)))
-                contentset = root.getElementsByTagName("Part")
-                for content in contentset:
-                    ID = content.getElementsByTagName("PartNumber")[0].childNodes[0].data
-                    self._have_uploaded.append(ID)
-                    self._md5[int(ID)] = content.getElementsByTagName(self._etag)[0].childNodes[0].data[1:-1]
-            else:
-                logger.debug(response_info(rt))
-                return False
-        logger.debug("list parts error")
+        try:
+            while IsTruncated == "true":
+                url = self._conf.uri(path=cos_path+'?uploadId={UploadId}&upload&max-parts=1000&part-number-marker={nextmarker}'.format(UploadId=self._upload_id, nextmarker=NextMarker))
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+    
+                if rt.status_code == 200:
+                    root = minidom.parseString(rt.content).documentElement
+                    IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                    if IsTruncated == 'true':
+                        NextMarker = root.getElementsByTagName("NextPartNumberMarker")[0].childNodes[0].data
+                    logger.debug("list resp, status code: {code}, headers: {headers}, text: {text}".format(
+                         code=rt.status_code,
+                         headers=rt.headers,
+                         text=to_printable_str(rt.text)))
+                    contentset = root.getElementsByTagName("Part")
+                    for content in contentset:
+                        ID = content.getElementsByTagName("PartNumber")[0].childNodes[0].data
+                        self._have_uploaded.append(ID)
+                        self._md5[int(ID)] = content.getElementsByTagName(self._etag)[0].childNodes[0].data[1:-1]
+                else:
+                    logger.debug(response_info(rt))
+                    logger.debug("list parts error")
+                    return False
+        except Exception:
+            logger.debug("list parts error")
+            return False
         return True
 
     def upload_folder(self, local_path, cos_path, _type='Standard', _encryption=''):
