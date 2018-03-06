@@ -114,7 +114,7 @@ def test_objectacl():
     gen_file("tmp", 1.1)
     op_int.upload_file("tmp", file_name)
     os.remove("tmp")
-    op_int.put_object_acl("327874225/327874225", "anyone", "", file_name)
+    op_int.put_object_acl("3210232098/327874225", "anyone", "", file_name)
     time.sleep(60)
     rt = op_int.get_object_acl(file_name) 
     assert rt
