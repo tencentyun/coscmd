@@ -19,7 +19,7 @@ conf = cos_client.CosConfig(
         region="ap-beijing-1",
         secret_id=access_id,
         secret_key=access_key,
-        part_size=1,
+        part_size=10,
         max_thread=5
     )
 client = cos_client.CosS3Client(conf)
