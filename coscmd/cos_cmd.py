@@ -242,7 +242,7 @@ class Op(object):
         while args.cos_path.startswith('/'):
             args.cos_path = args.cos_path[1:]
         Interface = client.op_int()
-
+        _, args.cos_path = concat_path(args.source_path, args.cos_path)
         if not isinstance(args.source_path, unicode):
             args.source_path = args.source_path.decode(fs_coding)
         if not isinstance(args.cos_path, unicode):

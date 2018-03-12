@@ -123,7 +123,7 @@ class CosConfig(object):
         self._secret_key = secret_key
         self._part_size = min(10, part_size)
         self._max_thread = min(10, max_thread)
-        self._schema = "https"
+        self._schema = "http"
         logger.debug("config parameter-> appid: {appid}, region: {region}, bucket: {bucket}, part_size: {part_size}, max_thread: {max_thread}".format(
                  appid=appid,
                  region=region,
