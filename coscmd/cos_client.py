@@ -115,7 +115,7 @@ def change_to_human(_size):
 
 class CosConfig(object):
 
-    def __init__(self, appid, region, bucket, secret_id, secret_key, part_size=1, max_thread=5, *args, **kwargs):
+    def __init__(self, appid, region, bucket, secret_id, secret_key, part_size=1, max_thread=5, schema='http', *args, **kwargs):
         self._appid = appid
         self._region = region
         self._bucket = bucket
@@ -123,7 +123,7 @@ class CosConfig(object):
         self._secret_key = secret_key
         self._part_size = min(10, part_size)
         self._max_thread = min(10, max_thread)
-        self._schema = "https"
+        self._schema = schema
         logger.debug("config parameter-> appid: {appid}, region: {region}, bucket: {bucket}, part_size: {part_size}, max_thread: {max_thread}".format(
                  appid=appid,
                  region=region,

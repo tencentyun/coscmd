@@ -106,6 +106,10 @@ def load_conf():
                 bucket = bucket[:-1]
             except Exception:
                 logger.error("The configuration file is wrong. Please reconfirm")
+        try:
+            schema = cp.get('common', 'schema')
+        except:
+            schema = 'http'
         region = cp.get('common', 'region')
         if pre_appid != "":
             appid = pre_appid
@@ -120,7 +124,8 @@ def load_conf():
             region=compatible(region),
             bucket=bucket,
             part_size=part_size,
-            max_thread=max_thread
+            max_thread=max_thread,
+            schema = schema
         )
         return conf
 
@@ -242,7 +247,7 @@ class Op(object):
         while args.cos_path.startswith('/'):
             args.cos_path = args.cos_path[1:]
         Interface = client.op_int()
-
+        _, args.cos_path = concat_path(args.source_path, args.cos_path)
         if not isinstance(args.source_path, unicode):
             args.source_path = args.source_path.decode(fs_coding)
         if not isinstance(args.cos_path, unicode):
