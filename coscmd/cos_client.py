@@ -459,11 +459,9 @@ class Interface(object):
             return False
 
     def copy_folder(self, source_path, cos_path, _type='Standard'):
-        print source_path
         self._type = _type
         source_schema = source_path.split('/')[0] + '/'
         source_path = source_path[len(source_schema):]
-        print source_schema,source_path
         NextMarker = ""
         IsTruncated = "true"
         self._file_num = 0
@@ -498,7 +496,7 @@ class Interface(object):
         if self._file_num == 0:
             logger.info("The directory does not exist")
             return False
-        logger.info("{files} files successful, {fail_files} files failed"
+        logger.info("Copy {files} files successful, {fail_files} files failed"
                     .format(files=self._have_finished, fail_files=self._fail_num))
         if self._file_num == self._have_finished:
             return True
