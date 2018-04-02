@@ -125,7 +125,7 @@ def load_conf():
             bucket=bucket,
             part_size=part_size,
             max_thread=max_thread,
-            schema = schema
+            schema=schema
         )
         return conf
 
@@ -252,9 +252,8 @@ class Op(object):
             args.source_path = args.source_path.decode(fs_coding)
         if not isinstance(args.cos_path, unicode):
             args.cos_path = args.cos_path.decode(fs_coding)
-           
         if args.recursive:
-            _, args.cos_path = concat_path(args.source_path, args.cos_path) 
+            _, args.cos_path = concat_path(args.source_path, args.cos_path)
             if args.cos_path.endswith('/') is False:
                 args.cos_path += '/'
             if args.cos_path == '/':
@@ -264,7 +263,7 @@ class Op(object):
                 return 0
             else:
                 return 1
-        else: 
+        else:
             if Interface.copy_file(args.source_path, args.cos_path, args.type) is True:
                 return 0
             else:
