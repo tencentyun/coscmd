@@ -189,9 +189,9 @@ class Interface(object):
         cos_path = to_printable_str(cos_path)
         try:
             while IsTruncated == "true":
-                url = self._conf.uri(path=cos_path +
-                                     '?uploadId={UploadId}&upload&max-parts=1000&part-number-marker={nextmarker}'
-                                     .format(UploadId=self._upload_id, nextmarker=NextMarker))
+                url = self._conf.uri(path=cos_path + '?uploadId={UploadId}&upload&max-parts=1000&part-number-marker={nextmarker}'.format(
+                                                    UploadId=self._upload_id,
+                                                    nextmarker=NextMarker))
                 rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
                 if rt.status_code == 200:
                     root = minidom.parseString(rt.content).documentElement
@@ -469,8 +469,9 @@ class Interface(object):
         self._success_num = 0
         self._fail_num = 0
         while IsTruncated == "true":
-            tmp_url = '?prefix={prefix}&marker={nextmarker}'.format(prefix=urllib.quote(to_printable_str(source_path)),
-                        nextmarker=urllib.quote(to_printable_str(NextMarker)))
+            tmp_url = '?prefix={prefix}&marker={nextmarker}'.format(
+                    prefix=urllib.quote(to_printable_str(source_path)),
+                    nextmarker=urllib.quote(to_printable_str(NextMarker)))
             url = self._conf._schema + "://" + source_schema + tmp_url
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
             if rt.status_code == 200:
