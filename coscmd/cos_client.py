@@ -458,6 +458,54 @@ class Interface(object):
             logger.warn("complete multipart upload failed")
             return False
 
+    def copy_folder(self, source_path, cos_path, _type='Standard'):
+        print source_path
+        self._type = _type
+        source_schema = source_path.split('/')[0] + '/'
+        source_path = source_path[len(source_schema):]
+        print source_schema,source_path
+        NextMarker = ""
+        IsTruncated = "true"
+        self._file_num = 0
+        self._have_finished = 0
+        self._fail_num = 0
+        while IsTruncated == "true":
+            url = self._conf._schema +"://"+ source_schema + '?prefix={prefix}&marker={nextmarker}'.format(prefix=urllib.quote(to_printable_str(source_path)), nextmarker=urllib.quote(to_printable_str(NextMarker)))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+            if rt.status_code == 200:
+                root = minidom.parseString(rt.content).documentElement
+                IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                if IsTruncated == 'true':
+                    NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+                fileset = root.getElementsByTagName("Contents")
+                for _file in fileset:
+                    _tmp = _file.getElementsByTagName("Key")[0].childNodes[0].data
+                    _source_path = source_schema + _tmp
+                    _cos_path = cos_path + _tmp[len(cos_path):]
+                    _cos_path = to_unicode(_cos_path)
+                    _source_path = to_unicode(_source_path)
+                    if _cos_path.endswith('/'):
+                        continue
+                    self._file_num += 1
+                    
+                    if self.copy_file(_source_path, _cos_path, _type):
+                        self._have_finished += 1
+                    else:
+                        self._fail_num += 1
+            else:
+                logger.warn(response_info(rt))
+                return False
+        if self._file_num == 0:
+            logger.info("The directory does not exist")
+            return False
+        logger.info("{files} files successful, {fail_files} files failed"
+                    .format(files=self._have_finished, fail_files=self._fail_num))
+        if self._file_num == self._have_finished:
+            return True
+        else:
+            return False
+
+
     def copy_file(self, source_path, cos_path, _type='Standard'):
 
         def single_copy():
@@ -556,7 +604,7 @@ class Interface(object):
 
             offset = 0
             logger.debug("file size: " + str(file_size))
-            chunk_size = 1024 * 1024 * 5
+            chunk_size = 1024 * 1024 * self._conf._part_size
             while file_size / chunk_size > 8000:
                 chunk_size = chunk_size * 10
             parts_num = file_size / chunk_size
@@ -582,6 +630,7 @@ class Interface(object):
                     else:
                         pool.add_task(copy_parts_data, source_path, offset, chunk_size, parts_num, i+1)
                         offset += chunk_size
+                    
             pool.wait_completion()
             result = pool.get_result()
             self._pbar.close()
