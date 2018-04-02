@@ -188,12 +188,6 @@ class Op(object):
 
         if not isinstance(args. cos_path, unicode):
             args.cos_path = args.cos_path.decode(fs_coding)
-
-#         if args.cos_path.endswith('/') is False:
-#             args.cos_path += '/'
-#         if args.local_path.endswith('/') is True:
-#             args.local_path += args.cos_path.split('/')[-2]
-#         args.cos_path = args.cos_path[:-1]
         args.cos_path, args.local_path = concat_path(args.cos_path, args.local_path)
         if args.recursive:
             rt = Interface.download_folder(args.cos_path, args.local_path, args.force)

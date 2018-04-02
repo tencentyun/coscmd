@@ -283,7 +283,7 @@ class Interface(object):
         def init_multiupload():
             url = self._conf.uri(path=cos_path)
             self._md5 = {}
-            self._have_finished = 0
+            self.c = 0
             self._have_uploaded = []
             self._upload_id = None
             self._type = _type
@@ -466,11 +466,12 @@ class Interface(object):
         NextMarker = ""
         IsTruncated = "true"
         self._file_num = 0
-        self._have_finished = 0
+        self._success_num = 0
         self._fail_num = 0
         while IsTruncated == "true":
-            url = self._conf._schema + "://" + source_schema
-            + '?prefix={prefix}&marker={nextmarker}'.format(prefix=urllib.quote(to_printable_str(source_path)), nextmarker=urllib.quote(to_printable_str(NextMarker)))
+            tmp_url = '?prefix={prefix}&marker={nextmarker}'.format(prefix=urllib.quote(to_printable_str(source_path)),
+                        nextmarker=urllib.quote(to_printable_str(NextMarker)))
+            url = self._conf._schema + "://" + source_schema + tmp_url
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
             if rt.status_code == 200:
                 root = minidom.parseString(rt.content).documentElement
@@ -488,7 +489,7 @@ class Interface(object):
                         continue
                     self._file_num += 1
                     if self.copy_file(_source_path, _cos_path, _type):
-                        self._have_finished += 1
+                        self._success_num += 1
                     else:
                         self._fail_num += 1
             else:
@@ -497,9 +498,9 @@ class Interface(object):
         if self._file_num == 0:
             logger.info("The directory does not exist")
             return False
-        logger.info("Copy {files} files successful, {fail_files} files failed"
-                    .format(files=self._have_finished, fail_files=self._fail_num))
-        if self._file_num == self._have_finished:
+        logger.info("copy {success_files} files successful, {fail_files} files failed"
+                    .format(success_files=self._success_num, fail_files=self._fail_num))
+        if self._file_num == self._success_num:
             return True
         else:
             return False
