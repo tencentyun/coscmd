@@ -125,7 +125,7 @@ def load_conf():
             bucket=bucket,
             part_size=part_size,
             max_thread=max_thread,
-            schema = schema
+            schema=schema
         )
         return conf
 
@@ -188,12 +188,6 @@ class Op(object):
 
         if not isinstance(args. cos_path, unicode):
             args.cos_path = args.cos_path.decode(fs_coding)
-
-#         if args.cos_path.endswith('/') is False:
-#             args.cos_path += '/'
-#         if args.local_path.endswith('/') is True:
-#             args.local_path += args.cos_path.split('/')[-2]
-#         args.cos_path = args.cos_path[:-1]
         args.cos_path, args.local_path = concat_path(args.cos_path, args.local_path)
         if args.recursive:
             rt = Interface.download_folder(args.cos_path, args.local_path, args.force)
@@ -252,10 +246,22 @@ class Op(object):
             args.source_path = args.source_path.decode(fs_coding)
         if not isinstance(args.cos_path, unicode):
             args.cos_path = args.cos_path.decode(fs_coding)
-        if Interface.copy_file(args.source_path, args.cos_path, args.type) is True:
-            return 0
+        if args.recursive:
+            _, args.cos_path = concat_path(args.source_path, args.cos_path)
+            if args.cos_path.endswith('/') is False:
+                args.cos_path += '/'
+            if args.cos_path == '/':
+                args.cos_path = ''
+
+            if Interface.copy_folder(args.source_path, args.cos_path, args.type) is True:
+                return 0
+            else:
+                return 1
         else:
-            return -1
+            if Interface.copy_file(args.source_path, args.cos_path, args.type) is True:
+                return 0
+            else:
+                return -1
 
     @staticmethod
     def list(args):
@@ -479,6 +485,7 @@ def command_thread():
     parser_copy = sub_parser.add_parser("copy", help="copy file from COS to COS.")
     parser_copy.add_argument('source_path', help="source file path as 'bucket-appid.cos.ap-guangzhou.myqcloud.com/a.txt'", type=str)
     parser_copy.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_copy.add_argument('-r', '--recursive', help="copy files recursively", action="store_true", default=False)
     parser_copy.add_argument('-t', '--type', help='specify x-cos-storage-class of files to upload', type=str, choices=['STANDARD', 'STANDARD_IA', 'NEARLINE'], default='STANDARD')
     parser_copy.set_defaults(func=Op.copy)
 
