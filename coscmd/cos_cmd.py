@@ -467,7 +467,7 @@ def command_thread():
     parser_upload.add_argument('-r', '--recursive', help="upload recursively when upload directory", action="store_true", default=False)
     parser_upload.add_argument('-t', '--type', help='specify x-cos-storage-class of files to upload', type=str, choices=['STANDARD', 'STANDARD_IA', 'NEARLINE'], default='STANDARD')
     parser_upload.add_argument('-e', '--encryption', help="set encryption", type=str, default='')
-    parser_upload.add_argument('-H', '--headers', help="set HTTP headers", type=str, default='')
+    parser_upload.add_argument('-H', '--headers', help="set HTTP headers", type=str, default='{}')
     parser_upload.set_defaults(func=Op.upload)
 
     parser_download = sub_parser.add_parser("download", help="download file from COS to local.")

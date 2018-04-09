@@ -245,7 +245,7 @@ class Interface(object):
                     logger.debug("upload {file} success".format(file=to_printable_str(filepath)))
         return ret_code
 
-    def upload_file(self, local_path, cos_path, _type='Standard', _encryption='', _http_headers=''):
+    def upload_file(self, local_path, cos_path, _type='Standard', _encryption='', _http_headers='{}'):
 
         _http_header = yaml.safe_load(_http_headers)
 
@@ -262,7 +262,8 @@ class Interface(object):
             for j in range(self._retry):
                 try:
                     http_header = _http_header
-                    http_header['x-cos-storage-class'] = self._type
+                    if http_header is None or http_header.has_key('x-cos-storage-class') is False:
+                        http_header['x-cos-storage-class'] = self._type
                     if _encryption != '':
                         http_header['x-cos-server-side-encryption'] = self._encryption
                     rt = self._session.put(url=url,
@@ -280,7 +281,8 @@ class Interface(object):
                         continue
                     if j+1 == self._retry:
                         return False
-                except Exception:
+                except Exception, e:
+                    logger.warn(e)
                     logger.warn("upload file failed")
             return False
 
@@ -301,7 +303,8 @@ class Interface(object):
                     logger.info("continue uploading from last breakpoint")
                     return True
             http_header = _http_header
-            http_header['x-cos-storage-class'] = self._type
+            if http_header is None or http_header.has_key('x-cos-storage-class') is False:
+                http_header['x-cos-storage-class'] = self._type
             if _encryption != '':
                 http_header['x-cos-server-side-encryption'] = self._encryption
             rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
