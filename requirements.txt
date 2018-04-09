@@ -4,3 +4,4 @@ prettytable==0.7
 pytz==2017.2		
 datetime==4.2		
 tqdm==4.15.0
+pyyaml==3.12
