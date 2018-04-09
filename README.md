@@ -152,6 +152,7 @@ coscmd upload -r /home/aaa/ /  //上传到bucket根目录
 * 上传文件时需要将cos上的路径包括文件(夹)的名字补全(参考例子)。
 * COSCMD 支持大文件断点上传功能。当分片上传大文件失败时，重新上传该文件只会上传失败的分块，而不会从头开始（请保证重新上传的文件的目录以及内容和上传的目录保持一致）。
 * COSCMD 分块上传时会对每一块进行 MD5 校验。
+* 使用-H参数设置HTTP header时，请务必保证格式为json，这里是个例子：`coscmd upload -H '{"Cache-Control":"max-age=31536000","Content-Language":"zh-CN"}' <localpath> <cospath>`
 
 ### 下载文件或文件夹
 - 下载文件命令如下：

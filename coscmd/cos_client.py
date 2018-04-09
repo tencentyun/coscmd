@@ -15,6 +15,7 @@ import base64
 import datetime
 import pytz
 import urllib
+import yaml
 from tqdm import tqdm
 from wsgiref.handlers import format_date_time
 logger = logging.getLogger(__name__)
@@ -216,7 +217,7 @@ class Interface(object):
             return False
         return True
 
-    def upload_folder(self, local_path, cos_path, _type='Standard', _encryption=''):
+    def upload_folder(self, local_path, cos_path, _type='Standard', _encryption='', _http_headers=''):
 
         local_path = to_unicode(local_path)
         cos_path = to_unicode(cos_path)
@@ -232,10 +233,10 @@ class Interface(object):
         for filename in filelist:
             filepath = os.path.join(local_path, filename)
             if os.path.isdir(filepath):
-                if not self.upload_folder(filepath, cos_path+filename, _type, _encryption):
+                if not self.upload_folder(filepath, cos_path+filename, _type, _encryption, _http_headers):
                     ret_code = False
             else:
-                if self.upload_file(local_path=filepath, cos_path=cos_path+filename, _type=_type, _encryption=_encryption) is False:
+                if self.upload_file(local_path=filepath, cos_path=cos_path+filename, _type=_type, _encryption=_encryption, _http_headers=_http_headers) is False:
                     logger.info("upload {file} fail".format(file=to_printable_str(filepath)))
                     self._fail_num += 1
                     ret_code = False
@@ -244,11 +245,14 @@ class Interface(object):
                     logger.debug("upload {file} success".format(file=to_printable_str(filepath)))
         return ret_code
 
-    def upload_file(self, local_path, cos_path, _type='Standard', _encryption=''):
+    def upload_file(self, local_path, cos_path, _type='Standard', _encryption='', _http_headers=''):
+
+        _http_header = yaml.safe_load(_http_headers)
 
         def single_upload():
             self._type = _type
             self._encryption = _encryption
+
             if len(local_path) == 0:
                 data = ""
             else:
@@ -257,7 +261,7 @@ class Interface(object):
             url = self._conf.uri(path=cos_path)
             for j in range(self._retry):
                 try:
-                    http_header = dict()
+                    http_header = _http_header
                     http_header['x-cos-storage-class'] = self._type
                     if _encryption != '':
                         http_header['x-cos-server-side-encryption'] = self._encryption
@@ -296,7 +300,7 @@ class Interface(object):
                 if self.list_part(cos_path) is True:
                     logger.info("continue uploading from last breakpoint")
                     return True
-            http_header = dict()
+            http_header = _http_header
             http_header['x-cos-storage-class'] = self._type
             if _encryption != '':
                 http_header['x-cos-server-side-encryption'] = self._encryption
@@ -327,9 +331,10 @@ class Interface(object):
                     data = File.read(length)
                 url = self._conf.uri(path=cos_path)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=self._upload_id)
                 for j in range(self._retry):
+                    http_header = _http_header
                     rt = self._session.put(url=url,
                                            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
-                                           data=data)
+                                           data=data, headers=http_header)
                     logger.debug("multi part result: part{part}, round{round}, code: {code}, headers: {headers}, text: {text}".format(
                         part=idx,
                         round=j+1,
