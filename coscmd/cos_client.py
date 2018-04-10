@@ -18,6 +18,7 @@ import urllib
 import yaml
 from tqdm import tqdm
 from wsgiref.handlers import format_date_time
+from numpy import source
 logger = logging.getLogger(__name__)
 fs_coding = sys.getfilesystemencoding()
 
@@ -262,7 +263,7 @@ class Interface(object):
             for j in range(self._retry):
                 try:
                     http_header = _http_header
-                    if http_header is None or http_header.has_key('x-cos-storage-class') is False:
+                    if http_header is None or 'x-cos-storage-class' not in http_header:
                         http_header['x-cos-storage-class'] = self._type
                     if _encryption != '':
                         http_header['x-cos-server-side-encryption'] = self._encryption
@@ -303,7 +304,7 @@ class Interface(object):
                     logger.info("continue uploading from last breakpoint")
                     return True
             http_header = _http_header
-            if http_header is None or http_header.has_key('x-cos-storage-class') is False:
+            if http_header is None or 'x-cos-storage-class' not in http_header:
                 http_header['x-cos-storage-class'] = self._type
             if _encryption != '':
                 http_header['x-cos-server-side-encryption'] = self._encryption
@@ -468,14 +469,15 @@ class Interface(object):
             return False
 
     def copy_folder(self, source_path, cos_path, _type='Standard'):
+
         self._type = _type
         source_schema = source_path.split('/')[0] + '/'
         source_path = source_path[len(source_schema):]
         NextMarker = ""
         IsTruncated = "true"
-        self._file_num = 0
-        self._success_num = 0
-        self._fail_num = 0
+        _file_num = 0
+        _success_num = 0
+        _fail_num = 0
         while IsTruncated == "true":
             tmp_url = '?prefix={prefix}&marker={nextmarker}'.format(
                     prefix=urllib.quote(to_printable_str(source_path)),
@@ -491,25 +493,28 @@ class Interface(object):
                 for _file in fileset:
                     _tmp = _file.getElementsByTagName("Key")[0].childNodes[0].data
                     _source_path = source_schema + _tmp
-                    _cos_path = cos_path + _tmp[len(cos_path):]
+                    if source_path.endswith('/') is False:
+                        _cos_path = cos_path + _tmp[len(source_path)+1:]
+                    else:
+                        _cos_path = cos_path + _tmp[len(source_path):]
                     _cos_path = to_unicode(_cos_path)
                     _source_path = to_unicode(_source_path)
                     if _cos_path.endswith('/'):
                         continue
-                    self._file_num += 1
+                    _file_num += 1
                     if self.copy_file(_source_path, _cos_path, _type):
-                        self._success_num += 1
+                        _success_num += 1
                     else:
-                        self._fail_num += 1
+                        _fail_num += 1
             else:
                 logger.warn(response_info(rt))
                 return False
-        if self._file_num == 0:
+        if _file_num == 0:
             logger.info("The directory does not exist")
             return False
         logger.info("copy {success_files} files successful, {fail_files} files failed"
-                    .format(success_files=self._success_num, fail_files=self._fail_num))
-        if self._file_num == self._success_num:
+                    .format(success_files=_success_num, fail_files=_fail_num))
+        if _file_num == _success_num:
             return True
         else:
             return False
