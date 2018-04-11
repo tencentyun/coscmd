@@ -89,11 +89,6 @@ def test_upload_folder():
     gen_file('testfolder/4', 4.1)
     gen_file('testfolder/5', 5.1)
     op_int.upload_folder('testfolder', 'testfolder')
-    shutil.rmtree('testfolder/')
-
-
-def test_download_folder():
-    """test download folder"""
     op_int.download_folder('testfolder', 'testfolder')
     shutil.rmtree('testfolder/')
 
