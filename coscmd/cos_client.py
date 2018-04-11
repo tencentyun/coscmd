@@ -498,6 +498,7 @@ class Interface(object):
                         _cos_path = cos_path + _tmp[len(source_path):]
                     _cos_path = to_unicode(_cos_path)
                     _source_path = to_unicode(_source_path)
+
                     if _cos_path.endswith('/'):
                         continue
                     _file_num += 1
@@ -527,7 +528,7 @@ class Interface(object):
                 try:
                     http_header = dict()
                     http_header['x-cos-storage-class'] = self._type
-                    http_header['x-cos-copy-source'] = source_path
+                    http_header['x-cos-copy-source'] = to_printable_str(source_path)
                     rt = self._session.put(url=url,
                                            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
                     if rt.status_code == 200:
@@ -542,7 +543,8 @@ class Interface(object):
                         continue
                     if j+1 == self._retry:
                         return False
-                except Exception:
+                except Exception,e:
+                    logger.warn(e)
                     logger.warn("copy file failed")
             return False
 
@@ -584,7 +586,7 @@ class Interface(object):
                     logger.warn("Source path format error")
                 return source_bucket, source_appid, source_region, source_cospath
 
-            def copy_parts_data(local_path, offset, length, parts_size, idx):
+            def copy_parts_data(source_path, offset, length, parts_size, idx):
                 url = self._conf.uri(path=cos_path)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=self._upload_id)
                 http_header = dict()
                 http_header['x-cos-copy-source'] = source_path
@@ -790,7 +792,6 @@ class Interface(object):
                     dir_path = os.path.dirname(local_path)
                     if os.path.isdir(dir_path) is False and dir_path != '':
                         try:
-                            print dir_path
                             os.makedirs(dir_path)
                         except Exception as e:
                             logger.warn("unable to create the corresponding folder")

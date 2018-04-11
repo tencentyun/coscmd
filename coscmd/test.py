@@ -114,6 +114,19 @@ def test_objectacl():
     op_int.put_object_acl("3210232098/327874225", "anyone", "", file_name)
     rt = op_int.get_object_acl(file_name)
     assert rt
+    
+def test_copy():
+    """test copy"""
+    if os.path.isdir('testfolder') is False:
+        os.mkdir('testfolder')
+    gen_file('testfolder/1中文', 1.1)
+    gen_file('testfolder/2中文', 2.1)
+    gen_file('testfolder/3中文', 3.1)
+    gen_file('testfolder/4中文', 4.1)
+    gen_file('testfolder/5中文', 5.1)
+    op_int.upload_folder('testfolder', 'testfolder')
+    op_int.copy_folder('lewzylu06-1252448703.cos.ap-beijing-1.myqcloud.com/testfolder', 'testfolder2')
+    shutil.rmtree('testfolder/')
 
 if __name__ == "__main__":
     tearDown()
