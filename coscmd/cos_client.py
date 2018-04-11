@@ -18,7 +18,6 @@ import urllib
 import yaml
 from tqdm import tqdm
 from wsgiref.handlers import format_date_time
-from numpy import source
 logger = logging.getLogger(__name__)
 fs_coding = sys.getfilesystemencoding()
 
