@@ -19,7 +19,7 @@ conf = cos_client.CosConfig(
         region="ap-beijing-1",
         secret_id=access_id,
         secret_key=access_key,
-        part_size=10,
+        part_size=1,
         max_thread=5
     )
 client = cos_client.CosS3Client(conf)
@@ -39,37 +39,54 @@ def tearDown():
     time.sleep(5)
 
 
-def gen_file(path, size):
-    _file = open(path, 'w')
-    _file.seek(1024*1024*size)
-    _file.write('\x00')
-    _file.close()
+def gen_file(filePath, fileSize):
+    ds = 0
+    with open(filePath, "w") as f:
+        while ds < fileSize:
+            f.write(str(round(random.uniform(-1000, 1000), 2)))
+            f.write("\n")
+            ds = os.path.getsize(filePath)
 
 
 def test_upload_small_file():
     """test upload small file"""
-    file_name = "tmp" + file_id + "_Smallfile"
     gen_file("tmp", 1.1)
-    rt = op_int.upload_file("tmp", file_name)
+    rt = op_int.upload_file("tmp", "tmp")
     assert rt
     os.remove("tmp")
 
 
 def test_upload_big_file():
     """test upload small file"""
-    file_name = "tmp" + file_id + "_Bigfile"
     gen_file("tmp", 5.1)
-    rt = op_int.upload_file("tmp", file_name)
+    rt = op_int.upload_file("tmp", "tmp")
     assert rt
     os.remove("tmp")
 
 
 def test_download_file():
     """test download file"""
-    file_name = "tmp" + file_id + "_Bigfile"
-    rt = op_int.download_file(file_name, "tmp", True)
+    gen_file("tmp", 7.1)
+    rt = op_int.upload_file("tmp", "tmp")
     assert rt
+    rt = op_int.download_file("tmp", "tmp_download", True)
+    assert rt
+    rt = os.system("fc tmp tmp_download")
+    assert rt == 0
     os.remove("tmp")
+
+
+def test_mget_file():
+    """test mget file"""
+    gen_file("tmp", 6.1)
+    rt = op_int.upload_file("tmp", "tmp")
+    assert rt
+    rt = op_int.mget_file("tmp", "tmp_mget", True)
+    assert rt
+    rt = os.system("fc tmp tmp_mget")
+    assert rt == 0
+    os.remove("tmp")
+    os.remove("tmp_mget")
 
 
 def test_delete_file():
@@ -77,25 +94,6 @@ def test_delete_file():
     file_name = "tmp" + file_id + "_Bigfile"
     rt = op_int.delete_file(file_name, _force=True)
     assert rt
-
-
-def test_upload_folder():
-    """test upload folder"""
-    if os.path.isdir('testfolder') is False:
-        os.mkdir('testfolder')
-    gen_file('testfolder/1', 1.1)
-    gen_file('testfolder/2', 2.1)
-    gen_file('testfolder/3', 3.1)
-    gen_file('testfolder/4', 4.1)
-    gen_file('testfolder/5', 5.1)
-    op_int.upload_folder('testfolder', 'testfolder')
-    op_int.download_folder('testfolder', 'testfolder')
-    shutil.rmtree('testfolder/')
-
-
-def test_delete_folder():
-    """test delete folder"""
-    op_int.delete_folder(cos_path='', _force=True)
 
 
 def test_bucketacl():
@@ -114,7 +112,8 @@ def test_objectacl():
     op_int.put_object_acl("3210232098/327874225", "anyone", "", file_name)
     rt = op_int.get_object_acl(file_name)
     assert rt
-    
+
+
 def test_copy():
     """test copy"""
     if os.path.isdir('testfolder') is False:
@@ -129,5 +128,5 @@ def test_copy():
     shutil.rmtree('testfolder/')
 
 if __name__ == "__main__":
-    tearDown()
     setUp()
+    tearDown()
