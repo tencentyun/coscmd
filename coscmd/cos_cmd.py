@@ -297,21 +297,26 @@ class Op(object):
     def mget(args):
         conf = load_conf()
         client = CosS3Client(conf)
-        while args.cos_path.startswith('/'):
-            args.cos_path = args.cos_path[1:]
         Interface = client.op_int()
         if not isinstance(args.local_path, unicode):
             args.local_path = args.local_path.decode(fs_coding)
 
         if not isinstance(args. cos_path, unicode):
             args.cos_path = args.cos_path.decode(fs_coding)
-
-        if Interface.mget(args.cos_path, args.local_path, args.force, args.num) is True:
-            logger.debug("mget \"{file}\" successfully".format(file=to_printable_str(args.cos_path)))
-            return 0
+        args.cos_path, args.local_path = concat_path(args.cos_path, args.local_path)
+        if args.recursive:
+            rt = Interface.mget_folder(args.cos_path, args.local_path, args.force)
+            if rt:
+                logger.debug("mget all files under \"{file}\" directory successfully".format(file=to_printable_str(args.cos_path)))
+                return 0
+            else:
+                logger.debug("mget all files under \"{file}\" directory failed".format(file=to_printable_str(args.cos_path)))
+                return -1
         else:
-            logger.debug("mget \"{file}\" failed".format(file=to_printable_str(args.cos_path)))
-            return -1
+            if Interface.mget_file(args.cos_path, args.local_path, args.force) is True:
+                return 0
+            else:
+                return -1
         return -1
 
     @staticmethod
@@ -506,6 +511,7 @@ def command_thread():
     parser_mget = sub_parser.add_parser("mget", help="download big file from COS to local(Recommand)")
     parser_mget.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_mget.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
+    parser_mget.add_argument('-r', '--recursive', help="mget recursively when upload directory", action="store_true", default=False)
     parser_mget.add_argument('-f', '--force', help="Overwrite the saved files", action="store_true", default=False)
     parser_mget.add_argument('-n', '--num', help='specify part num of files to mget', type=int, default=100)
     parser_mget.set_defaults(func=Op.mget)
