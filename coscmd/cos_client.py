@@ -1018,7 +1018,6 @@ class Interface(object):
         table.padding_width = 3
         url = self._conf.uri(path=cos_path)
         logger.info("Info with : " + url)
-        cos_path = to_printable_str(cos_path)
         try:
             rt = self._session.head(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
             logger.debug("info resp, status code: {code}, headers: {headers}".format(
@@ -1160,7 +1159,6 @@ class Interface(object):
             return False
         url = self._conf.uri(path=cos_path)
         logger.info("Info with : " + url)
-        cos_path = to_printable_str(cos_path)
         try:
             rt = self._session.head(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
             logger.debug("info resp, status code: {code}, headers: {headers}".format(
@@ -1174,69 +1172,74 @@ class Interface(object):
         except Exception as e:
             logger.warn(str(e))
             return False
-        # mget
-        url = self._conf.uri(path=cos_path)
-        logger.debug("mget with : " + url)
-        offset = 0
-        logger.debug("file size: " + str(file_size))
-
-        parts_num = _num
-        chunk_size = file_size / parts_num
-        last_size = file_size - parts_num * chunk_size
-        self._have_finished = 0
-        if last_size != 0:
-            parts_num += 1
-        _max_thread = min(self._conf._max_thread, parts_num - self._have_finished)
-        pool = SimpleThreadPool(_max_thread)
-
-        logger.debug("chunk_size: " + str(chunk_size))
-        logger.debug('download file concurrently')
-        logger.info("Downloading {file}".format(file=to_printable_str(local_path)))
-        self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
-        for i in range(parts_num):
-            if i+1 == parts_num:
-                pool.add_task(get_parts_data, local_path, offset, file_size-offset, parts_num, i+1)
-            else:
-                pool.add_task(get_parts_data, local_path, offset, chunk_size, parts_num, i+1)
-                offset += chunk_size
-        pool.wait_completion()
-        result = pool.get_result()
-        self._pbar.close()
-        # complete
-        logger.info('Completing mget')
-        if result['success_all'] is False:
-            return False
-        try:
-            with open(local_path, 'wb') as f:
+        if file_size < self._conf._part_size * 1024 * 1024 + 1024:
+            # download
+            rt = self.download_file(cos_path, local_path, _force)
+            return rt
+        else:
+            # mget
+            url = self._conf.uri(path=cos_path)
+            logger.debug("mget with : " + url)
+            offset = 0
+            logger.debug("file size: " + str(file_size))
+    
+            parts_num = _num
+            chunk_size = file_size / parts_num
+            last_size = file_size - parts_num * chunk_size
+            self._have_finished = 0
+            if last_size != 0:
+                parts_num += 1
+            _max_thread = min(self._conf._max_thread, parts_num - self._have_finished)
+            pool = SimpleThreadPool(_max_thread)
+    
+            logger.debug("chunk_size: " + str(chunk_size))
+            logger.debug('download file concurrently')
+            logger.info("Downloading {file}".format(file=to_printable_str(local_path)))
+            self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
+            for i in range(parts_num):
+                if i+1 == parts_num:
+                    pool.add_task(get_parts_data, local_path, offset, file_size-offset, parts_num, i+1)
+                else:
+                    pool.add_task(get_parts_data, local_path, offset, chunk_size, parts_num, i+1)
+                    offset += chunk_size
+            pool.wait_completion()
+            result = pool.get_result()
+            self._pbar.close()
+            # complete
+            logger.info('Completing mget')
+            if result['success_all'] is False:
+                return False
+            try:
+                with open(local_path, 'wb') as f:
+                    for i in range(parts_num):
+                        idx = i + 1
+                        file_name = local_path + "_" + str(idx)
+                        length = 1024*1024
+                        offset = 0
+                        with open(file_name, 'rb') as File:
+                            while (offset < file_size):
+                                File.seek(offset, 0)
+                                data = File.read(length)
+                                f.write(data)
+                                offset += length
+                        os.remove(file_name)
+                    f.flush()
+            except Exception, e:
+                try:
+                    os.remove(local_path)
+                except:
+                    pass
                 for i in range(parts_num):
                     idx = i + 1
                     file_name = local_path + "_" + str(idx)
-                    length = 1024*1024
-                    offset = 0
-                    with open(file_name, 'rb') as File:
-                        while (offset < file_size):
-                            File.seek(offset, 0)
-                            data = File.read(length)
-                            f.write(data)
-                            offset += length
-                    os.remove(file_name)
-                f.flush()
-        except Exception, e:
-            try:
-                os.remove(local_path)
-            except:
-                pass
-            for i in range(parts_num):
-                idx = i + 1
-                file_name = local_path + "_" + str(idx)
-                try:
-                    os.remove(file_name)
-                except:
-                    pass
-            logger.warn(e)
-            logger.warn("Mget file failure")
-            return False
-        return True
+                    try:
+                        os.remove(file_name)
+                    except:
+                        pass
+                logger.warn(e)
+                logger.warn("Mget file failure")
+                return False
+            return True
 
     def restore_object(self, cos_path, _day, _tier):
         cos_path = to_printable_str(cos_path)
