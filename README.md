@@ -5,6 +5,7 @@
 ## 使用环境
 ### 系统环境
 Windows 或 Linux 系统
+(请保证本地字符格式为utf-8，否则操作中文文件会出现异常)
 ### 软件依赖
 Python 2.7 
 并装有最新版本的 pip
@@ -97,6 +98,7 @@ coscmd config -a <secret_id> -s <secret_key> -b <bucket> -r <region> [-m <max_th
 1. 可以直接编辑`~/.cos.conf`文件 （在 Windows 环境下，该文件是位于`我的文档`下的一个隐藏文件）。
 配置完成之后的`.cos.conf`文件内容示例如下所示：
 2. 可以在配置文件中增加`schema`项来选择`http / https`
+3. bucket的命名规则为 `{name}-{appid}`
 ```
  [common]
 secret_id = AChT4ThiXAbpBDEFGhT4ThiXAbpHIJK
@@ -163,15 +165,21 @@ coscmd download bbb/123.txt /home/aaa/  //操作示例
 ```
 - 下载文件夹命令如下：
 ```
-coscmd download-r <cospath> <localpath> //命令格式
+coscmd download -r <cospath> <localpath> //命令格式
 coscmd download -r /home/aaa/ bbb/aaa  //操作示例
 coscmd download -r /home/aaa/ bbb/  //操作示例
-coscmd download -r / bbb/aaa  //下载当前bucket根目录下所有的文件
+coscmd download -rf / bbb/aaa  //下载当前bucket根目录下所有的文件
+
+coscmd mget -r <cospath> <localpath> //命令格式
+coscmd mget -r /home/aaa/ bbb/aaa  //操作示例
+coscmd mget -r /home/aaa/ bbb/  //操作示例
+coscmd mget -rf / bbb/aaa  //分块下载当前bucket根目录下所有的文件
 ```
 请将 "<>" 中的参数替换为您需要下载的 COS 上文件的路径（cospath），以及本地存储路径（localpath）。
 > **注意：** 
 * 若本地存在同名文件，则会下载失败。使用 `-f` 参数覆盖本地文件。
-* 将以上命令中的 `download` 替换为 `mget`， 则可以使用分块下载，在带宽足够的条件下速度会提升 2 ~ 3 倍。
+* `download` 命令使用流式下载，在带宽足够的情况下速度会较慢
+* 将上述命令中的 `download` 替换为 `mget`， 则可以使用分块下载，在带宽足够的条件下速度会提升 2 ~ 3 倍，`mget`已支持批量下载。
 
 ### 删除文件或文件夹
 - 删除文件命令如下：
