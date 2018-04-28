@@ -11,10 +11,11 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
 access_id = os.environ["COS_KEY"]
 access_key = os.environ["COS_SECRET"]
+appid = os.environ['COS_APPID']
 test_num = 2
 file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000)) + "中文"
 conf = cos_client.CosConfig(
-        appid="1252448703",
+        appid = appid,
         bucket="lewzylu06",
         region="ap-beijing-1",
         secret_id=access_id,

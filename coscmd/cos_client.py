@@ -134,7 +134,7 @@ class CosConfig(object):
 
     def uri(self, path=None):
         if path:
-            url = u"{schema}://{bucket}-{uid}.cos.{region}.myqcloud.com/{path}".format(
+            url = u"{schema}://cos.{region}.myqcloud.com/{bucket}-{uid}/{path}".format(
                 schema=self._schema,
                 bucket=self._bucket,
                 uid=self._appid,
@@ -217,7 +217,7 @@ class Interface(object):
             return False
         return True
 
-    def upload_folder(self, local_path, cos_path, _type='Standard', _encryption='', _http_headers=''):
+    def upload_folder(self, local_path, cos_path, _http_headers=''):
 
         local_path = to_unicode(local_path)
         cos_path = to_unicode(cos_path)
@@ -227,16 +227,15 @@ class Interface(object):
         if local_path.endswith('/') is False:
             local_path += '/'
         cos_path = cos_path.lstrip('/')
-        self._type = _type
         self._folder_num += 1
         ret_code = True  # True means 0, False means -1
         for filename in filelist:
             filepath = os.path.join(local_path, filename)
             if os.path.isdir(filepath):
-                if not self.upload_folder(filepath, cos_path+filename, _type, _encryption, _http_headers):
+                if not self.upload_folder(filepath, cos_path+filename, _http_headers):
                     ret_code = False
             else:
-                if self.upload_file(local_path=filepath, cos_path=cos_path+filename, _type=_type, _encryption=_encryption, _http_headers=_http_headers) is False:
+                if self.upload_file(local_path=filepath, cos_path=cos_path+filename, _http_headers=_http_headers) is False:
                     logger.info("Upload {file} fail".format(file=to_printable_str(filepath)))
                     self._fail_num += 1
                     ret_code = False
@@ -245,13 +244,11 @@ class Interface(object):
                     logger.debug("Upload {file} success".format(file=to_printable_str(filepath)))
         return ret_code
 
-    def upload_file(self, local_path, cos_path, _type='Standard', _encryption='', _http_headers='{}'):
+    def upload_file(self, local_path, cos_path, _http_headers='{}'):
 
         _http_header = yaml.safe_load(_http_headers)
 
         def single_upload():
-            self._type = _type
-            self._encryption = _encryption
 
             if len(local_path) == 0:
                 data = ""
@@ -262,10 +259,6 @@ class Interface(object):
             for j in range(self._retry):
                 try:
                     http_header = _http_header
-                    if http_header is None or 'x-cos-storage-class' not in http_header:
-                        http_header['x-cos-storage-class'] = self._type
-                    if _encryption != '':
-                        http_header['x-cos-server-side-encryption'] = self._encryption
                     rt = self._session.put(url=url,
                                            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), data=data, headers=http_header)
                     if rt.status_code == 200:
@@ -292,9 +285,7 @@ class Interface(object):
             self.c = 0
             self._have_uploaded = []
             self._upload_id = None
-            self._type = _type
             self._path_md5 = get_md5_filename(local_path, cos_path)
-            self._encryption = _encryption
             logger.debug("init with : " + url)
             if os.path.isfile(self._path_md5):
                 with open(self._path_md5, 'rb') as f:
@@ -303,10 +294,6 @@ class Interface(object):
                     logger.info("Continue uploading from last breakpoint")
                     return True
             http_header = _http_header
-            if http_header is None or 'x-cos-storage-class' not in http_header:
-                http_header['x-cos-storage-class'] = self._type
-            if _encryption != '':
-                http_header['x-cos-server-side-encryption'] = self._encryption
             rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
             logger.debug("Init resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
@@ -468,9 +455,8 @@ class Interface(object):
             logger.warn("Complete multipart upload failed")
             return False
 
-    def copy_folder(self, source_path, cos_path, _type='Standard'):
+    def copy_folder(self, source_path, cos_path):
 
-        self._type = _type
         source_schema = source_path.split('/')[0] + '/'
         source_path = source_path[len(source_schema):]
         NextMarker = ""
@@ -503,7 +489,7 @@ class Interface(object):
                     if _cos_path.endswith('/'):
                         continue
                     _file_num += 1
-                    if self.copy_file(_source_path, _cos_path, _type):
+                    if self.copy_file(_source_path, _cos_path):
                         _success_num += 1
                     else:
                         _fail_num += 1
@@ -520,15 +506,13 @@ class Interface(object):
         else:
             return False
 
-    def copy_file(self, source_path, cos_path, _type='Standard'):
+    def copy_file(self, source_path, cos_path):
 
         def single_copy():
-            self._type = _type
             url = self._conf.uri(path=cos_path)
             for j in range(self._retry):
                 try:
                     http_header = dict()
-                    http_header['x-cos-storage-class'] = self._type
                     http_header['x-cos-copy-source'] = to_printable_str(source_path)
                     rt = self._session.put(url=url,
                                            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
@@ -554,9 +538,7 @@ class Interface(object):
             self._md5 = {}
             self._have_finished = 0
             self._upload_id = None
-            self._type = _type
             http_header = dict()
-            http_header['x-cos-storage-class'] = self._type
             rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
             logger.debug("Init resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
