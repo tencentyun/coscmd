@@ -154,9 +154,9 @@ class Op(object):
         args.local_path, args.cos_path = concat_path(args.local_path, args.cos_path)
         if args.recursive:
             if os.path.isfile(args.local_path) is True:
-                rt = Interface.upload_file(args.local_path, args.cos_path, args.type, args.encryption, args.headers)
+                rt = Interface.upload_file(args.local_path, args.cos_path, args.headers)
             elif os.path.isdir(args.local_path):
-                rt = Interface.upload_folder(args.local_path, args.cos_path, args.type, args.encryption, args.headers)
+                rt = Interface.upload_folder(args.local_path, args.cos_path, args.headers)
                 logger.info("{folders} folders, {files} files successful, {fail_files} files failed"
                             .format(folders=Interface._folder_num, files=Interface._file_num, fail_files=Interface._fail_num))
                 if rt:
@@ -172,7 +172,7 @@ class Op(object):
             if os.path.isfile(args.local_path) is False:
                 logger.warn("cannot stat '%s': No such file or directory" % to_printable_str(args.local_path))
                 return -1
-            if Interface.upload_file(args.local_path, args.cos_path, args.type, args.encryption, args.headers) is True:
+            if Interface.upload_file(args.local_path, args.cos_path, args.headers) is True:
                 return 0
             else:
                 return -1
@@ -185,12 +185,15 @@ class Op(object):
         Interface = client.op_int()
         if not isinstance(args.local_path, unicode):
             args.local_path = args.local_path.decode(fs_coding)
-
         if not isinstance(args. cos_path, unicode):
             args.cos_path = args.cos_path.decode(fs_coding)
         args.cos_path, args.local_path = concat_path(args.cos_path, args.local_path)
+        kwargs = {}
+        kwargs['force'] = args.force
+        kwargs['sync'] = args.sync
+        kwargs['num'] = args.num
         if args.recursive:
-            rt = Interface.download_folder(args.cos_path, args.local_path, args.force)
+            rt = Interface.download_folder(args.cos_path, args.local_path, **kwargs)
             if rt:
                 logger.debug("download all files under \"{file}\" directory successfully".format(file=to_printable_str(args.cos_path)))
                 return 0
@@ -198,10 +201,15 @@ class Op(object):
                 logger.debug("download all files under \"{file}\" directory failed".format(file=to_printable_str(args.cos_path)))
                 return -1
         else:
-            if Interface.download_file(args.cos_path, args.local_path, args.force) is True:
+            if Interface.download_file(args.cos_path, args.local_path, **kwargs) is True:
                 return 0
             else:
                 return -1
+        return -1
+
+    @staticmethod
+    def mget(args):
+        logger.warn("This interface has been abandoned, please use download interface")
         return -1
 
     @staticmethod
@@ -253,12 +261,12 @@ class Op(object):
             if args.cos_path == '/':
                 args.cos_path = ''
 
-            if Interface.copy_folder(args.source_path, args.cos_path, args.type) is True:
+            if Interface.copy_folder(args.source_path, args.cos_path) is True:
                 return 0
             else:
                 return 1
         else:
-            if Interface.copy_file(args.source_path, args.cos_path, args.type) is True:
+            if Interface.copy_file(args.source_path, args.cos_path) is True:
                 return 0
             else:
                 return -1
@@ -292,32 +300,6 @@ class Op(object):
             return 0
         else:
             return -1
-
-    @staticmethod
-    def mget(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        Interface = client.op_int()
-        if not isinstance(args.local_path, unicode):
-            args.local_path = args.local_path.decode(fs_coding)
-
-        if not isinstance(args. cos_path, unicode):
-            args.cos_path = args.cos_path.decode(fs_coding)
-        args.cos_path, args.local_path = concat_path(args.cos_path, args.local_path)
-        if args.recursive:
-            rt = Interface.mget_folder(args.cos_path, args.local_path, args.force)
-            if rt:
-                logger.debug("mget all files under \"{file}\" directory successfully".format(file=to_printable_str(args.cos_path)))
-                return 0
-            else:
-                logger.debug("mget all files under \"{file}\" directory failed".format(file=to_printable_str(args.cos_path)))
-                return -1
-        else:
-            if Interface.mget_file(args.cos_path, args.local_path, args.force) is True:
-                return 0
-            else:
-                return -1
-        return -1
 
     @staticmethod
     def restore(args):
@@ -470,8 +452,6 @@ def command_thread():
     parser_upload.add_argument('local_path', help="local file path as /tmp/a.txt or directory", type=str)
     parser_upload.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_upload.add_argument('-r', '--recursive', help="upload recursively when upload directory", action="store_true", default=False)
-    parser_upload.add_argument('-t', '--type', help='specify x-cos-storage-class of files to upload', type=str, choices=['STANDARD', 'STANDARD_IA', 'NEARLINE'], default='STANDARD')
-    parser_upload.add_argument('-e', '--encryption', help="set encryption", type=str, default='')
     parser_upload.add_argument('-H', '--headers', help="set HTTP headers", type=str, default='{}')
     parser_upload.set_defaults(func=Op.upload)
 
@@ -480,6 +460,7 @@ def command_thread():
     parser_download.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
     parser_download.add_argument('-f', '--force', help="Overwrite the saved files", action="store_true", default=False)
     parser_download.add_argument('-r', '--recursive', help="download recursively when upload directory", action="store_true", default=False)
+    parser_download.add_argument('-s','--sync', help="Download and skip the same file", action="store_true", default=False)
     parser_download.set_defaults(func=Op.download)
 
     parser_delete = sub_parser.add_parser("delete", help="delete file or files on COS")
@@ -508,12 +489,9 @@ def command_thread():
     parser_info.add_argument('--human', help='humanized display', action="store_true", default=False)
     parser_info.set_defaults(func=Op.info)
 
-    parser_mget = sub_parser.add_parser("mget", help="download big file from COS to local(Recommand)")
+    parser_mget = sub_parser.add_parser("mget", help="download file from COS to local.")
     parser_mget.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_mget.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
-    parser_mget.add_argument('-r', '--recursive', help="mget recursively when upload directory", action="store_true", default=False)
-    parser_mget.add_argument('-f', '--force', help="Overwrite the saved files", action="store_true", default=False)
-    parser_mget.add_argument('-n', '--num', help='specify part num of files to mget', type=int, default=100)
     parser_mget.set_defaults(func=Op.mget)
 
     parser_restore = sub_parser.add_parser("restore", help="restore")
