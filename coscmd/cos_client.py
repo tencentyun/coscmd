@@ -18,6 +18,7 @@ import urllib
 import yaml
 from tqdm import tqdm
 from wsgiref.handlers import format_date_time
+from __builtin__ import False
 logger = logging.getLogger(__name__)
 fs_coding = sys.getfilesystemencoding()
 
@@ -74,6 +75,15 @@ def query_yes_no(question, default="no"):
             sys.stdout.write("Please respond with 'yes' or 'no' "
                              "(or 'y' or 'n').\n")
 
+def get_file_md5(local_path):
+    md5_value = md5()
+    with open(local_path, "rb") as f:
+        while True:
+            data = f.read(2048)
+            if not data:
+                break
+            md5_value.update(data)
+    return md5_value.hexdigest()
 
 def response_info(rt):
     request_id = "null"
@@ -142,7 +152,7 @@ class CosConfig(object):
                 path=to_unicode(path)
             )
         else:
-            url = u"{schema}://{bucket}-{uid}.cos.{region}.myqcloud.com".format(
+            url = u"{schema}://cos.{region}.myqcloud.com/{bucket}-{uid}".format(
                 schema=self._schema,
                 bucket=self._bucket,
                 uid=self._appid,
@@ -217,7 +227,7 @@ class Interface(object):
             return False
         return True
 
-    def upload_folder(self, local_path, cos_path, _http_headers=''):
+    def upload_folder(self, local_path, cos_path, _http_headers='', **kwargs):
 
         local_path = to_unicode(local_path)
         cos_path = to_unicode(cos_path)
@@ -232,10 +242,12 @@ class Interface(object):
         for filename in filelist:
             filepath = os.path.join(local_path, filename)
             if os.path.isdir(filepath):
-                if not self.upload_folder(filepath, cos_path+filename, _http_headers):
+                # recursion upload
+                if not self.upload_folder(filepath, cos_path+filename, _http_headers, **kwargs):
                     ret_code = False
             else:
-                if self.upload_file(local_path=filepath, cos_path=cos_path+filename, _http_headers=_http_headers) is False:
+                # single file upload
+                if self.upload_file(local_path=filepath, cos_path=cos_path+filename, _http_headers=_http_headers, **kwargs) is False:
                     logger.info("Upload {file} fail".format(file=to_printable_str(filepath)))
                     self._fail_num += 1
                     ret_code = False
@@ -244,7 +256,7 @@ class Interface(object):
                     logger.debug("Upload {file} success".format(file=to_printable_str(filepath)))
         return ret_code
 
-    def upload_file(self, local_path, cos_path, _http_headers='{}'):
+    def upload_file(self, local_path, cos_path, _http_headers='{}', **kwargs):
 
         _http_header = yaml.safe_load(_http_headers)
 
@@ -259,6 +271,7 @@ class Interface(object):
             for j in range(self._retry):
                 try:
                     http_header = _http_header
+                    http_header['x-cos-meta-md5'] = md5(data).hexdigest()
                     rt = self._session.put(url=url,
                                            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), data=data, headers=http_header)
                     if rt.status_code == 200:
@@ -294,6 +307,7 @@ class Interface(object):
                     logger.info("Continue uploading from last breakpoint")
                     return True
             http_header = _http_header
+            http_header['x-cos-meta-md5'] = get_file_md5(local_path)
             rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
             logger.debug("Init resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
@@ -698,103 +712,54 @@ class Interface(object):
             logger.warn("Complete multipart copy failed")
             return False
 
-    def download_folder(self, cos_path, local_path, _force=False):
+#     def download_folder(self, cos_path, local_path, _force=False):
+# 
+#         _file_num = 0
+#         _have_finished = 0
+#         _fail_num = 0
+#         NextMarker = ""
+#         IsTruncated = "true"
+#         if cos_path.endswith('/') is False:
+#             cos_path += '/'
+#         if local_path.endswith('/') is False:
+#             local_path += '/'
+#         cos_path = cos_path.lstrip('/')
+#         cos_path = to_unicode(cos_path)
+#         while IsTruncated == "true":
+#             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
+#                                  .format(prefix=urllib.quote(to_printable_str(cos_path)), nextmarker=urllib.quote(to_printable_str(NextMarker))))
+#             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+#             if rt.status_code == 200:
+#                 root = minidom.parseString(rt.content).documentElement
+#                 IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+#                 if IsTruncated == 'true':
+#                     NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+#                 fileset = root.getElementsByTagName("Contents")
+#                 for _file in fileset:
+#                     _cos_path = _file.getElementsByTagName("Key")[0].childNodes[0].data
+#                     _local_path = local_path + _cos_path[len(cos_path):]
+#                     _cos_path = to_unicode(_cos_path)
+#                     _local_path = to_unicode(_local_path)
+#                     if _cos_path.endswith('/'):
+#                         continue
+#                     if self.download_file(_cos_path, _local_path, _force) is True:
+#                         _have_finished += 1
+#                     else:
+#                         _fail_num += 1
+#                     _file_num += 1
+#             else:
+#                 logger.warn(response_info(rt))
+#                 return False
+#         if _file_num == 0:
+#             logger.info("The directory does not exist")
+#             return False
+#         logger.info("{files} files successful, {fail_files} files failed"
+#                     .format(files=_have_finished, fail_files=_fail_num))
+#         if _file_num == _have_finished:
+#             return True
+#         else:
+#             return False
 
-        _file_num = 0
-        _have_finished = 0
-        _fail_num = 0
-        NextMarker = ""
-        IsTruncated = "true"
-        if cos_path.endswith('/') is False:
-            cos_path += '/'
-        if local_path.endswith('/') is False:
-            local_path += '/'
-        cos_path = cos_path.lstrip('/')
-        cos_path = to_unicode(cos_path)
-        while IsTruncated == "true":
-            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
-                                 .format(prefix=urllib.quote(to_printable_str(cos_path)), nextmarker=urllib.quote(to_printable_str(NextMarker))))
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
-            if rt.status_code == 200:
-                root = minidom.parseString(rt.content).documentElement
-                IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                if IsTruncated == 'true':
-                    NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
-                fileset = root.getElementsByTagName("Contents")
-                for _file in fileset:
-                    _cos_path = _file.getElementsByTagName("Key")[0].childNodes[0].data
-                    _local_path = local_path + _cos_path[len(cos_path):]
-                    _cos_path = to_unicode(_cos_path)
-                    _local_path = to_unicode(_local_path)
-                    if _cos_path.endswith('/'):
-                        continue
-                    if self.download_file(_cos_path, _local_path, _force) is True:
-                        _have_finished += 1
-                    else:
-                        _fail_num += 1
-                    _file_num += 1
-            else:
-                logger.warn(response_info(rt))
-                return False
-        if _file_num == 0:
-            logger.info("The directory does not exist")
-            return False
-        logger.info("{files} files successful, {fail_files} files failed"
-                    .format(files=_have_finished, fail_files=_fail_num))
-        if _file_num == _have_finished:
-            return True
-        else:
-            return False
-
-    def download_file(self, cos_path, local_path, _force=False):
-        cos_path = cos_path.lstrip('/')
-        if _force is False and os.path.isfile(local_path) is True:
-            logger.warn("The file {file} already exists, please use -f to overwrite the file".format(file=to_printable_str(cos_path)))
-            return False
-        # logger.info("download {file}".format(file=to_printable_str(cos_path)))
-        url = self._conf.uri(path=cos_path)
-        logger.info("Download cos://{bucket}/{cos_path}   =>   {local_path}".format(
-                                                        bucket=self._conf._bucket,
-                                                        local_path=to_printable_str(local_path),
-                                                        cos_path=to_printable_str(cos_path)))
-        try:
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), stream=True)
-            logger.debug("get resp, status code: {code}, headers: {headers}".format(
-                 code=rt.status_code,
-                 headers=rt.headers))
-            if 'Content-Length' in rt.headers:
-                content_len = int(rt.headers['Content-Length'])
-            else:
-                raise IOError("Download failed without Content-Length header")
-            if rt.status_code == 200:
-                with tqdm(total=content_len, unit='B', unit_scale=True) as self._pbar:
-                    file_len = 0
-                    dir_path = os.path.dirname(local_path)
-                    if os.path.isdir(dir_path) is False and dir_path != '':
-                        try:
-                            os.makedirs(dir_path)
-                        except Exception as e:
-                            raise Exception("Unable to create the corresponding folder")
-                    try:
-                        with open(local_path, 'wb') as f:
-                            for chunk in rt.iter_content(chunk_size=1024):
-                                if chunk:
-                                    self._pbar.update(len(chunk))
-                                    file_len += len(chunk)
-                                    f.write(chunk)
-                            f.flush()
-                    except Exception, e:
-                        logger.warn("Fail to write to file")
-                        raise Exception(e)
-                    if file_len != content_len:
-                        raise IOError("Download failed with incomplete file")
-            else:
-                raise Exception(response_info(rt))
-        except Exception as e:
-            logger.warn(str(e))
-            os.remove(local_path)
-            return False
-        return True
 
     def delete_folder(self, cos_path, _force=False):
 
@@ -1046,7 +1011,7 @@ class Interface(object):
             return False
         return False
 
-    def mget_folder(self, cos_path, local_path, _force=False):
+    def download_folder(self, cos_path, local_path, **kwargs):
 
         if cos_path.endswith('/') is False:
             cos_path += '/'
@@ -1076,7 +1041,7 @@ class Interface(object):
                     _local_path = to_unicode(_local_path)
                     if _cos_path.endswith('/'):
                         continue
-                    if self.mget_file(_cos_path, _local_path, _force) is True:
+                    if self.download_file(_cos_path, _local_path, **kwargs) is True:
                         _have_finished += 1
                     else:
                         _fail_num += 1
@@ -1095,7 +1060,62 @@ class Interface(object):
         else:
             return False
 
-    def mget_file(self, cos_path, local_path, _force=False, _num=10):
+    def download_file(self, cos_path, local_path, **kwargs):
+       
+        def check_file_md5(_local_path, _cos_path):
+            url = self._conf.uri(path=_cos_path)
+            rt = self._session.head(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), stream=True)
+            tmp = os.stat(_local_path)
+            if tmp.st_size != int(rt.headers['Content-Length']):
+                return False
+            else:
+                if 'x-cos-meta-md5' not in rt.headers or get_file_md5(_local_path) != rt.headers['x-cos-meta-md5']:
+                    return False
+                else:
+                    return True
+
+        def single_download(cos_path, local_path):
+
+            # logger.info("download {file}".format(file=to_printable_str(cos_path)))
+            url = self._conf.uri(path=cos_path)
+            try:
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), stream=True)
+                logger.debug("get resp, status code: {code}, headers: {headers}".format(
+                     code=rt.status_code,
+                     headers=rt.headers))
+                if 'Content-Length' in rt.headers:
+                    content_len = int(rt.headers['Content-Length'])
+                else:
+                    raise IOError("Download failed without Content-Length header")
+                if rt.status_code == 200:
+                    with tqdm(total=content_len, unit='B', unit_scale=True) as self._pbar:
+                        file_len = 0
+                        dir_path = os.path.dirname(local_path)
+                        if os.path.isdir(dir_path) is False and dir_path != '':
+                            try:
+                                os.makedirs(dir_path)
+                            except Exception as e:
+                                raise Exception("Unable to create the corresponding folder")
+                        try:
+                            with open(local_path, 'wb') as f:
+                                for chunk in rt.iter_content(chunk_size=1024):
+                                    if chunk:
+                                        self._pbar.update(len(chunk))
+                                        file_len += len(chunk)
+                                        f.write(chunk)
+                                f.flush()
+                        except Exception, e:
+                            logger.warn("Fail to write to file")
+                            raise Exception(e)
+                        if file_len != content_len:
+                            raise IOError("Download failed with incomplete file")
+                else:
+                    raise Exception(response_info(rt))
+            except Exception as e:
+                logger.warn(str(e))
+                os.remove(local_path)
+                return False
+            return True
 
         def get_parts_data(local_path, offset, length, parts_size, idx):
             try:
@@ -1136,14 +1156,24 @@ class Interface(object):
                 logger.warn(str(e))
             return False
 
-        if _force is False and os.path.isfile(local_path) is True:
-            logger.warn("The file {file} already exists, please use -f to overwrite the file".format(file=to_printable_str(cos_path)))
-            return False
+        cos_path = cos_path.lstrip('/') 
+        logger.info("Download cos://{bucket}/{cos_path}   =>   {local_path}".format(
+                                                            bucket=self._conf._bucket,
+                                                            local_path=to_printable_str(local_path),
+                                                            cos_path=to_printable_str(cos_path)))
+        if kwargs['force'] is False:
+            if os.path.isfile(local_path) is True:
+                if kwargs['sync'] is True:
+                    if check_file_md5(local_path, cos_path):
+                        logger.info("The file on cos is the same as the local file, skip download")
+                        return True
+                else:
+                    logger.warn("The file {file} already exists, please use -f to overwrite the file".format(file=to_printable_str(cos_path)))
+                    return False
         url = self._conf.uri(path=cos_path)
-        logger.info("Info with : " + url)
         try:
             rt = self._session.head(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
-            logger.debug("info resp, status code: {code}, headers: {headers}".format(
+            logger.debug("download resp, status code: {code}, headers: {headers}".format(
                  code=rt.status_code,
                  headers=rt.headers))
             if rt.status_code == 200:
@@ -1156,7 +1186,7 @@ class Interface(object):
             return False
         if file_size < self._conf._part_size * 1024 * 1024 + 1024:
             # download
-            rt = self.download_file(cos_path, local_path, _force)
+            rt = single_download(cos_path, local_path)
             return rt
         else:
             # mget
@@ -1164,8 +1194,8 @@ class Interface(object):
             logger.debug("mget with : " + url)
             offset = 0
             logger.debug("file size: " + str(file_size))
-    
-            parts_num = _num
+
+            parts_num = kwargs['num']
             chunk_size = file_size / parts_num
             last_size = file_size - parts_num * chunk_size
             self._have_finished = 0
