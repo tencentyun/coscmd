@@ -85,6 +85,17 @@ def get_file_md5(local_path):
             md5_value.update(data)
     return md5_value.hexdigest()
 
+def get_file_md5(local_path):
+    md5_value = md5()
+    with open(local_path, "rb") as f:
+        while True:
+            data = f.read(2048)
+            if not data:
+                break
+            md5_value.update(data)
+    return md5_value.hexdigest()
+
+
 def response_info(rt):
     request_id = "null"
     code = rt.status_code
@@ -713,7 +724,7 @@ class Interface(object):
             return False
 
 #     def download_folder(self, cos_path, local_path, _force=False):
-# 
+#
 #         _file_num = 0
 #         _have_finished = 0
 #         _fail_num = 0
@@ -759,8 +770,6 @@ class Interface(object):
 #             return True
 #         else:
 #             return False
-
-
     def delete_folder(self, cos_path, _force=False):
 
         cos_path = to_unicode(cos_path)
@@ -1061,7 +1070,7 @@ class Interface(object):
             return False
 
     def download_file(self, cos_path, local_path, **kwargs):
-       
+
         def check_file_md5(_local_path, _cos_path):
             url = self._conf.uri(path=_cos_path)
             rt = self._session.head(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), stream=True)
@@ -1156,7 +1165,7 @@ class Interface(object):
                 logger.warn(str(e))
             return False
 
-        cos_path = cos_path.lstrip('/') 
+        cos_path = cos_path.lstrip('/')
         logger.info("Download cos://{bucket}/{cos_path}   =>   {local_path}".format(
                                                             bucket=self._conf._bucket,
                                                             local_path=to_printable_str(local_path),
@@ -1203,7 +1212,6 @@ class Interface(object):
                 parts_num += 1
             _max_thread = min(self._conf._max_thread, parts_num - self._have_finished)
             pool = SimpleThreadPool(_max_thread)
-    
             logger.debug("chunk_size: " + str(chunk_size))
             logger.debug('download file concurrently')
             logger.info("Downloading {file}".format(file=to_printable_str(local_path)))

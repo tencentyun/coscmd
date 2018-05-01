@@ -15,7 +15,7 @@ appid = os.environ['COS_APPID']
 test_num = 2
 file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000)) + "中文"
 conf = cos_client.CosConfig(
-        appid = appid,
+        appid=appid,
         bucket="lewzylu06",
         region="ap-beijing-1",
         secret_id=access_id,
@@ -78,8 +78,8 @@ def test_download_file():
     rt = os.system("fc tmp tmp_download")
     assert rt == 0
     os.remove("tmp")
- 
- 
+
+
 def test_delete_file():
     """test delete file"""
     file_name = "tmp" + file_id + "_Bigfile"
@@ -104,7 +104,7 @@ def test_objectacl():
     rt = op_int.get_object_acl(file_name)
     assert rt
 
-    
+
 if __name__ == "__main__":
     setUp()
     tearDown()

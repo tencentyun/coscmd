@@ -460,7 +460,7 @@ def command_thread():
     parser_download.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
     parser_download.add_argument('-f', '--force', help="Overwrite the saved files", action="store_true", default=False)
     parser_download.add_argument('-r', '--recursive', help="download recursively when upload directory", action="store_true", default=False)
-    parser_download.add_argument('-s','--sync', help="Download and skip the same file", action="store_true", default=False)
+    parser_download.add_argument('-s', '--sync', help="Download and skip the same file", action="store_true", default=False)
     parser_download.set_defaults(func=Op.download)
 
     parser_delete = sub_parser.add_parser("delete", help="delete file or files on COS")
