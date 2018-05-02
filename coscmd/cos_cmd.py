@@ -191,7 +191,7 @@ class Op(object):
         kwargs = {}
         kwargs['force'] = args.force
         kwargs['sync'] = args.sync
-        kwargs['num'] = args.num
+        kwargs['num'] = 10
         if args.recursive:
             rt = Interface.download_folder(args.cos_path, args.local_path, **kwargs)
             if rt:
