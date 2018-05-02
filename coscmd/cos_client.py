@@ -75,15 +75,6 @@ def query_yes_no(question, default="no"):
             sys.stdout.write("Please respond with 'yes' or 'no' "
                              "(or 'y' or 'n').\n")
 
-def get_file_md5(local_path):
-    md5_value = md5()
-    with open(local_path, "rb") as f:
-        while True:
-            data = f.read(2048)
-            if not data:
-                break
-            md5_value.update(data)
-    return md5_value.hexdigest()
 
 def get_file_md5(local_path):
     md5_value = md5()
