@@ -529,7 +529,7 @@ class Interface(object):
             for j in range(self._retry):
                 try:
                     http_header = dict()
-                    http_header['x-cos-copy-source'] = to_printable_str(source_path)
+                    http_header['x-cos-copy-source'] = source_path
                     rt = self._session.put(url=url,
                                            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
                     if rt.status_code == 200:
@@ -682,7 +682,7 @@ class Interface(object):
             except Exception:
                 return False
             return True
-
+        source_path = urllib.quote(to_printable_str(source_path))
         rt = self._session.head(url="http://"+source_path, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
         if rt.status_code != 200:
             logger.warn("Replication sources do not exist")
