@@ -455,12 +455,11 @@ class Interface(object):
                                                 bucket=self._conf._bucket,
                                                 local_path=to_printable_str(local_path),
                                                 cos_path=to_printable_str(cos_path)))
-                        
         if kwargs['sync'] is True:
             if check_file_md5(local_path, cos_path):
                 logger.info("The file on cos is the same as the local file, skip upload")
                 return True
-        
+
         if file_size <= self._conf._part_size * 1024 * 1024 + 1024:
             for _ in range(self._retry):
                 if single_upload() is True:
