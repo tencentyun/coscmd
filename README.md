@@ -155,6 +155,7 @@ coscmd upload -r <localpath> <cospath>  //命令格式
 coscmd upload -r /home/aaa/ bbb/aaa  //操作示例
 coscmd upload -r /home/aaa/ bbb/  //操作示例
 coscmd upload -r /home/aaa/ /  //上传到bucket根目录
+coscmd upload -rs /home/aaa/ /home/aaa  //同步上传，跳过md5相同的文件
 ```
 
 请将 "<>" 中的参数替换为您需要上传的本地文件路径（localpath），以及 COS 上存储的路径（cospath）。
@@ -163,6 +164,7 @@ coscmd upload -r /home/aaa/ /  //上传到bucket根目录
 * COSCMD 支持大文件断点上传功能。当分片上传大文件失败时，重新上传该文件只会上传失败的分块，而不会从头开始（请保证重新上传的文件的目录以及内容和上传的目录保持一致）。
 * COSCMD 分块上传时会对每一块进行 MD5 校验。
 * COSMCD 上传默认会携带 `x-cos-meta-md5` 的头部，值为该文件的 `md5` 值
+* 使用-s参数可以使用同步上传，跳过上传md5一致的文件(cos上的原文件必须是由1.8.3.2之后的COSCMD上传的，默认带有x-cos-meta-md5的header)
 * 使用-H参数设置HTTP header时，请务必保证格式为json，这里是个例子：`coscmd upload -H '{"Cache-Control":"max-age=31536000","Content-Language":"zh-CN"}' <localpath> <cospath>`
 
 ### 下载文件或文件夹
