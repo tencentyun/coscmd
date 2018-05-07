@@ -152,11 +152,13 @@ class Op(object):
             logger.warn('local_path %s is not readable!' % to_printable_str(args.local_path))
             return -1
         args.local_path, args.cos_path = concat_path(args.local_path, args.cos_path)
+        kwargs = {}
+        kwargs['sync'] = args.sync
         if args.recursive:
             if os.path.isfile(args.local_path) is True:
-                rt = Interface.upload_file(args.local_path, args.cos_path, args.headers)
+                rt = Interface.upload_file(args.local_path, args.cos_path, args.headers, **kwargs)
             elif os.path.isdir(args.local_path):
-                rt = Interface.upload_folder(args.local_path, args.cos_path, args.headers)
+                rt = Interface.upload_folder(args.local_path, args.cos_path, args.headers, **kwargs)
                 logger.info("{folders} folders, {files} files successful, {fail_files} files failed"
                             .format(folders=Interface._folder_num, files=Interface._file_num, fail_files=Interface._fail_num))
                 if rt:
@@ -172,7 +174,7 @@ class Op(object):
             if os.path.isfile(args.local_path) is False:
                 logger.warn("cannot stat '%s': No such file or directory" % to_printable_str(args.local_path))
                 return -1
-            if Interface.upload_file(args.local_path, args.cos_path, args.headers) is True:
+            if Interface.upload_file(args.local_path, args.cos_path, args.headers, **kwargs) is True:
                 return 0
             else:
                 return -1
@@ -453,6 +455,7 @@ def command_thread():
     parser_upload.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
     parser_upload.add_argument('-r', '--recursive', help="upload recursively when upload directory", action="store_true", default=False)
     parser_upload.add_argument('-H', '--headers', help="set HTTP headers", type=str, default='{}')
+    parser_upload.add_argument('-s', '--sync', help="Upload and skip the same file", action="store_true", default=False)
     parser_upload.set_defaults(func=Op.upload)
 
     parser_download = sub_parser.add_parser("download", help="download file from COS to local.")

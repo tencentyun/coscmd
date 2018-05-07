@@ -75,15 +75,6 @@ def query_yes_no(question, default="no"):
             sys.stdout.write("Please respond with 'yes' or 'no' "
                              "(or 'y' or 'n').\n")
 
-def get_file_md5(local_path):
-    md5_value = md5()
-    with open(local_path, "rb") as f:
-        while True:
-            data = f.read(2048)
-            if not data:
-                break
-            md5_value.update(data)
-    return md5_value.hexdigest()
 
 def get_file_md5(local_path):
     md5_value = md5()
@@ -268,8 +259,22 @@ class Interface(object):
         return ret_code
 
     def upload_file(self, local_path, cos_path, _http_headers='{}', **kwargs):
-
+        _md5 = ""
         _http_header = yaml.safe_load(_http_headers)
+
+        def check_file_md5(_local_path, _cos_path):
+            url = self._conf.uri(path=_cos_path)
+            rt = self._session.head(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), stream=True)
+            if rt.status_code != 200:
+                return False
+            tmp = os.stat(_local_path)
+            if tmp.st_size != int(rt.headers['Content-Length']):
+                return False
+            else:
+                if 'x-cos-meta-md5' not in rt.headers or get_file_md5(_local_path) != rt.headers['x-cos-meta-md5']:
+                    return False
+                else:
+                    return True
 
         def single_upload():
 
@@ -278,19 +283,14 @@ class Interface(object):
             else:
                 with open(local_path, 'rb') as File:
                     data = File.read()
-            url = self._conf.uri(path=cos_path)
+            url = self._conf.uri(path=urllib.quote(to_printable_str(cos_path)))
             for j in range(self._retry):
                 try:
                     http_header = _http_header
-                    http_header['x-cos-meta-md5'] = md5(data).hexdigest()
+                    http_header['x-cos-meta-md5'] = _md5
                     rt = self._session.put(url=url,
                                            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), data=data, headers=http_header)
                     if rt.status_code == 200:
-                        if local_path != '':
-                            logger.info("Upload {local_path}   =>   cos://{bucket}/{cos_path}  [100%]".format(
-                                                                    bucket=self._conf._bucket,
-                                                                    local_path=to_printable_str(local_path),
-                                                                    cos_path=to_printable_str(cos_path)))
                         return True
                     else:
                         time.sleep(2**j)
@@ -304,7 +304,7 @@ class Interface(object):
             return False
 
         def init_multiupload():
-            url = self._conf.uri(path=cos_path)
+            url = self._conf.uri(path=urllib.quote(to_printable_str(cos_path)))
             self._md5 = {}
             self.c = 0
             self._have_uploaded = []
@@ -318,7 +318,7 @@ class Interface(object):
                     logger.info("Continue uploading from last breakpoint")
                     return True
             http_header = _http_header
-            http_header['x-cos-meta-md5'] = get_file_md5(local_path)
+            http_header['x-cos-meta-md5'] = _md5
             rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
             logger.debug("Init resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
@@ -344,7 +344,7 @@ class Interface(object):
                 with open(local_path, 'rb') as File:
                     File.seek(offset, 0)
                     data = File.read(length)
-                url = self._conf.uri(path=cos_path)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=self._upload_id)
+                url = self._conf.uri(path=urllib.quote(to_printable_str(cos_path)))+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=self._upload_id)
                 for j in range(self._retry):
                     http_header = _http_header
                     rt = self._session.put(url=url,
@@ -392,10 +392,6 @@ class Interface(object):
 
             logger.debug("chunk_size: " + str(chunk_size))
             logger.debug('Upload file concurrently')
-            logger.info("Upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
-                                                    bucket=self._conf._bucket,
-                                                    local_path=to_printable_str(local_path),
-                                                    cos_path=to_printable_str(cos_path)))
             self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
             if chunk_size >= file_size:
                 pool.add_task(multiupload_parts_data, local_path, offset, file_size, 1, 0)
@@ -433,7 +429,7 @@ class Interface(object):
                 t.appendChild(t2)
                 root.appendChild(t)
                 data = root.toxml()
-                url = self._conf.uri(path=cos_path)+"?uploadId={uploadid}".format(uploadid=self._upload_id)
+                url = self._conf.uri(path=urllib.quote(to_printable_str(cos_path)))+"?uploadId={uploadid}".format(uploadid=self._upload_id)
                 logger.debug('complete url: ' + url)
                 logger.debug("complete data: " + data)
             try:
@@ -449,36 +445,46 @@ class Interface(object):
             except Exception:
                 return False
             return True
+
         if local_path == "":
             file_size = 0
         else:
             file_size = os.path.getsize(local_path)
+        _md5 = get_file_md5(local_path)
+        logger.info(to_printable_str("Upload {local_path}   =>   cos://{bucket}/{cos_path} ").format(
+                                                bucket=self._conf._bucket,
+                                                local_path=to_printable_str(local_path),
+                                                cos_path=to_printable_str(cos_path)))
+        if kwargs['sync'] is True:
+            if check_file_md5(local_path, cos_path):
+                logger.info("The file on cos is the same as the local file, skip upload")
+                return True
+
         if file_size <= self._conf._part_size * 1024 * 1024 + 1024:
             for _ in range(self._retry):
                 if single_upload() is True:
                     return True
             return False
         else:
-            for _ in range(self._retry):
-                rt = init_multiupload()
-                if rt:
-                    break
+            rt = init_multiupload()
+            if rt:
+                logger.debug("Init multipart upload ok")
             else:
+                logger.debug("Init multipart upload failed")
                 return False
-            logger.debug("Init multipart upload ok")
-
             rt = multiupload_parts()
-            if rt is False:
+            if rt:
+                logger.debug("Multipart upload ok")
+            else:
                 logger.warn("Some partial upload failed. Please retry the last command to continue.")
                 return False
-            logger.debug("Multipart upload ok")
-            for _ in range(self._retry):
-                rt = complete_multiupload()
-                if rt:
-                    logger.debug("Complete multipart upload ok")
-                    return True
-            logger.warn("Complete multipart upload failed")
-            return False
+            rt = complete_multiupload()
+            if rt:
+                logger.debug("Complete multipart upload ok")
+            else:
+                logger.warn("Complete multipart upload failed")
+                return False
+            return True
 
     def copy_folder(self, source_path, cos_path):
 
@@ -534,11 +540,11 @@ class Interface(object):
     def copy_file(self, source_path, cos_path):
 
         def single_copy():
-            url = self._conf.uri(path=cos_path)
+            url = self._conf.uri(path=urllib.quote(to_printable_str(cos_path)))
             for j in range(self._retry):
                 try:
                     http_header = dict()
-                    http_header['x-cos-copy-source'] = to_printable_str(source_path)
+                    http_header['x-cos-copy-source'] = source_path
                     rt = self._session.put(url=url,
                                            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
                     if rt.status_code == 200:
@@ -559,7 +565,7 @@ class Interface(object):
             return False
 
         def init_multiupload():
-            url = self._conf.uri(path=cos_path)
+            url = self._conf.uri(path=urllib.quote(to_printable_str(cos_path)))
             self._md5 = {}
             self._have_finished = 0
             self._upload_id = None
@@ -595,7 +601,7 @@ class Interface(object):
                 return source_bucket, source_appid, source_region, source_cospath
 
             def copy_parts_data(source_path, offset, length, parts_size, idx):
-                url = self._conf.uri(path=cos_path)+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=self._upload_id)
+                url = self._conf.uri(path=urllib.quote(to_printable_str(cos_path)))+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=self._upload_id)
                 http_header = dict()
                 http_header['x-cos-copy-source'] = source_path
                 http_header['x-cos-copy-source-range'] = "bytes="+str(offset)+"-"+str(offset+length-1)
@@ -676,7 +682,7 @@ class Interface(object):
                 t.appendChild(t2)
                 root.appendChild(t)
                 data = root.toxml()
-                url = self._conf.uri(path=cos_path)+"?uploadId={uploadid}".format(uploadid=self._upload_id)
+                url = self._conf.uri(path=urllib.quote(to_printable_str(cos_path)))+"?uploadId={uploadid}".format(uploadid=self._upload_id)
                 logger.debug('Complete url: ' + url)
                 logger.debug("Complete data: " + data)
             try:
@@ -691,7 +697,7 @@ class Interface(object):
             except Exception:
                 return False
             return True
-
+        source_path = urllib.quote(to_printable_str(source_path))
         rt = self._session.head(url="http://"+source_path, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
         if rt.status_code != 200:
             logger.warn("Replication sources do not exist")
@@ -881,7 +887,7 @@ class Interface(object):
         if _force is False:
             if query_yes_no("WARN: you are deleting the file in the '{cos_path}' cos_path, please make sure".format(cos_path=to_printable_str(cos_path))) is False:
                 return False
-        url = self._conf.uri(path=cos_path)
+        url = self._conf.uri(path=urllib.quote(to_printable_str(cos_path)))
         try:
             rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
             logger.debug("init resp, status code: {code}, headers: {headers}".format(
@@ -1074,6 +1080,8 @@ class Interface(object):
         def check_file_md5(_local_path, _cos_path):
             url = self._conf.uri(path=_cos_path)
             rt = self._session.head(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), stream=True)
+            if rt.status_code != 200:
+                return False
             tmp = os.stat(_local_path)
             if tmp.st_size != int(rt.headers['Content-Length']):
                 return False
