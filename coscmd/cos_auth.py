@@ -5,10 +5,11 @@ import urllib
 import hashlib
 import logging
 import requests
-import cos_global
-from urllib import quote
-from urlparse import urlparse
+from coscmd import cos_global
+from urllib.parse import quote
+from urllib.parse import urlparse
 from requests.auth import AuthBase
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,8 +21,9 @@ class CosS3Auth(AuthBase):
         self._expire = expire
 
     def __call__(self, r):
+
         method = r.method.lower()
-        uri = urllib.unquote(r.url)
+        uri = urllib.parse.unquote(r.url)
         uri = uri.split('?')[0]
         tmp_r = {}
         rt = urlparse(uri)
@@ -40,20 +42,20 @@ class CosS3Auth(AuthBase):
         format_str = "{method}\n{host}\n{params}\n{headers}\n".format(
             method=method.lower(),
             host=rt.path,
-            params=urllib.urlencode(uri_params),
-            headers='&'.join(map(lambda (x, y): "%s=%s" % (x, y), sorted(headers.items())))
+            params=urllib.parse.urlencode(uri_params),
+            headers='&'.join(map(lambda p: (lambda x, y: "%s=%s" % (x, y))(*p), sorted(headers.items())))
         )
         logger.debug("format str: " + format_str)
 
         start_sign_time = int(time.time())
-        sign_time = "{bg_time};{ed_time}".format(bg_time=start_sign_time-60, ed_time=start_sign_time + self._expire)
+        sign_time = "{bg_time};{ed_time}".format(bg_time=start_sign_time - 60, ed_time=start_sign_time + self._expire)
         sha1 = hashlib.sha1()
-        sha1.update(format_str)
+        sha1.update(format_str.encode('utf-8'))
 
         str_to_sign = "sha1\n{time}\n{sha1}\n".format(time=sign_time, sha1=sha1.hexdigest())
         logger.debug('str_to_sign: ' + str(str_to_sign))
-        sign_key = hmac.new(self._secret_key, sign_time, hashlib.sha1).hexdigest()
-        sign = hmac.new(sign_key, str_to_sign, hashlib.sha1).hexdigest()
+        sign_key = hmac.new(self._secret_key.encode('utf-8'), sign_time.encode('utf-8'), hashlib.sha1).hexdigest()
+        sign = hmac.new(sign_key.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha1).hexdigest()
         logger.debug('sign_key: ' + str(sign_key))
         logger.debug('sign: ' + str(sign))
         sign_tpl = "q-sign-algorithm=sha1&q-ak={ak}&q-sign-time={sign_time}&q-key-time={key_time}&q-header-list={headers}&q-url-param-list={params}&q-signature={sign}"
@@ -75,10 +77,11 @@ class CosS3Auth(AuthBase):
 
 
 if __name__ == "__main__":
-    url = 'http://Lewzylu01-1252448703.cn-south.myqcloud.com/a.txt'
+    url = 'https://animal-resource-ai-1251001034.cos.ap-beijing.myqcloud.com'
     logger.debug("init with : " + url)
     request = requests.session()
-    secret_id = 'AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00'
-    secret_key = 'ciivKvnnrMvSvQpMAWuIz12pThGGlWRW'
-    rt = request.get(url=url+"", auth=CosS3Auth(secret_id, secret_key))
-    print rt.content
+    secret_id = 'AKIDb5PY8bhrlXEk8KIFqJb0I4kKOOFRYGXc'
+    secret_key = '4xfCi7KQQGxTq21BzhDYlogMqCQ3WnGb'
+    rt = request.get(url=url + "", auth=CosS3Auth(secret_id, secret_key))
+    print(url)
+    print(rt.content.decode('utf-8'))
