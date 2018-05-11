@@ -61,8 +61,6 @@ def test_download_file():
     assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py download -f tmp tmp_download")
     assert rt == 0
-    rt = os.system("fc tmp tmp_download")
-    assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py delete -f tmp")
     assert rt == 0
     os.remove("tmp")
