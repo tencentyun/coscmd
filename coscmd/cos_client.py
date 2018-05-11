@@ -236,7 +236,7 @@ class Interface(object):
         _success_num = 0
         _fail_num = 0
 
-        def recursive_upload_folder(_local_path, _cos_path,):
+        def recursive_upload_folder(_local_path, _cos_path):
             _local_path = to_unicode(_local_path)
             _cos_path = to_unicode(_cos_path)
             filelist = os.listdir(_local_path)
@@ -248,7 +248,7 @@ class Interface(object):
             for filename in filelist:
                 filepath = os.path.join(_local_path, filename)
                 if os.path.isdir(filepath):
-                    recursive_upload_folder(filepath, _cos_path+filename, _http_headers, **kwargs)
+                    recursive_upload_folder(filepath, _cos_path+filename)
                 else:
                     if self.upload_file(local_path=filepath, cos_path=_cos_path+filename, _http_headers=_http_headers, **kwargs) is False:
                         global _fail_num
