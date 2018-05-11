@@ -90,10 +90,10 @@ def test_folder():
     """test objectacl"""
     file_name = "tmp" + file_id + "_Smallfile"
     try:
-        os.makedirs("testfolder/")
+        os.makedirs("testfolder/testfolder/")
     except:
         pass
-    gen_file("testfolder/tmp1", 1.1)
+    gen_file("testfolder/testfolder/tmp1", 1.1)
     gen_file("testfolder/tmp2", 1.1)
     gen_file("testfolder/tmp3", 1.1)
     rt = os.system("python coscmd/cos_cmd.py upload -r testfolder testfolder")
