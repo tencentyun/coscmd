@@ -235,6 +235,7 @@ class Interface(object):
         global _fail_num
         _success_num = 0
         _fail_num = 0
+
         def recursive_upload_folder(_local_path, _cos_path,):
             _local_path = to_unicode(_local_path)
             _cos_path = to_unicode(_cos_path)
@@ -258,14 +259,12 @@ class Interface(object):
                         _success_num += 1
                         logger.debug("Upload {file} success".format(file=to_printable_str(filepath)))
         recursive_upload_folder(local_path, cos_path)
-        
         logger.info("{files} files successful, {fail_files} files failed"
                     .format(files=_success_num, fail_files=_fail_num))
         if _fail_num == 0:
             return True
         else:
             return False
-
 
     def upload_file(self, local_path, cos_path, _http_headers='{}', **kwargs):
         _md5 = ""
@@ -1072,7 +1071,7 @@ class Interface(object):
                     if _cos_path.endswith('/'):
                         continue
                     rt = self.download_file(_cos_path, _local_path, **kwargs)
-                    if rt == True:
+                    if rt:
                         _success_num += 1
                     else:
                         _fail_num += 1
