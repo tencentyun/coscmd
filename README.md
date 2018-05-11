@@ -105,7 +105,7 @@ coscmd config -a <secret_id> -s <secret_key> -b <bucket> -r <region> [-m <max_th
 > **注意：** 
 1. 可以直接编辑`~/.cos.conf`文件 （在 Windows 环境下，该文件是位于`我的文档`下的一个隐藏文件）。
 配置完成之后的`.cos.conf`文件内容示例如下所示：
-2. 可以在配置文件中增加`schema`项来选择`http / https`
+2. 可以在配置文件中增加`schema`项来选择`http / https`，默认为`https`
 3. bucket的命名规则为 `{name}-{appid}`
 ```
  [common]
@@ -156,6 +156,7 @@ coscmd upload -r /home/aaa/ bbb/aaa  //操作示例
 coscmd upload -r /home/aaa/ bbb/  //操作示例
 coscmd upload -r /home/aaa/ /  //上传到bucket根目录
 coscmd upload -rs /home/aaa/ /home/aaa  //同步上传，跳过md5相同的文件
+coscmd upload -rs /home/aaa/ /home/aaa --ignore *.txt,*.doc //忽略.txt和.doc的后缀文件
 ```
 
 请将 "<>" 中的参数替换为您需要上传的本地文件路径（localpath），以及 COS 上存储的路径（cospath）。
@@ -166,6 +167,7 @@ coscmd upload -rs /home/aaa/ /home/aaa  //同步上传，跳过md5相同的文�
 * COSMCD 上传默认会携带 `x-cos-meta-md5` 的头部，值为该文件的 `md5` 值
 * 使用-s参数可以使用同步上传，跳过上传md5一致的文件(cos上的原文件必须是由1.8.3.2之后的COSCMD上传的，默认带有x-cos-meta-md5的header)
 * 使用-H参数设置HTTP header时，请务必保证格式为json，这里是个例子：`coscmd upload -H '{"Cache-Control":"max-age=31536000","Content-Language":"zh-CN"}' <localpath> <cospath>`
+* 在上传文件夹时，使用--ignore参数可以忽略某一类文件，支持shell通配规则，支持多条规则，用逗号分隔
 
 ### 下载文件或文件夹
 - 下载文件命令如下：
@@ -181,6 +183,7 @@ coscmd download -r /home/aaa/ bbb/aaa  //操作示例
 coscmd download -r /home/aaa/ bbb/  //操作示例
 coscmd download -rf / bbb/aaa  //覆盖下载当前bucket根目录下所有的文件
 coscmd download -rs / bbb/aaa  //同步下载当前bucket根目录下所有的文件，跳过md5校验相同的文件。
+coscmd upload -rs / bbb/aaa --ignore *.txt,*.doc //忽略.txt和.doc的后缀文件
 ```
 请将 "<>" 中的参数替换为您需要下载的 COS 上文件的路径（cospath），以及本地存储路径（localpath）。
 > **注意：** 
@@ -188,6 +191,7 @@ coscmd download -rs / bbb/aaa  //同步下载当前bucket根目录下所有的�
 * `download` 接口使用分块下载，老版本的 `mget` 接口已经废除，请使用 `download` 接口。
 * 使用 `-s` 或者 `--sync` 参数，可以在下载文件夹时跳过本地已存在的相同文
 件 (前提是下载文件夹是通过 `COSCMD` 的 `upload` 接口上传的，文件携带有 `x-cos-meta-md5` 头部)
+* 在下载文件夹时，使用--ignore参数可以忽略某一类文件，支持shell通配规则，支持多条规则，用逗号分隔
 ### 删除文件或文件夹
 - 删除文件命令如下：
 ```
