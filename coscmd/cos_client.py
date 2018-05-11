@@ -16,6 +16,7 @@ import datetime
 import pytz
 import urllib
 import yaml
+import fnmatch
 from tqdm import tqdm
 from wsgiref.handlers import format_date_time
 from __builtin__ import False
@@ -103,7 +104,7 @@ RequestId: {request_id}'''.format(
                      request_id=to_printable_str(request_id)))
 
 
-def utc_to_local(utc_time_str, utc_format='%Y-%m-%dT%H:%M:%S.000Z'):
+def utc_to_local(utc_time_str, utc_format='%Y-%m-%dT%H:%M:%S.%fZ'):
     local_tz = pytz.timezone('Asia/Chongqing')
     local_format = "%Y-%m-%d %H:%M:%S"
     utc_dt = datetime.datetime.strptime(utc_time_str, utc_format)
@@ -230,33 +231,41 @@ class Interface(object):
         return True
 
     def upload_folder(self, local_path, cos_path, _http_headers='', **kwargs):
-
-        local_path = to_unicode(local_path)
-        cos_path = to_unicode(cos_path)
-        filelist = os.listdir(local_path)
-        if cos_path.endswith('/') is False:
-            cos_path += "/"
-        if local_path.endswith('/') is False:
-            local_path += '/'
-        cos_path = cos_path.lstrip('/')
-        self._folder_num += 1
-        ret_code = True  # True means 0, False means -1
-        for filename in filelist:
-            filepath = os.path.join(local_path, filename)
-            if os.path.isdir(filepath):
-                # recursion upload
-                if not self.upload_folder(filepath, cos_path+filename, _http_headers, **kwargs):
-                    ret_code = False
-            else:
-                # single file upload
-                if self.upload_file(local_path=filepath, cos_path=cos_path+filename, _http_headers=_http_headers, **kwargs) is False:
-                    logger.info("Upload {file} fail".format(file=to_printable_str(filepath)))
-                    self._fail_num += 1
-                    ret_code = False
+        global _success_num
+        global _fail_num
+        _success_num = 0
+        _fail_num = 0
+        def recursive_upload_folder(_local_path, _cos_path,):
+            _local_path = to_unicode(_local_path)
+            _cos_path = to_unicode(_cos_path)
+            filelist = os.listdir(_local_path)
+            if _cos_path.endswith('/') is False:
+                _cos_path += "/"
+            if _local_path.endswith('/') is False:
+                _local_path += '/'
+            _cos_path = _cos_path.lstrip('/')
+            for filename in filelist:
+                filepath = os.path.join(_local_path, filename)
+                if os.path.isdir(filepath):
+                    recursive_upload_folder(filepath, _cos_path+filename, _http_headers, **kwargs)
                 else:
-                    self._file_num += 1
-                    logger.debug("Upload {file} success".format(file=to_printable_str(filepath)))
-        return ret_code
+                    if self.upload_file(local_path=filepath, cos_path=_cos_path+filename, _http_headers=_http_headers, **kwargs) is False:
+                        global _fail_num
+                        _fail_num += 1
+                        logger.debug("Upload {file} fail".format(file=to_printable_str(filepath)))
+                    else:
+                        global _success_num
+                        _success_num += 1
+                        logger.debug("Upload {file} success".format(file=to_printable_str(filepath)))
+        recursive_upload_folder(local_path, cos_path)
+        
+        logger.info("{files} files successful, {fail_files} files failed"
+                    .format(files=_success_num, fail_files=_fail_num))
+        if _fail_num == 0:
+            return True
+        else:
+            return False
+
 
     def upload_file(self, local_path, cos_path, _http_headers='{}', **kwargs):
         _md5 = ""
@@ -455,6 +464,11 @@ class Interface(object):
                                                 bucket=self._conf._bucket,
                                                 local_path=to_printable_str(local_path),
                                                 cos_path=to_printable_str(cos_path)))
+        for rule in kwargs['ignore']:
+            if fnmatch.fnmatch(local_path, rule) is True:
+                logger.info("This file matches the ignore rule, skip upload")
+                return True
+
         if kwargs['sync'] is True:
             if check_file_md5(local_path, cos_path):
                 logger.info("The file on cos is the same as the local file, skip upload")
@@ -1036,8 +1050,9 @@ class Interface(object):
         NextMarker = ""
         IsTruncated = "true"
         _file_num = 0
-        _have_finished = 0
+        _success_num = 0
         _fail_num = 0
+        _skip_num = 0
         cos_path = to_unicode(cos_path)
         while IsTruncated == "true":
             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
@@ -1056,11 +1071,11 @@ class Interface(object):
                     _local_path = to_unicode(_local_path)
                     if _cos_path.endswith('/'):
                         continue
-                    if self.download_file(_cos_path, _local_path, **kwargs) is True:
-                        _have_finished += 1
+                    rt = self.download_file(_cos_path, _local_path, **kwargs)
+                    if rt == True:
+                        _success_num += 1
                     else:
                         _fail_num += 1
-                    _file_num += 1
                     _file_num += 1
             else:
                 logger.warn(response_info(rt))
@@ -1069,8 +1084,8 @@ class Interface(object):
             logger.info("The directory does not exist")
             return False
         logger.info("{files} files successful, {fail_files} files failed"
-                    .format(files=_have_finished, fail_files=_fail_num))
-        if _file_num == _have_finished:
+                    .format(files=_success_num, fail_files=_fail_num))
+        if _file_num == _success_num:
             return True
         else:
             return False
@@ -1178,6 +1193,11 @@ class Interface(object):
                                                             bucket=self._conf._bucket,
                                                             local_path=to_printable_str(local_path),
                                                             cos_path=to_printable_str(cos_path)))
+        for rule in kwargs['ignore']:
+            if fnmatch.fnmatch(local_path, rule) is True:
+                logger.info("This file matches the ignore rule, skip download")
+                return True
+
         if kwargs['force'] is False:
             if os.path.isfile(local_path) is True:
                 if kwargs['sync'] is True:
@@ -1187,6 +1207,7 @@ class Interface(object):
                 else:
                     logger.warn("The file {file} already exists, please use -f to overwrite the file".format(file=to_printable_str(cos_path)))
                     return False
+
         url = self._conf.uri(path=cos_path)
         try:
             rt = self._session.head(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
