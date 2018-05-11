@@ -128,7 +128,7 @@ def change_to_human(_size):
 
 class CosConfig(object):
 
-    def __init__(self, appid, region, bucket, secret_id, secret_key, part_size=1, max_thread=5, schema='http', *args, **kwargs):
+    def __init__(self, appid, region, bucket, secret_id, secret_key, part_size=1, max_thread=5, schema='https', *args, **kwargs):
         self._appid = appid
         self._region = region
         self._bucket = bucket
@@ -146,7 +146,7 @@ class CosConfig(object):
 
     def uri(self, path=None):
         if path:
-            url = u"{schema}://cos.{region}.myqcloud.com/{bucket}-{uid}/{path}".format(
+            url = u"{schema}://{bucket}-{uid}.cos.{region}.myqcloud.com/{path}".format(
                 schema=self._schema,
                 bucket=self._bucket,
                 uid=self._appid,
@@ -154,7 +154,7 @@ class CosConfig(object):
                 path=to_unicode(path)
             )
         else:
-            url = u"{schema}://cos.{region}.myqcloud.com/{bucket}-{uid}".format(
+            url = u"{schema}://{bucket}-{uid}.cos.{region}.myqcloud.com/".format(
                 schema=self._schema,
                 bucket=self._bucket,
                 uid=self._appid,

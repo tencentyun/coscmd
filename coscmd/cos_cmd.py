@@ -109,7 +109,7 @@ def load_conf():
         try:
             schema = cp.get('common', 'schema')
         except:
-            schema = 'http'
+            schema = 'https'
         region = cp.get('common', 'region')
         if pre_appid != "":
             appid = pre_appid
