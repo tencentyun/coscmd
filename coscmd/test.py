@@ -17,16 +17,16 @@ file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000)) + "中文"
 
 def setUp():
     print "Test interface"
-    
-    os.system("coscmd config -a %s -s %s -b lewzylu06-1251668577 -r ap-beijing-1" % (access_id ,access_key))
-    os.system("coscmd createbucket")
+    os.system("python coscmd/cos_cmd.py config -a %s -s %s -b lewzylu06-1251668577 -r ap-beijing-1" % (access_id, access_key))
+    os.system("python coscmd/cos_cmd.py createbucket")
     time.sleep(5)
 
 
 def tearDown():
     """delete testbucket"""
-    os.system("coscmd delete -rf /")
+    os.system("python coscmd/cos_cmd.py delete -rf /")
     time.sleep(5)
+
 
 def gen_file(filePath, fileSize):
     ds = 0
@@ -41,7 +41,7 @@ def gen_file(filePath, fileSize):
 def test_upload_small_file():
     """test upload small file"""
     gen_file("tmp", 1.1)
-    rt = os.system("coscmd upload tmp tmp")
+    rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
     assert rt == 0
     os.remove("tmp")
 
@@ -49,7 +49,7 @@ def test_upload_small_file():
 def test_upload_big_file():
     """test upload small file"""
     gen_file("tmp", 5.1)
-    rt = os.system("coscmd upload tmp tmp")
+    rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
     assert rt == 0
     os.remove("tmp")
 
@@ -57,34 +57,32 @@ def test_upload_big_file():
 def test_download_file():
     """test download file"""
     gen_file("tmp", 7.1)
-    rt = os.system("coscmd upload tmp tmp")
+    rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
     assert rt == 0
-    rt = os.system("coscmd download -f tmp tmp_download")
+    rt = os.system("python coscmd/cos_cmd.py download -f tmp tmp_download")
     assert rt == 0
-    rt = os.system("fc tmp tmp_download")
-    assert rt == 0
-    rt = os.system("coscmd delete -f tmp")
+    rt = os.system("python coscmd/cos_cmd.py delete -f tmp")
     assert rt == 0
     os.remove("tmp")
 
 
 def test_bucketacl():
     """test bucketacl"""
-    rt = os.system("coscmd putbucketacl --grant-read anyone --grant-write anyone --grant-full-control 327874225")
+    rt = os.system("python coscmd/cos_cmd.py putbucketacl --grant-read anyone --grant-write anyone --grant-full-control 327874225")
     assert rt == 0
-    rt = os.system("coscmd getbucketacl")
+    rt = os.system("python coscmd/cos_cmd.py getbucketacl")
     assert rt == 0
 
 
 def test_objectacl():
     """test objectacl"""
     gen_file("tmp", 1.1)
-    rt = os.system("coscmd upload tmp tmp")
+    rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
     assert rt == 0
     os.remove("tmp")
-    rt = os.system("coscmd putobjectacl tmp --grant-read anyone --grant-write anyone --grant-full-control 327874225")
+    rt = os.system("python coscmd/cos_cmd.py putobjectacl tmp --grant-read anyone --grant-write anyone --grant-full-control 327874225")
     assert rt == 0
-    rt = os.system("coscmd getobjectacl tmp")
+    rt = os.system("python coscmd/cos_cmd.py getobjectacl tmp")
     assert rt == 0
 
 
@@ -98,11 +96,11 @@ def test_folder():
     gen_file("testfolder/tmp1", 1.1)
     gen_file("testfolder/tmp2", 1.1)
     gen_file("testfolder/tmp3", 1.1)
-    rt = os.system("coscmd upload -r testfolder testfolder")
+    rt = os.system("python coscmd/cos_cmd.py upload -r testfolder testfolder")
     assert rt == 0
-    rt = os.system("coscmd download -rf testfolder testfolder")
+    rt = os.system("python coscmd/cos_cmd.py download -rf testfolder testfolder")
     assert rt == 0
-    rt = os.system("coscmd delete -rf testfolder")
+    rt = os.system("python coscmd/cos_cmd.py delete -rf testfolder")
     assert rt == 0
     os.remove("testfolder/tmp1")
     os.remove("testfolder/tmp2")
