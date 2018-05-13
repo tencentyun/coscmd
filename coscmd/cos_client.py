@@ -458,7 +458,6 @@ class Interface(object):
         else:
             file_size = os.path.getsize(local_path)
         _md5 = get_file_md5(local_path)
-        print local_path
         logger.info(u"Upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
                                                     bucket=self._conf._bucket,
                                                     local_path=local_path,
