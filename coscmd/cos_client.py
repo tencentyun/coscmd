@@ -305,7 +305,7 @@ class Interface(object):
                         continue
                     if j+1 == self._retry:
                         return False
-                except Exception, e:
+                except Exception as e:
                     logger.warn(e)
                     logger.warn("Upload file failed")
             return False
@@ -458,18 +458,19 @@ class Interface(object):
         else:
             file_size = os.path.getsize(local_path)
         _md5 = get_file_md5(local_path)
-        logger.info(to_printable_str("Upload {local_path}   =>   cos://{bucket}/{cos_path} ").format(
-                                                bucket=self._conf._bucket,
-                                                local_path=to_printable_str(local_path),
-                                                cos_path=to_printable_str(cos_path)))
+        print local_path
+        logger.info(u"Upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
+                                                    bucket=self._conf._bucket,
+                                                    local_path=local_path,
+                                                    cos_path=cos_path))
         for rule in kwargs['ignore']:
             if fnmatch.fnmatch(local_path, rule) is True:
-                logger.info("This file matches the ignore rule, skip upload")
+                logger.info(u"This file matches the ignore rule, skip upload")
                 return True
 
         if kwargs['sync'] is True:
             if check_file_md5(local_path, cos_path):
-                logger.info("The file on cos is the same as the local file, skip upload")
+                logger.info(u"The file on cos is the same as the local file, skip upload")
                 return True
 
         if file_size <= self._conf._part_size * 1024 * 1024 + 1024:
@@ -480,21 +481,21 @@ class Interface(object):
         else:
             rt = init_multiupload()
             if rt:
-                logger.debug("Init multipart upload ok")
+                logger.debug(u"Init multipart upload ok")
             else:
-                logger.debug("Init multipart upload failed")
+                logger.debug(u"Init multipart upload failed")
                 return False
             rt = multiupload_parts()
             if rt:
-                logger.debug("Multipart upload ok")
+                logger.debug(u"Multipart upload ok")
             else:
-                logger.warn("Some partial upload failed. Please retry the last command to continue.")
+                logger.warn(u"Some partial upload failed. Please retry the last command to continue.")
                 return False
             rt = complete_multiupload()
             if rt:
-                logger.debug("Complete multipart upload ok")
+                logger.debug(u"Complete multipart upload ok")
             else:
-                logger.warn("Complete multipart upload failed")
+                logger.warn(u"Complete multipart upload failed")
                 return False
             return True
 
@@ -540,9 +541,9 @@ class Interface(object):
                 logger.warn(response_info(rt))
                 return False
         if _file_num == 0:
-            logger.info("The directory does not exist")
+            logger.info(u"The directory does not exist")
             return False
-        logger.info("Copy {success_files} files successful, {fail_files} files failed"
+        logger.info(u"Copy {success_files} files successful, {fail_files} files failed"
                     .format(success_files=_success_num, fail_files=_fail_num))
         if _file_num == _success_num:
             return True
@@ -560,10 +561,10 @@ class Interface(object):
                     rt = self._session.put(url=url,
                                            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
                     if rt.status_code == 200:
-                        logger.info("Copy {source_path}   =>   cos://{bucket}/{cos_path}  [100%]".format(
+                        logger.info(u"Copy {source_path}   =>   cos://{bucket}/{cos_path}  [100%]".format(
                                                                     bucket=self._conf._bucket,
-                                                                    source_path=to_printable_str(source_path),
-                                                                    cos_path=to_printable_str(cos_path)))
+                                                                    source_path=source_path,
+                                                                    cos_path=cos_path))
                         return True
                     else:
                         time.sleep(2**j)
@@ -571,9 +572,9 @@ class Interface(object):
                         continue
                     if j+1 == self._retry:
                         return False
-                except Exception, e:
+                except Exception as e:
                     logger.warn(e)
-                    logger.warn("Copy file failed")
+                    logger.warn(u"Copy file failed")
             return False
 
         def init_multiupload():
@@ -583,10 +584,10 @@ class Interface(object):
             self._upload_id = None
             http_header = dict()
             rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
-            logger.debug("Init resp, status code: {code}, headers: {headers}, text: {text}".format(
+            logger.debug(u"Init resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
                  headers=rt.headers,
-                 text=to_printable_str(rt.text)))
+                 text=rt.text))
 
             if rt.status_code == 200:
                 root = minidom.parseString(rt.content).documentElement
@@ -609,7 +610,7 @@ class Interface(object):
                     source_region = tmp[2]
                     source_cospath = tmp[-1]
                 except Exception:
-                    logger.warn("Source path format error")
+                    logger.warn(u"Source path format error")
                 return source_bucket, source_appid, source_region, source_cospath
 
             def copy_parts_data(source_path, offset, length, parts_size, idx):
@@ -621,12 +622,12 @@ class Interface(object):
                     rt = self._session.put(url=url,
                                            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
                                            headers=http_header)
-                    logger.debug("Copy part result: part{part}, round{round}, code: {code}, headers: {headers}, text: {text}".format(
+                    logger.debug(u"Copy part result: part{part}, round{round}, code: {code}, headers: {headers}, text: {text}".format(
                         part=idx,
                         round=j+1,
                         code=rt.status_code,
                         headers=rt.headers,
-                        text=to_printable_str(rt.text)))
+                        text=rt.texts))
                     root = minidom.parseString(rt.content).documentElement
                     self._md5[idx] = root.getElementsByTagName("ETag")[0].childNodes[0].data
                     if rt.status_code == 200:
@@ -638,7 +639,7 @@ class Interface(object):
                         time.sleep(2**j)
                         continue
                     if j+1 == self._retry:
-                        logger.warn("Upload part failed: part{part}, round{round}, code: {code}".format(part=idx, round=j+1, code=rt.status_code))
+                        logger.warn(u"Upload part failed: part{part}, round{round}, code: {code}".format(part=idx, round=j+1, code=rt.status_code))
                         return False
                 return True
 
@@ -654,12 +655,12 @@ class Interface(object):
             _max_thread = min(self._conf._max_thread, parts_num)
             pool = SimpleThreadPool(_max_thread)
 
-            logger.debug("chunk_size: " + str(chunk_size))
-            logger.debug('copy file concurrently')
-            logger.info("Copy {source_path}   =>   cos://{bucket}/{cos_path}".format(
+            logger.debug(u"chunk_size: " + str(chunk_size))
+            logger.debug(u'copy file concurrently')
+            logger.info(u"Copy {source_path}   =>   cos://{bucket}/{cos_path}".format(
                                                     bucket=self._conf._bucket,
-                                                    source_path=to_printable_str(source_path),
-                                                    cos_path=to_printable_str(cos_path)))
+                                                    source_path=source_path,
+                                                    cos_path=cos_path))
             self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
             if chunk_size >= file_size:
                 pool.add_task(copy_parts_data, source_path, offset, file_size, 1, 0)
@@ -680,7 +681,7 @@ class Interface(object):
                 return False
 
         def complete_multiupload():
-            logger.info('Completing multicopy, please wait')
+            logger.info(u"Completing multicopy, please wait")
             doc = minidom.Document()
             root = doc.createElement("CompleteMultipartUpload")
             list_md5 = sorted(self._md5.items(), key=lambda d: d[0])
@@ -695,12 +696,12 @@ class Interface(object):
                 root.appendChild(t)
                 data = root.toxml()
                 url = self._conf.uri(path=urllib.quote(to_printable_str(cos_path)))+"?uploadId={uploadid}".format(uploadid=self._upload_id)
-                logger.debug('Complete url: ' + url)
-                logger.debug("Complete data: " + data)
+                logger.debug(u"Complete url: " + url)
+                logger.debug(u"Complete data: " + data)
             try:
                 with closing(self._session.post(url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), data=data, stream=True)) as rt:
-                    logger.debug("Complete status code: {code}".format(code=rt.status_code))
-                    logger.debug("Complete headers: {headers}".format(headers=rt.headers))
+                    logger.debug(u"Complete status code: {code}".format(code=rt.status_code))
+                    logger.debug(u"Complete headers: {headers}".format(headers=rt.headers))
                 if rt.status_code == 200:
                     return True
                 else:
@@ -712,7 +713,7 @@ class Interface(object):
         source_path = urllib.quote(to_printable_str(source_path))
         rt = self._session.head(url="http://"+source_path, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
         if rt.status_code != 200:
-            logger.warn("Replication sources do not exist")
+            logger.warn(u"Replication sources do not exist")
             return False
         file_size = int(rt.headers['Content-Length'])
         if file_size < self._conf._part_size * 1024 * 1024 + 1024:
@@ -727,67 +728,20 @@ class Interface(object):
                     break
             else:
                 return False
-            logger.debug("Init multipart copy ok")
+            logger.debug(u"Init multipart copy ok")
 
             rt = copy_parts(file_size=file_size)
             if rt is False:
                 return False
-            logger.debug("Multipart copy ok")
+            logger.debug(u"Multipart copy ok")
             for _ in range(self._retry):
                 rt = complete_multiupload()
                 if rt:
-                    logger.debug("Complete multipart copy ok")
+                    logger.debug(u"Complete multipart copy ok")
                     return True
-            logger.warn("Complete multipart copy failed")
+            logger.warn(u"Complete multipart copy failed")
             return False
 
-#     def download_folder(self, cos_path, local_path, _force=False):
-#
-#         _file_num = 0
-#         _have_finished = 0
-#         _fail_num = 0
-#         NextMarker = ""
-#         IsTruncated = "true"
-#         if cos_path.endswith('/') is False:
-#             cos_path += '/'
-#         if local_path.endswith('/') is False:
-#             local_path += '/'
-#         cos_path = cos_path.lstrip('/')
-#         cos_path = to_unicode(cos_path)
-#         while IsTruncated == "true":
-#             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
-#                                  .format(prefix=urllib.quote(to_printable_str(cos_path)), nextmarker=urllib.quote(to_printable_str(NextMarker))))
-#             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
-#             if rt.status_code == 200:
-#                 root = minidom.parseString(rt.content).documentElement
-#                 IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-#                 if IsTruncated == 'true':
-#                     NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
-#                 fileset = root.getElementsByTagName("Contents")
-#                 for _file in fileset:
-#                     _cos_path = _file.getElementsByTagName("Key")[0].childNodes[0].data
-#                     _local_path = local_path + _cos_path[len(cos_path):]
-#                     _cos_path = to_unicode(_cos_path)
-#                     _local_path = to_unicode(_local_path)
-#                     if _cos_path.endswith('/'):
-#                         continue
-#                     if self.download_file(_cos_path, _local_path, _force) is True:
-#                         _have_finished += 1
-#                     else:
-#                         _fail_num += 1
-#                     _file_num += 1
-#             else:
-#                 logger.warn(response_info(rt))
-#                 return False
-#         if _file_num == 0:
-#             logger.info("The directory does not exist")
-#             return False
-#         logger.info("{files} files successful, {fail_files} files failed"
-#                     .format(files=_have_finished, fail_files=_fail_num))
-#         if _file_num == _have_finished:
-#             return True
-#         else:
-#             return False
     def delete_folder(self, cos_path, _force=False):
 
         cos_path = to_unicode(cos_path)
@@ -816,10 +770,10 @@ class Interface(object):
                         NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
                 except Exception as e:
                     logger.warn(str(e))
-                logger.debug("Init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                logger.debug(u"Init resp, status code: {code}, headers: {headers}, text: {text}".format(
                      code=rt.status_code,
                      headers=rt.headers,
-                     text=to_printable_str(rt.text)))
+                     text=rt.text))
                 contentset = root.getElementsByTagName("Key")
                 for content in contentset:
                     self._file_num += 1
@@ -869,26 +823,26 @@ class Interface(object):
                         NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
                 except Exception as e:
                     logger.warn(str(e))
-                logger.debug("Init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                logger.debug(u"Init resp, status code: {code}, headers: {headers}, text: {text}".format(
                      code=rt.status_code,
                      headers=rt.headers,
-                     text=to_printable_str(rt.text)))
+                     text=rt.text))
                 contentset = root.getElementsByTagName("Key")
                 for content in contentset:
                     file_name = to_unicode(content.childNodes[0].data)
                     if self.delete_file(file_name, True) is True:
-                        logger.info("Delete {file}".format(file=to_printable_str(file_name)))
+                        logger.info(u"Delete {file}".format(file=to_printable_str(file_name)))
                     else:
-                        logger.info("Delete {file} fail".format(file=to_printable_str(file_name)))
+                        logger.info(u"Delete {file} fail".format(file=to_printable_str(file_name)))
             else:
                 logger.warn(response_info(rt))
-                logger.debug("get folder error")
+                logger.debug(u"get folder error")
                 return False
         if self._file_num == 0:
-            logger.info("The directory does not exist")
+            logger.info(u"The directory does not exist")
             return False
 
-        logger.info("{files} files successful, {fail_files} files failed"
+        logger.info(u"{files} files successful, {fail_files} files failed"
                     .format(files=self._have_finished, fail_files=self._fail_num))
         if self._file_num == self._have_finished:
             return True
@@ -902,7 +856,7 @@ class Interface(object):
         url = self._conf.uri(path=urllib.quote(to_printable_str(cos_path)))
         try:
             rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
-            logger.debug("init resp, status code: {code}, headers: {headers}".format(
+            logger.debug(u"init resp, status code: {code}, headers: {headers}".format(
                  code=rt.status_code,
                  headers=rt.headers))
             if rt.status_code == 204 or rt.status_code == 200:
@@ -942,10 +896,10 @@ class Interface(object):
                 if IsTruncated == 'true':
                     NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
 
-                logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
                      code=rt.status_code,
                      headers=rt.headers,
-                     text=to_printable_str(rt.text)))
+                     text=rt.text))
                 folderset = root.getElementsByTagName("CommonPrefixes")
                 for _folder in folderset:
                     _time = ""
@@ -980,10 +934,10 @@ class Interface(object):
         else:
             self._total_size = str(self._total_size)
         if _recursive:
-            logger.info(" Files num: {file_num}".format(file_num=str(self._file_num)))
-            logger.info(" Files size: {file_size}".format(file_size=self._total_size))
+            logger.info(u" Files num: {file_num}".format(file_num=str(self._file_num)))
+            logger.info(u" Files size: {file_size}".format(file_size=self._total_size))
         if _all is False and self._file_num == _num:
-            logger.info("Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
+            logger.info(u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
         return True
 
     def info_object(self, cos_path, _human=False):
@@ -994,7 +948,7 @@ class Interface(object):
         logger.info("Info with : " + url)
         try:
             rt = self._session.head(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
-            logger.debug("info resp, status code: {code}, headers: {headers}".format(
+            logger.debug(u"info resp, status code: {code}, headers: {headers}".format(
                  code=rt.status_code,
                  headers=rt.headers))
             if rt.status_code == 200:
@@ -1008,7 +962,7 @@ class Interface(object):
                 url = self._conf.uri(cos_path+"?acl")
                 try:
                     rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
-                    logger.debug("get resp, status code: {code}, headers: {headers}".format(
+                    logger.debug(u"get resp, status code: {code}, headers: {headers}".format(
                          code=rt.status_code,
                          headers=rt.headers))
                     if rt.status_code == 200:
@@ -1079,9 +1033,9 @@ class Interface(object):
                 logger.warn(response_info(rt))
                 return False
         if _file_num == 0:
-            logger.info("The directory does not exist")
+            logger.info(u"The directory does not exist")
             return False
-        logger.info("{files} files successful, {fail_files} files failed"
+        logger.info(u"{files} files successful, {fail_files} files failed"
                     .format(files=_success_num, fail_files=_fail_num))
         if _file_num == _success_num:
             return True
@@ -1116,7 +1070,7 @@ class Interface(object):
                 if 'Content-Length' in rt.headers:
                     content_len = int(rt.headers['Content-Length'])
                 else:
-                    raise IOError("Download failed without Content-Length header")
+                    raise IOError(u"Download failed without Content-Length header")
                 if rt.status_code == 200:
                     with tqdm(total=content_len, unit='B', unit_scale=True) as self._pbar:
                         file_len = 0
@@ -1125,7 +1079,7 @@ class Interface(object):
                             try:
                                 os.makedirs(dir_path)
                             except Exception as e:
-                                raise Exception("Unable to create the corresponding folder")
+                                raise Exception(u"Unable to create the corresponding folder")
                         try:
                             with open(local_path, 'wb') as f:
                                 for chunk in rt.iter_content(chunk_size=1024):
@@ -1134,11 +1088,11 @@ class Interface(object):
                                         file_len += len(chunk)
                                         f.write(chunk)
                                 f.flush()
-                        except Exception, e:
-                            logger.warn("Fail to write to file")
+                        except Exception as e:
+                            logger.warn(u"Fail to write to file")
                             raise Exception(e)
                         if file_len != content_len:
-                            raise IOError("Download failed with incomplete file")
+                            raise IOError(u"Download failed with incomplete file")
                 else:
                     raise Exception(response_info(rt))
             except Exception as e:
@@ -1153,13 +1107,13 @@ class Interface(object):
                 http_header = {}
                 http_header['Range'] = 'bytes=' + str(offset) + "-" + str(offset+length-1)
                 rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header, stream=True)
-                logger.debug("get resp, status code: {code}, headers: {headers}".format(
+                logger.debug(u"get resp, status code: {code}, headers: {headers}".format(
                      code=rt.status_code,
                      headers=rt.headers))
                 if 'Content-Length' in rt.headers:
                     content_len = int(rt.headers['Content-Length'])
                 else:
-                    raise IOError("download failed without Content-Length header")
+                    raise IOError(u"Download failed without Content-Length header")
                 if rt.status_code in [206, 200]:
                     file_len = 0
                     dir_path = os.path.dirname(local_path)
@@ -1177,7 +1131,7 @@ class Interface(object):
                                 self._pbar.update(len(chunk))
                         f.flush()
                     if file_len != content_len:
-                        raise IOError("download failed with incomplete file")
+                        raise IOError(u"Download failed with incomplete file")
                     return True
                 else:
                     logger.warn(response_info(rt))
@@ -1187,29 +1141,29 @@ class Interface(object):
             return False
 
         cos_path = cos_path.lstrip('/')
-        logger.info("Download cos://{bucket}/{cos_path}   =>   {local_path}".format(
+        logger.info(u"Download cos://{bucket}/{cos_path}   =>   {local_path}".format(
                                                             bucket=self._conf._bucket,
-                                                            local_path=to_printable_str(local_path),
-                                                            cos_path=to_printable_str(cos_path)))
+                                                            local_path=local_path,
+                                                            cos_path=cos_path))
         for rule in kwargs['ignore']:
             if fnmatch.fnmatch(local_path, rule) is True:
-                logger.info("This file matches the ignore rule, skip download")
+                logger.info(u"This file matches the ignore rule, skip download")
                 return True
 
         if kwargs['force'] is False:
             if os.path.isfile(local_path) is True:
                 if kwargs['sync'] is True:
                     if check_file_md5(local_path, cos_path):
-                        logger.info("The file on cos is the same as the local file, skip download")
+                        logger.info(u"The file on cos is the same as the local file, skip download")
                         return True
                 else:
-                    logger.warn("The file {file} already exists, please use -f to overwrite the file".format(file=to_printable_str(cos_path)))
+                    logger.warn(u"The file {file} already exists, please use -f to overwrite the file".format(file=cos_path))
                     return False
 
         url = self._conf.uri(path=cos_path)
         try:
             rt = self._session.head(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
-            logger.debug("download resp, status code: {code}, headers: {headers}".format(
+            logger.debug(u"download resp, status code: {code}, headers: {headers}".format(
                  code=rt.status_code,
                  headers=rt.headers))
             if rt.status_code == 200:
@@ -1239,9 +1193,9 @@ class Interface(object):
                 parts_num += 1
             _max_thread = min(self._conf._max_thread, parts_num - self._have_finished)
             pool = SimpleThreadPool(_max_thread)
-            logger.debug("chunk_size: " + str(chunk_size))
-            logger.debug('download file concurrently')
-            logger.info("Downloading {file}".format(file=to_printable_str(local_path)))
+            logger.debug(u"chunk_size: " + str(chunk_size))
+            logger.debug(u'download file concurrently')
+            logger.info(u"Downloading {file}".format(file=to_printable_str(local_path)))
             self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
             for i in range(parts_num):
                 if i+1 == parts_num:
@@ -1253,7 +1207,7 @@ class Interface(object):
             result = pool.get_result()
             self._pbar.close()
             # complete
-            logger.info('Completing mget')
+            logger.info(u"Completing mget")
             if result['success_all'] is False:
                 return False
             try:
@@ -1271,7 +1225,7 @@ class Interface(object):
                                 offset += length
                         os.remove(file_name)
                     f.flush()
-            except Exception, e:
+            except Exception as e:
                 try:
                     os.remove(local_path)
                 except:
@@ -1303,7 +1257,7 @@ class Interface(object):
         http_header['Date'] = format_date_time(stamp)
         try:
             rt = self._session.post(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), data=data_xml, headers=http_header)
-            logger.debug("init resp, status code: {code}, headers: {headers}".format(
+            logger.debug(u"init resp, status code: {code}, headers: {headers}".format(
                  code=rt.status_code,
                  headers=rt.headers))
             if rt.status_code == 202 or rt.status_code == 200:
@@ -1331,7 +1285,7 @@ class Interface(object):
                 if len(i) > 0:
                     acl.append([i, "FULL_CONTROL"])
         url = self._conf.uri(cos_path+"?acl")
-        logger.info("Put with : " + url)
+        logger.info(u"Put with : " + url)
         try:
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
             if rt.status_code != 200:
@@ -1376,7 +1330,7 @@ class Interface(object):
 
             logger.debug(data)
             rt = self._session.put(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), data=data)
-            logger.debug("put resp, status code: {code}, headers: {headers}".format(
+            logger.debug(u"put resp, status code: {code}, headers: {headers}".format(
                 code=rt.status_code,
                 headers=rt.headers))
             if rt.status_code == 200:
@@ -1397,7 +1351,7 @@ class Interface(object):
         table.padding_width = 3
         try:
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
-            logger.debug("get resp, status code: {code}, headers: {headers}".format(
+            logger.debug(u"get resp, status code: {code}, headers: {headers}".format(
                  code=rt.status_code,
                  headers=rt.headers))
             root = minidom.parseString(rt.content).documentElement
@@ -1427,7 +1381,7 @@ class Interface(object):
         logger.debug("create bucket with : " + url)
         try:
             rt = self._session.put(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
-            logger.debug("put resp, status code: {code}, headers: {headers}, text: {text}".format(
+            logger.debug(u"put resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
                  headers=rt.headers,
                  text=rt.text))
@@ -1444,10 +1398,10 @@ class Interface(object):
     def delete_bucket(self):
         url = self._conf.uri(path='')
         self._have_finished = 0
-        logger.debug("delete bucket with : " + url)
+        logger.debug(u"delete bucket with : " + url)
         try:
             rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
-            logger.debug("delete resp, status code: {code}, headers: {headers}, text: {text}".format(
+            logger.debug(u"delete resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
                  headers=rt.headers,
                  text=rt.text))
@@ -1469,7 +1423,7 @@ class Interface(object):
         sizecount = 0
         while IsTruncated == "true":
             pagecount += 1
-            logger.info("Get bucket with page {page}".format(page=pagecount))
+            logger.info(u"Get bucket with page {page}".format(page=pagecount))
             url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}'.format(nextmarker=NextMarker))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
 
@@ -1479,10 +1433,10 @@ class Interface(object):
                 if IsTruncated == 'true':
                     NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
 
-                logger.debug("init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
                      code=rt.status_code,
                      headers=rt.headers,
-                     text=to_printable_str(rt.text)))
+                     text=rt.text))
                 contentset = root.getElementsByTagName("Contents")
                 for content in contentset:
                     filecount += 1
@@ -1494,9 +1448,9 @@ class Interface(object):
                 logger.warn(response_info(rt))
                 return False
 
-        logger.info("filecount: %d" % filecount)
-        logger.info("sizecount: %d" % sizecount)
-        logger.debug("get bucket success")
+        logger.info(u"filecount: %d" % filecount)
+        logger.info(u"sizecount: %d" % sizecount)
+        logger.debug(u"get bucket success")
         return True
 
     def put_bucket_acl(self, grant_read, grant_write, grant_full_control):
@@ -1535,7 +1489,7 @@ class Interface(object):
                     rootid = ID.split("/")[0]
                     subid = ID.split("/")[1]
                 else:
-                    logger.warn("ID format error!")
+                    logger.warn(u"ID format error!")
                     return False
                 if subid != "anyone":
                     subid = "uin/"+subid
@@ -1559,7 +1513,7 @@ class Interface(object):
 
             logger.debug(data)
             rt = self._session.put(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), data=data)
-            logger.debug("put resp, status code: {code}, headers: {headers}".format(
+            logger.debug(u"put resp, status code: {code}, headers: {headers}".format(
                 code=rt.status_code,
                 headers=rt.headers))
             if rt.status_code == 200:
@@ -1574,13 +1528,13 @@ class Interface(object):
 
     def get_bucket_acl(self):
         url = self._conf.uri("?acl")
-        logger.info("Get with : " + url)
+        logger.info(u"Get with : " + url)
         table = PrettyTable([self._conf._bucket, ""])
         table.align = "l"
         table.padding_width = 3
         try:
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
-            logger.debug("get resp, status code: {code}, headers: {headers}".format(
+            logger.debug(u"get resp, status code: {code}, headers: {headers}".format(
                  code=rt.status_code,
                  headers=rt.headers))
             root = minidom.parseString(rt.content).documentElement
