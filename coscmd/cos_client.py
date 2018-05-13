@@ -19,7 +19,6 @@ import yaml
 import fnmatch
 from tqdm import tqdm
 from wsgiref.handlers import format_date_time
-from __builtin__ import False
 logger = logging.getLogger(__name__)
 fs_coding = sys.getfilesystemencoding()
 
