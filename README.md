@@ -184,7 +184,7 @@ coscmd download -r /home/aaa/ bbb/aaa  //操作示例
 coscmd download -r /home/aaa/ bbb/  //操作示例
 coscmd download -rf / bbb/aaa  //覆盖下载当前bucket根目录下所有的文件
 coscmd download -rs / bbb/aaa  //同步下载当前bucket根目录下所有的文件，跳过md5校验相同的文件。
-coscmd upload -rs / bbb/aaa --ignore *.txt,*.doc //忽略.txt和.doc的后缀文件
+coscmd download -rs / bbb/aaa --ignore *.txt,*.doc //忽略.txt和.doc的后缀文件
 ```
 请将 "<>" 中的参数替换为您需要下载的 COS 上文件的路径（cospath），以及本地存储路径（localpath）。
 > **注意：** 
