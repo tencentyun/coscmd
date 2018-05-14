@@ -168,6 +168,7 @@ coscmd upload -rs /home/aaa/ /home/aaa --ignore *.txt,*.doc //忽略.txt和.doc�
 * 使用-s参数可以使用同步上传，跳过上传md5一致的文件(cos上的原文件必须是由1.8.3.2之后的COSCMD上传的，默认带有x-cos-meta-md5的header)
 * 使用-H参数设置HTTP header时，请务必保证格式为json，这里是个例子：`coscmd upload -H '{"Cache-Control":"max-age=31536000","Content-Language":"zh-CN"}' <localpath> <cospath>`
 * 在上传文件夹时，使用--ignore参数可以忽略某一类文件，支持shell通配规则，支持多条规则，用逗号分隔
+* 目前只支持上传最大40T的单文件
 
 ### 下载文件或文件夹
 - 下载文件命令如下：
