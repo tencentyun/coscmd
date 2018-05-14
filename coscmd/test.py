@@ -1,12 +1,14 @@
 # -*- coding=utf-8
-import cos_client
+import coscmd.cos_client
 import logging
 import random
 import shutil
 import sys
 import os
 import time
-reload(sys)
+import importlib
+
+importlib.reload(sys)
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
 access_id = os.environ["COS_KEY"]
@@ -16,7 +18,7 @@ file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000)) + "中文"
 
 
 def setUp():
-    print "Test interface"
+    print("Test interface")
     os.system("python coscmd/cos_cmd.py config -a %s -s %s -b lewzylu06-1251668577 -r ap-beijing-1" % (access_id, access_key))
     os.system("python coscmd/cos_cmd.py createbucket")
     time.sleep(5)
