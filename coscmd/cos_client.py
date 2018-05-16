@@ -1,14 +1,14 @@
 # -*- coding=utf-8
 from cos_auth import CosS3Auth
 from cos_threadpool import SimpleThreadPool
-from cos_comm import to_bytes
+from cos_comm import to_bytes, to_unicode, get_file_md5
 from prettytable import PrettyTable
 from os import path
 from contextlib import closing
 from xml.dom import minidom
-from hashlib import md5
 from six import text_type
 from six.moves.urllib.parse import quote
+from hashlib import md5
 import time
 import requests
 import logging
@@ -22,15 +22,6 @@ import fnmatch
 from tqdm import tqdm
 from wsgiref.handlers import format_date_time
 logger = logging.getLogger(__name__)
-fs_coding = sys.getfilesystemencoding()
-
-
-def to_unicode(s):
-    if isinstance(s, text_type):
-        return s
-    else:
-        return s.decode(fs_coding)
-
 
 def to_printable_str(s):
     if isinstance(s, text_type):
@@ -78,17 +69,6 @@ def query_yes_no(question, default="no"):
                              "(or 'y' or 'n').\n")
 
 
-def get_file_md5(local_path):
-    md5_value = md5()
-    with open(local_path, "rb") as f:
-        while True:
-            data = f.read(2048)
-            if not data:
-                break
-            md5_value.update(data)
-    return md5_value.hexdigest()
-
-
 def response_info(rt):
     request_id = "null"
     code = rt.status_code
@@ -96,12 +76,19 @@ def response_info(rt):
         root = minidom.parseString(rt.content).documentElement
         message = root.getElementsByTagName("Message")[0].childNodes[0].data
         request_id = root.getElementsByTagName("RequestId")[0].childNodes[0].data
+        
     except Exception:
-        message = "Not Found"
-    return ('''Error: [code {code}] {message}
+        message = u"Not Found"
+        
+    try:
+        if request_id == "null":
+            request_id = rt.headers['x-cos-request-id']
+    except:
+        pass
+    return (u'''Error: [code {code}] {message}
 RequestId: {request_id}'''.format(
                      code=code,
-                     message=to_printable_str(message),
+                     message=message,
                      request_id=to_printable_str(request_id)))
 
 
