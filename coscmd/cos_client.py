@@ -42,7 +42,7 @@ def getTagText(root, tag):
 def get_md5_filename(local_path, cos_path):
     ori_file = os.path.abspath(os.path.dirname(local_path)) + "!!!" + str(os.path.getsize(local_path)) + "!!!" + cos_path
     m = md5()
-    m.update(to_printable_str(ori_file))
+    m.update(to_bytes(ori_file))
     return os.path.expanduser('~/.tmp/' + m.hexdigest())
 
 
@@ -737,7 +737,7 @@ class Interface(object):
             cos_path = ""
         # make sure
         if _force is False:
-            if query_yes_no("WARN: you are deleting all files under cos_path '{cos_path}', please make sure".format(cos_path=to_printable_str(cos_path))) is False:
+            if query_yes_no(u"WARN: you are deleting all files under cos_path '{cos_path}', please make sure".format(cos_path=cos_path)) is False:
                 return False
         self._have_finished = 0
         self._fail_num = 0
@@ -777,25 +777,25 @@ class Interface(object):
 </Delete>'''
                 http_header = dict()
                 md5_ETag = md5()
-                md5_ETag.update(data_xml)
+                md5_ETag.update(to_bytes(data_xml))
                 md5_ETag = md5_ETag.digest()
                 http_header['Content-MD5'] = base64.b64encode(md5_ETag)
                 url_file = self._conf.uri(path="?delete")
                 rt = self._session.post(url=url_file, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), data=data_xml, headers=http_header)
                 if rt.status_code == 204 or rt.status_code == 200:
                     for file_name in file_list:
-                        logger.info("Delete {file}".format(file=to_printable_str(file_name)))
+                        logger.info(u"Delete {file}".format(file=file_name))
                     self._have_finished += len(file_list)
                 else:
                     for file_name in file_list:
-                        logger.info("Delete {file} fail".format(file=to_printable_str(file_name)))
+                        logger.info(u"Delete {file} fail".format(file=file_name))
                     self._fail_num += len(file_list)
             else:
                 logger.warn(response_info(rt))
                 logger.debug("get folder error")
                 return False
         # Clipping
-        logger.info("Delete the remaining files again")
+        logger.info(u"Delete the remaining files again")
         IsTruncated = "true"
         while IsTruncated == "true":
             data_xml = ""
@@ -839,7 +839,7 @@ class Interface(object):
 
     def delete_file(self, cos_path, _force=False):
         if _force is False:
-            if query_yes_no("WARN: you are deleting the file in the '{cos_path}' cos_path, please make sure".format(cos_path=to_printable_str(cos_path))) is False:
+            if query_yes_no(u"WARN: you are deleting the file in the '{cos_path}' cos_path, please make sure".format(cos_path=cos_path)) is False:
                 return False
         url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         try:
