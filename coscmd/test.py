@@ -87,7 +87,6 @@ def test_objectacl():
 
 def test_folder():
     """test objectacl"""
-    file_name = "tmp" + file_id + "_Smallfile"
     try:
         os.makedirs("testfolder/")
     except:
