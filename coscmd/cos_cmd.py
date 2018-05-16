@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from cos_client import CosConfig, CosS3Client
-from ConfigParser import SafeConfigParser
+from six.moves.configparser import SafeConfigParser
+from six import text_type
 from argparse import ArgumentParser
 from logging.handlers import RotatingFileHandler
 import sys
@@ -30,7 +31,7 @@ def concat_path(sorce_path, target_path):
 
 
 def to_printable_str(s):
-    if isinstance(s, unicode):
+    if isinstance(s, text_type):
         return s.encode(fs_coding)
     else:
         return s
@@ -139,9 +140,9 @@ class Op(object):
             args.cos_path = args.cos_path[1:]
         Interface = client.op_int()
 
-        if not isinstance(args.local_path, unicode):
+        if not isinstance(args.local_path, text_type):
             args.local_path = args.local_path.decode(fs_coding)
-        if not isinstance(args.cos_path, unicode):
+        if not isinstance(args.cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
 
         if not os.path.exists(args.local_path):
@@ -184,9 +185,9 @@ class Op(object):
         conf = load_conf()
         client = CosS3Client(conf)
         Interface = client.op_int()
-        if not isinstance(args.local_path, unicode):
+        if not isinstance(args.local_path, text_type):
             args.local_path = args.local_path.decode(fs_coding)
-        if not isinstance(args. cos_path, unicode):
+        if not isinstance(args. cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
         args.cos_path, args.local_path = concat_path(args.cos_path, args.local_path)
         kwargs = {}
@@ -222,7 +223,7 @@ class Op(object):
             args.cos_path = args.cos_path[1:]
         Interface = client.op_int()
 
-        if not isinstance(args. cos_path, unicode):
+        if not isinstance(args. cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
 
         if args.recursive:
@@ -252,9 +253,9 @@ class Op(object):
             args.cos_path = args.cos_path[1:]
         Interface = client.op_int()
         _, args.cos_path = concat_path(args.source_path, args.cos_path)
-        if not isinstance(args.source_path, unicode):
+        if not isinstance(args.source_path, text_type):
             args.source_path = args.source_path.decode(fs_coding)
-        if not isinstance(args.cos_path, unicode):
+        if not isinstance(args.cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
         if args.recursive:
             _, args.cos_path = concat_path(args.source_path, args.cos_path)
@@ -280,7 +281,7 @@ class Op(object):
         while args.cos_path.startswith('/'):
             args.cos_path = args.cos_path[1:]
 
-        if not isinstance(args. cos_path, unicode):
+        if not isinstance(args. cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
         Interface = client.op_int()
         if Interface.list_objects(cos_path=args.cos_path, _recursive=args.recursive, _all=args.all, _num=args.num, _human=args.human):
@@ -295,7 +296,7 @@ class Op(object):
         while args.cos_path.startswith('/'):
             args.cos_path = args.cos_path[1:]
 
-        if not isinstance(args. cos_path, unicode):
+        if not isinstance(args. cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
         Interface = client.op_int()
         if Interface.info_object(args.cos_path, _human=args.human):
@@ -310,7 +311,7 @@ class Op(object):
         while args.cos_path.startswith('/'):
             args.cos_path = args.cos_path[1:]
 
-        if not isinstance(args. cos_path, unicode):
+        if not isinstance(args. cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
         Interface = client.op_int()
         if Interface.restore_object(cos_path=args.cos_path, _day=args.day, _tier=args.tier):
@@ -322,7 +323,7 @@ class Op(object):
     def signurl(args):
         conf = load_conf()
         client = CosS3Client(conf)
-        if not isinstance(args.cos_path, unicode):
+        if not isinstance(args.cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
         while args.cos_path.startswith('/'):
             args.cos_path = args.cos_path[1:]
@@ -341,7 +342,7 @@ class Op(object):
         client = CosS3Client(conf)
         while args.cos_path.startswith('/'):
             args.cos_path = args.cos_path[1:]
-        if not isinstance(args. cos_path, unicode):
+        if not isinstance(args. cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
         Interface = client.op_int()
         rt = Interface.put_object_acl(args.grant_read, args.grant_write, args.grant_full_control, args.cos_path)
@@ -357,7 +358,7 @@ class Op(object):
         client = CosS3Client(conf)
         while args.cos_path.startswith('/'):
             args.cos_path = args.cos_path[1:]
-        if not isinstance(args. cos_path, unicode):
+        if not isinstance(args. cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
         Interface = client.op_int()
 
