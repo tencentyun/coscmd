@@ -96,6 +96,8 @@ def test_folder():
     assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py copy -r %s.cos.ap-beijing-1.myqcloud.com/testfolder testfolder2" % bucket_name)
     assert rt == 0
+    rt = os.system("python coscmd/cos_cmd.py list")
+    assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py delete -rf testfolder")
     assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py delete -rf testfolder2")
@@ -104,6 +106,7 @@ def test_folder():
     os.remove("testfolder/tmp2")
     os.remove("testfolder/tmp3")
     os.removedirs("testfolder/")
+
 
 if __name__ == "__main__":
     setUp()
