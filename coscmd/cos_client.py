@@ -311,10 +311,13 @@ class Interface(object):
                 with open(self._path_md5, 'rb') as f:
                     self._upload_id = f.read()
                 if self.list_part(cos_path) is True:
-                    logger.info("Continue uploading from last breakpoint")
+                    logger.info(u"Continue uploading from last breakpoint")
                     return True
             http_header = _http_header
-            http_header['x-cos-meta-md5'] = _md5
+            if kwargs['skipmd5'] is False:            
+                logger.info(u"MD5 is being calculated, please wait")
+                _md5 = get_file_md5(local_path)
+                http_header['x-cos-meta-md5'] = _md5
             rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
             logger.debug("Init resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
@@ -446,7 +449,6 @@ class Interface(object):
             file_size = 0
         else:
             file_size = os.path.getsize(local_path)
-        _md5 = get_file_md5(local_path)
         logger.info(u"Upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
                                                     bucket=self._conf._bucket,
                                                     local_path=local_path,
