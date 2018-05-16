@@ -23,6 +23,7 @@ from tqdm import tqdm
 from wsgiref.handlers import format_date_time
 logger = logging.getLogger(__name__)
 
+
 def to_printable_str(s):
     if isinstance(s, text_type):
         return s.encode('utf-8')
@@ -76,10 +77,9 @@ def response_info(rt):
         root = minidom.parseString(rt.content).documentElement
         message = root.getElementsByTagName("Message")[0].childNodes[0].data
         request_id = root.getElementsByTagName("RequestId")[0].childNodes[0].data
-        
     except Exception:
         message = u"Not Found"
-        
+
     try:
         if request_id == "null":
             request_id = rt.headers['x-cos-request-id']

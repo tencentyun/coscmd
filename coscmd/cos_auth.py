@@ -6,7 +6,7 @@ import hashlib
 import logging
 import requests
 import cos_global
-from six.moves.urllib.parse import quote,urlparse,unquote,urlencode
+from six.moves.urllib.parse import quote, urlparse, unquote, urlencode
 from requests.auth import AuthBase
 from cos_comm import to_bytes
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ class CosS3Auth(AuthBase):
 
         str_to_sign = "sha1\n{time}\n{sha1}\n".format(time=sign_time, sha1=sha1.hexdigest())
         logger.debug('str_to_sign: ' + str(str_to_sign))
-        
+
         sign_key = hmac.new(to_bytes(self._secret_key), to_bytes(sign_time), hashlib.sha1).hexdigest()
         sign = hmac.new(to_bytes(sign_key), to_bytes(str_to_sign), hashlib.sha1).hexdigest()
         logger.debug('sign_key: ' + str(sign_key))

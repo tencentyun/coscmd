@@ -2,6 +2,7 @@
 from six import text_type, binary_type
 from hashlib import md5
 
+
 def to_bytes(s):
     """将字符串转为bytes"""
     if isinstance(s, text_type):
