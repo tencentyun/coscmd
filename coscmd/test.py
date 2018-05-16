@@ -16,7 +16,7 @@ file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000)) + "中文"
 
 
 def setUp():
-    print "Test interface"
+    """Test interface"""
     os.system("python coscmd/cos_cmd.py config -a %s -s %s -b lewzylu06-1251668577 -r ap-beijing-1" % (access_id, access_key))
     os.system("python coscmd/cos_cmd.py createbucket")
     time.sleep(5)
@@ -35,7 +35,6 @@ def gen_file(filePath, fileSize):
             f.write(str(round(random.uniform(-1000, 1000), 2)))
             f.write("\n")
             ds = os.path.getsize(filePath)
-    # print(os.path.getsize(filePath))
 
 
 def test_upload_small_file():

@@ -909,9 +909,9 @@ class Interface(object):
                     if self._file_num == _num:
                         break
                 try:
-                    print (unicode(table))
+                    print(unicode(table))
                 except Exception:
-                    print (table)
+                    print(table)
                 if self._file_num == _num:
                     break
             else:
@@ -968,9 +968,9 @@ class Interface(object):
                     logger.warn(str(e))
                     return False
                 try:
-                    print (unicode(table))
+                    print(unicode(table))
                 except Exception as e:
-                    print (table)
+                    print(table)
                 return True
             else:
                 logger.warn(response_info(rt))
@@ -1351,9 +1351,9 @@ class Interface(object):
                     table.add_row(['ACL', ("%s: %s" % ('anyone', grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
             if rt.status_code == 200:
                 try:
-                    print (unicode(table))
+                    print(unicode(table))
                 except Exception as e:
-                    print (table)
+                    print(table)
                 return True
             else:
                 logger.warn(response_info(rt))
@@ -1429,7 +1429,7 @@ class Interface(object):
                 for content in contentset:
                     filecount += 1
                     sizecount += int(content.getElementsByTagName("Size")[0].childNodes[0].data)
-                    print (to_printable_str(content.toxml()))
+                    print(to_printable_str(content.toxml()))
                     if filecount == max_keys:
                         break
             else:
@@ -1534,9 +1534,9 @@ class Interface(object):
                     table.add_row(['ACL', ("%s: %s" % ('anyone', grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
             if rt.status_code == 200:
                 try:
-                    print (unicode(table))
+                    print(unicode(table))
                 except Exception as e:
-                    print (table)
+                    print(table)
                 return True
             else:
                 logger.warn(response_info(rt))
