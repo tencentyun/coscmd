@@ -1,8 +1,6 @@
 # -*- coding=utf-8
-import cos_client
 import logging
 import random
-import shutil
 import sys
 import os
 import time
