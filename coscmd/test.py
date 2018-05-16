@@ -12,12 +12,12 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s -
 access_id = os.environ["COS_KEY"]
 access_key = os.environ["COS_SECRET"]
 test_num = 2
-file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000)) + "中文"
 
 
 def setUp():
     """Test interface"""
-    os.system("python coscmd/cos_cmd.py config -a %s -s %s -b lewzylu06-1251668577 -r ap-beijing-1" % (access_id, access_key))
+    bucket_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
+    os.system("python coscmd/cos_cmd.py config -a %s -s %s -b lewzylu%s-1251668577 -r ap-beijing-1" % (access_id, access_key, bucket_id))
     os.system("python coscmd/cos_cmd.py createbucket")
     time.sleep(5)
 
