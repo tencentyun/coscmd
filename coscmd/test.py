@@ -4,12 +4,10 @@ import random
 import sys
 import os
 import time
-reload(sys)
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
 access_id = os.environ["COS_KEY"]
 access_key = os.environ["COS_SECRET"]
-test_num = 2
 
 
 def setUp():
