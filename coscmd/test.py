@@ -1,23 +1,19 @@
 # -*- coding=utf-8
-import cos_client
 import logging
 import random
-import shutil
 import sys
 import os
 import time
-reload(sys)
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
 access_id = os.environ["COS_KEY"]
 access_key = os.environ["COS_SECRET"]
-test_num = 2
-file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000)) + "中文"
+bucket_name = "lewzylu" + str(random.randint(0, 1000)) + str(random.randint(0, 1000)) + "-1251668577"
 
 
 def setUp():
-    print "Test interface"
-    os.system("python coscmd/cos_cmd.py config -a %s -s %s -b lewzylu06-1251668577 -r ap-beijing-1" % (access_id, access_key))
+    """Test interface"""
+    os.system("python coscmd/cos_cmd.py config -a %s -s %s -b %s -r ap-beijing-1" % (access_id, access_key, bucket_name))
     os.system("python coscmd/cos_cmd.py createbucket")
     time.sleep(5)
 
@@ -35,7 +31,6 @@ def gen_file(filePath, fileSize):
             f.write(str(round(random.uniform(-1000, 1000), 2)))
             f.write("\n")
             ds = os.path.getsize(filePath)
-    # print(os.path.getsize(filePath))
 
 
 def test_upload_small_file():
@@ -88,7 +83,6 @@ def test_objectacl():
 
 def test_folder():
     """test objectacl"""
-    file_name = "tmp" + file_id + "_Smallfile"
     try:
         os.makedirs("testfolder/")
     except:
@@ -100,12 +94,19 @@ def test_folder():
     assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py download -rf testfolder testfolder")
     assert rt == 0
+    rt = os.system("python coscmd/cos_cmd.py copy -r %s.cos.ap-beijing-1.myqcloud.com/testfolder testfolder2" % bucket_name)
+    assert rt == 0
+    rt = os.system("python coscmd/cos_cmd.py list")
+    assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py delete -rf testfolder")
+    assert rt == 0
+    rt = os.system("python coscmd/cos_cmd.py delete -rf testfolder2")
     assert rt == 0
     os.remove("testfolder/tmp1")
     os.remove("testfolder/tmp2")
     os.remove("testfolder/tmp3")
     os.removedirs("testfolder/")
+
 
 if __name__ == "__main__":
     setUp()
