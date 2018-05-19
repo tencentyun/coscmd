@@ -315,7 +315,7 @@ class Interface(object):
                     return True
             http_header = _http_header
             if kwargs['skipmd5'] is False:            
-                logger.info(u"MD5 is being calculated, please wait。If you do not need to calculate md5, you can use --skipmd5 to skip")
+                logger.info(u"MD5 is being calculated, please wait. If you do not need to calculate md5, you can use --skipmd5 to skip")
                 _md5 = get_file_md5(local_path)
                 http_header['x-cos-meta-md5'] = _md5
             rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
