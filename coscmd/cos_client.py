@@ -267,7 +267,7 @@ class Interface(object):
             if tmp.st_size != int(rt.headers['Content-Length']):
                 return False
             else:
-                if 'x-cos-meta-md5' not in rt.headers or get_file_md5(_local_path) != rt.headers['x-cos-meta-md5']:
+                if 'x-cos-meta-md5' not in rt.headers or _md5 != rt.headers['x-cos-meta-md5']:
                     return False
                 else:
                     return True
@@ -314,10 +314,7 @@ class Interface(object):
                     logger.info(u"Continue uploading from last breakpoint")
                     return True
             http_header = _http_header
-            if kwargs['skipmd5'] is False:
-                logger.info(u"MD5 is being calculated, please wait. If you do not need to calculate md5, you can use --skipmd5 to skip")
-                _md5 = get_file_md5(local_path)
-                http_header['x-cos-meta-md5'] = _md5
+            http_header['x-cos-meta-md5'] = _md5
             rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
             logger.debug("Init resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
@@ -462,6 +459,11 @@ class Interface(object):
             if check_file_md5(local_path, cos_path):
                 logger.info(u"The file on cos is the same as the local file, skip upload")
                 return True
+
+        if kwargs['skipmd5'] is False:
+            if file_size > 5 * 1024 * 1024 * 1024:
+                logger.info(u"MD5 is being calculated, please wait. If you do not need to calculate md5, you can use --skipmd5 to skip")
+            _md5 = get_file_md5(local_path)
 
         if file_size <= self._conf._part_size * 1024 * 1024 + 1024:
             for _ in range(self._retry):
