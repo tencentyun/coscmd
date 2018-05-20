@@ -11,6 +11,8 @@ def requirements():
 
         if version[0] == 2 and version[1] == 6:
             requirements.append("argparse==1.4.0")
+        if version[0] == 3:
+            requirements.append("argparse==1.1")
         return requirements
 
 

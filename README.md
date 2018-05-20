@@ -1,3 +1,5 @@
+# COSCMD
+[![Build Status](https://travis-ci.org/tencentyun/coscmd.svg?branch=master)](https://travis-ci.org/tencentyun/coscmd)
 ## 功能说明
 使用 COSCMD 工具，用户可通过简单的命令行指令实现对对象（Object）的批量上传、下载、删除等操作。
 ## 使用限制
@@ -7,7 +9,7 @@
 Windows 或 Linux 系统
 (请保证本地字符格式为utf-8，否则操作中文文件会出现异常)
 ### 软件依赖
-Python 2.7 
+Python 2.6/2.7/3.5/3.6 
 并装有最新版本的 pip
 #### 安装及配置
 环境安装与配置详细操作请参考 [Python 安装与配置](https://cloud.tencent.com/document/product/436/10866)。

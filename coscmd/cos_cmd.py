@@ -155,6 +155,7 @@ class Op(object):
         args.local_path, args.cos_path = concat_path(args.local_path, args.cos_path)
         kwargs = {}
         kwargs['sync'] = args.sync
+        kwargs['skipmd5'] = args.skipmd5
         kwargs['ignore'] = args.ignore.split(',')
         if args.recursive:
             if os.path.isfile(args.local_path) is True:
@@ -458,6 +459,7 @@ def command_thread():
     parser_upload.add_argument('-H', '--headers', help="set HTTP headers", type=str, default='{}')
     parser_upload.add_argument('-s', '--sync', help="Upload and skip the same file", action="store_true", default=False)
     parser_upload.add_argument('--ignore', help='Set ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
+    parser_upload.add_argument('--skipmd5', help='upload without x-cos-meta-md5', action="store_true", default=False)
     parser_upload.set_defaults(func=Op.upload)
 
     parser_download = sub_parser.add_parser("download", help="download file from COS to local.")
