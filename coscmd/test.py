@@ -21,6 +21,7 @@ def setUp():
 def tearDown():
     """delete testbucket"""
     os.system("python coscmd/cos_cmd.py delete -rf /")
+    os.system("python coscmd/cos_cmd.py deletebucket")
     time.sleep(5)
 
 
