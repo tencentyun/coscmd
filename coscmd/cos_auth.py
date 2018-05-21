@@ -5,10 +5,9 @@ import urllib
 import hashlib
 import logging
 import requests
-import cos_global
 from six.moves.urllib.parse import quote, urlparse, unquote, urlencode
 from requests.auth import AuthBase
-from cos_comm import to_bytes
+from coscmd.cos_comm import to_bytes
 logger = logging.getLogger(__name__)
 
 

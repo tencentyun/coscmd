@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 from platform import python_version_tuple
-from coscmd import cos_global
+from coscmd.cos_global import Version
 
 
 def requirements():
@@ -17,13 +17,13 @@ def requirements():
 
 
 def long_description():
-    with open('README.md', 'r') as fileobj:
-        return fileobj.read()
+    with open('README.md', 'rb') as fileobj:
+        return fileobj.read().decode('utf8')
 
 
 setup(
     name='coscmd',
-    version=cos_global.Version,
+    version=Version,
     url='https://www.qcloud.com/',
     license='MIT',
     author='lewzylu',
