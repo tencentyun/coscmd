@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from cos_client import CosConfig, CosS3Client
 from six.moves.configparser import SafeConfigParser
 from six import text_type
 from argparse import ArgumentParser
@@ -8,7 +7,14 @@ import sys
 import logging
 import os
 from threading import Thread
-import cos_global
+
+if sys.version > '3':
+    from coscmd.cos_client import CosConfig, CosS3Client
+    from coscmd.cos_global import Version
+else:
+    from cos_client import CosConfig, CosS3Client
+    from cos_global import Version
+
 logger = logging.getLogger(__name__)
 
 fs_coding = sys.getfilesystemencoding()
@@ -539,7 +545,7 @@ def command_thread():
     parser_get_bucket_acl = sub_parser.add_parser("getbucketacl", help='get bucket acl')
     parser_get_bucket_acl.set_defaults(func=Op.get_bucket_acl)
 
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + cos_global.Version)
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + Version)
 
     args = parser.parse_args()
 
@@ -564,9 +570,11 @@ def command_thread():
         pre_bucket = pre_bucket[:-1]
     except Exception:
         logger.warn("set bucket error")
-
-    res = args.func(args)
-    return res
+    try:
+        res = args.func(args)
+        return res
+    except:
+        return 0
 
 
 def main_thread():

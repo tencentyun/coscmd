@@ -1,7 +1,4 @@
 # -*- coding=utf-8
-from cos_auth import CosS3Auth
-from cos_threadpool import SimpleThreadPool
-from cos_comm import to_bytes, to_unicode, get_file_md5
 from prettytable import PrettyTable
 from os import path
 from contextlib import closing
@@ -21,6 +18,16 @@ import yaml
 import fnmatch
 from tqdm import tqdm
 from wsgiref.handlers import format_date_time
+
+if sys.version > '3':
+    from coscmd.cos_auth import CosS3Auth
+    from coscmd.cos_threadpool import SimpleThreadPool
+    from coscmd.cos_comm import to_bytes, to_unicode, get_file_md5
+else:
+    from cos_auth import CosS3Auth
+    from cos_threadpool import SimpleThreadPool
+    from cos_comm import to_bytes, to_unicode, get_file_md5
+
 logger = logging.getLogger(__name__)
 
 
@@ -314,7 +321,10 @@ class Interface(object):
                     logger.info(u"Continue uploading from last breakpoint")
                     return True
             http_header = _http_header
-            http_header['x-cos-meta-md5'] = _md5
+            if kwargs['skipmd5'] is False:
+                logger.info(u"MD5 is being calculated, please wait. If you do not need to calculate md5, you can use --skipmd5 to skip")
+                _md5 = get_file_md5(local_path)
+                http_header['x-cos-meta-md5'] = _md5
             rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
             logger.debug("Init resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
