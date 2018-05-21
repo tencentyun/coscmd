@@ -571,7 +571,7 @@ def command_thread():
     except Exception:
         logger.warn("set bucket error")
     try:
-        res = args.func(args)    
+        res = args.func(args)
         return res
     except:
         return 0
