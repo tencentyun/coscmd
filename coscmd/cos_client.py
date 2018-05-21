@@ -1,7 +1,4 @@
 # -*- coding=utf-8
-from coscmd.cos_auth import CosS3Auth
-from coscmd.cos_threadpool import SimpleThreadPool
-from coscmd.cos_comm import to_bytes, to_unicode, get_file_md5
 from prettytable import PrettyTable
 from os import path
 from contextlib import closing
@@ -21,6 +18,16 @@ import yaml
 import fnmatch
 from tqdm import tqdm
 from wsgiref.handlers import format_date_time
+
+if sys.version > '3':
+    from coscmd.cos_auth import CosS3Auth
+    from coscmd.cos_threadpool import SimpleThreadPool
+    from coscmd.cos_comm import to_bytes, to_unicode, get_file_md5
+else:
+    from cos_auth import CosS3Auth
+    from cos_threadpool import SimpleThreadPool
+    from cos_comm import to_bytes, to_unicode, get_file_md5
+
 logger = logging.getLogger(__name__)
 
 

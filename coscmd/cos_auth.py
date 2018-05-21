@@ -5,10 +5,17 @@ import urllib
 import hashlib
 import logging
 import requests
-from coscmd.cos_global import Version
+import sys
 from six.moves.urllib.parse import quote, urlparse, unquote, urlencode
 from requests.auth import AuthBase
-from coscmd.cos_comm import to_bytes
+
+if sys.version > '3':
+    from coscmd.cos_global import Version
+    from coscmd.cos_comm import to_bytes
+else:
+    from cos_global import Version
+    from cos_comm import to_bytes
+
 logger = logging.getLogger(__name__)
 
 

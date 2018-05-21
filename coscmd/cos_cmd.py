@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from coscmd.cos_client import CosConfig, CosS3Client
-from coscmd.cos_global import Version
 from six.moves.configparser import SafeConfigParser
 from six import text_type
 from argparse import ArgumentParser
@@ -9,6 +7,14 @@ import sys
 import logging
 import os
 from threading import Thread
+
+if sys.version > '3':
+    from coscmd.cos_client import CosConfig, CosS3Client
+    from coscmd.cos_global import Version
+else:
+    from cos_client import CosConfig, CosS3Client
+    from cos_global import Version
+
 logger = logging.getLogger(__name__)
 
 fs_coding = sys.getfilesystemencoding()
