@@ -5,6 +5,7 @@ import urllib
 import hashlib
 import logging
 import requests
+from coscmd.cos_global import Version
 from six.moves.urllib.parse import quote, urlparse, unquote, urlencode
 from requests.auth import AuthBase
 from coscmd.cos_comm import to_bytes
@@ -66,7 +67,7 @@ class CosS3Auth(AuthBase):
             headers=';'.join(sorted(headers.keys())),
             sign=sign
         )
-        r.headers['User-agent'] = 'coscmd-v' + cos_global.Version
+        r.headers['User-agent'] = 'coscmd-v' + Version
         logger.debug("sign_key" + str(sign_key))
         logger.debug(r.headers['Authorization'])
 
