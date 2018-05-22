@@ -56,6 +56,10 @@ def config(args):
         cp.set('common', 'part_size', str(args.part_size))
         if args.appid != "":
             cp.set('common', 'appid', args.appid)
+        if args.use_http:
+            cp.set('common', 'schema', 'http')
+        else:
+            cp.set('common', 'schema', 'https')
         cp.write(f)
         logger.info("Created configuration file in {path}".format(path=to_printable_str(conf_path)))
 
@@ -465,6 +469,7 @@ def command_thread():
     parser_config.add_argument('-m', '--max_thread', help='specify the number of threads (default 5)', type=int, default=5)
     parser_config.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1)
     parser_config.add_argument('-u', '--appid', help='specify your appid', type=str, default="")
+    parser_config.add_argument('--do-not-use-ssl', help="use http://", action="store_true", default=False, dest="use_http")
     parser_config.set_defaults(func=config)
 
     parser_upload = sub_parser.add_parser("upload", help="upload file or directory to COS.")
