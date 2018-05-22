@@ -54,16 +54,25 @@ def config(args):
         cp.set('common', 'secret_id', args.secret_id)
         cp.set('common', 'secret_key', args.secret_key)
         cp.set('common', 'bucket', args.bucket)
-        cp.set('common', 'region', args.region)
+        if args.region:
+            cp.set('common', 'region', args.region)
+        else:
+            cp.set('common', 'endpoint', args.endpoint)
         cp.set('common', 'max_thread', str(args.max_thread))
         cp.set('common', 'part_size', str(args.part_size))
         if args.appid != "":
             cp.set('common', 'appid', args.appid)
+        if args.use_http:
+            cp.set('common', 'schema', 'http')
+        else:
+            cp.set('common', 'schema', 'https')
         cp.write(f)
         logger.info("Created configuration file in {path}".format(path=to_printable_str(conf_path)))
 
 
 def compatible(region):
+    if region is None:
+        return None
     _dict = {'tj': 'ap-beijing-1', 'bj': 'ap-beijing', 'gz': 'ap-guangzhou', 'sh': 'ap-shanghai',
              'cd': 'ap-chengdu', 'spg': 'ap-singapore', 'hk': 'ap-hongkong', 'ca': 'na-toronto', 'ger': 'eu-frankfurt',
              'cn-south': 'ap-guangzhou', 'cn-north': 'ap-beijing-1'}
@@ -117,7 +126,12 @@ def load_conf():
             schema = cp.get('common', 'schema')
         except:
             schema = 'https'
-        region = cp.get('common', 'region')
+        region, endpoint = None, None
+        if cp.has_option('common', 'region'):
+            region = cp.get('common', 'region')
+        else:
+            endpoint = cp.get('common', 'endpoint')
+
         if pre_appid != "":
             appid = pre_appid
         if pre_bucket != "":
@@ -129,6 +143,7 @@ def load_conf():
             secret_id=secret_id,
             secret_key=cp.get('common', 'secret_key'),
             region=compatible(region),
+            endpoint=endpoint,
             bucket=bucket,
             part_size=part_size,
             max_thread=max_thread,
@@ -452,10 +467,15 @@ def command_thread():
     parser_config.add_argument('-a', '--secret_id', help='specify your secret id', type=str, required=True)
     parser_config.add_argument('-s', '--secret_key', help='specify your secret key', type=str, required=True)
     parser_config.add_argument('-b', '--bucket', help='specify your bucket', type=str, required=True)
-    parser_config.add_argument('-r', '--region', help='specify your region', type=str, required=True)
+
+    group = parser_config.add_mutually_exclusive_group(required=True)
+    group.add_argument('-r', '--region', help='specify your region', type=str)
+    group.add_argument('-e', '--endpoint', help='specify COS endpoint', type=str)
+
     parser_config.add_argument('-m', '--max_thread', help='specify the number of threads (default 5)', type=int, default=5)
     parser_config.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1)
     parser_config.add_argument('-u', '--appid', help='specify your appid', type=str, default="")
+    parser_config.add_argument('--do-not-use-ssl', help="use http://", action="store_true", default=False, dest="use_http")
     parser_config.set_defaults(func=config)
 
     parser_upload = sub_parser.add_parser("upload", help="upload file or directory to COS.")
