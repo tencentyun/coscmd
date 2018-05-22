@@ -33,6 +33,8 @@ def concat_path(sorce_path, target_path):
     if target_path.endswith('/') is True:
         target_path += sorce_path.split('/')[-2]
     sorce_path = sorce_path[:-1]
+    if target_path.startswith('/'):
+        target_path = target_path[1:]
     return sorce_path, target_path
 
 
@@ -159,6 +161,8 @@ class Op(object):
         client = CosS3Client(conf)
         while args.cos_path.startswith('/'):
             args.cos_path = args.cos_path[1:]
+        if args.cos_path == "":
+            args.cos_path = "/"
         Interface = client.op_int()
 
         if not isinstance(args.local_path, text_type):
