@@ -619,7 +619,7 @@ class Interface(object):
                         round=j+1,
                         code=rt.status_code,
                         headers=rt.headers,
-                        text=rt.texts))
+                        text=rt.text))
                     root = minidom.parseString(rt.content).documentElement
                     self._md5[idx] = root.getElementsByTagName("ETag")[0].childNodes[0].data
                     if rt.status_code == 200:
