@@ -13,6 +13,7 @@ bucket_name = "lewzylu" + str(random.randint(0, 1000)) + str(random.randint(0, 1
 
 def setUp():
     """Test interface"""
+    os.system("pip install coscmd")
     os.system("python coscmd/cos_cmd.py config -a %s -s %s -b %s -r ap-beijing-1" % (access_id, access_key, bucket_name))
     os.system("python coscmd/cos_cmd.py createbucket")
     time.sleep(5)
