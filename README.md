@@ -14,12 +14,8 @@ Python 2.6/2.7/3.5/3.6
 #### 安装及配置
 环境安装与配置详细操作请参考 [Python 安装与配置](https://cloud.tencent.com/document/product/436/10866)。
 ## 下载与安装
-- **手动安装**
+- **源码地址**
 下载链接：[GitHub 链接](https://github.com/tencentyun/coscmd.git)
-在该项目根目录下使用如下命令安装：
-```
-python setup.py install
-```
 - **pip 安装**
 执行`pip`命令进行安装：
 ```
