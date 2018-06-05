@@ -482,15 +482,15 @@ class Interface(object):
                 logger.info(u"This file matches the ignore rule, skip upload")
                 return True
 
-        if kwargs['sync'] is True:
-            if check_file_md5(local_path, cos_path):
-                logger.info(u"The file on cos is the same as the local file, skip upload")
-                return True
-
         if kwargs['skipmd5'] is False:
             if file_size > 5 * 1024 * 1024 * 1024:
                 logger.info(u"MD5 is being calculated, please wait. If you do not need to calculate md5, you can use --skipmd5 to skip")
             _md5 = get_file_md5(local_path)
+
+        if kwargs['sync'] is True:
+            if check_file_md5(local_path, cos_path):
+                logger.info(u"The file on cos is the same as the local file, skip upload")
+                return True
 
         if file_size <= self._conf._part_size * 1024 * 1024 + 1024:
             for _ in range(self._retry):
