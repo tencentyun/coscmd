@@ -316,6 +316,21 @@ class Op(object):
             return -1
 
     @staticmethod
+    def abort(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        while args.cos_path.startswith('/'):
+            args.cos_path = args.cos_path[1:]
+
+        if not isinstance(args. cos_path, text_type):
+            args.cos_path = args.cos_path.decode(fs_coding)
+        Interface = client.op_int()
+        if Interface.abort_parts(cos_path=args.cos_path):
+            return 0
+        else:
+            return -1
+
+    @staticmethod
     def info(args):
         conf = load_conf()
         client = CosS3Client(conf)
@@ -506,6 +521,10 @@ def command_thread():
     parser_delete.add_argument('-r', '--recursive', help="delete files recursively, WARN: all files with the prefix will be deleted!", action="store_true", default=False)
     parser_delete.add_argument('-f', '--force', help="Delete directly without confirmation", action="store_true", default=False)
     parser_delete.set_defaults(func=Op.delete)
+
+    parser_abort = sub_parser.add_parser("abort", help='aborts upload parts on COS')
+    parser_abort.add_argument("cos_path", nargs='?', help="cos_path as a/b.txt", type=str, default='')
+    parser_abort.set_defaults(func=Op.abort)
 
     parser_copy = sub_parser.add_parser("copy", help="copy file from COS to COS.")
     parser_copy.add_argument('source_path', help="source file path as 'bucket-appid.cos.ap-guangzhou.myqcloud.com/a.txt'", type=str)
