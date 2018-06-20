@@ -888,6 +888,54 @@ class Interface(object):
             return False
         return False
 
+    def abort_parts(self, cos_path):
+        NextMarker = ""
+        IsTruncated = "true"
+        _success_num = 0
+        _fail_num = 0
+        cos_path = to_printable_str(cos_path)
+        while IsTruncated == "true":
+            table = PrettyTable(["Path", "Size/Type", "Time"])
+            table.align = "l"
+            table.align['Size/Type'] = 'r'
+            table.padding_width = 3
+            table.header = False
+            table.border = False
+            url = self._conf.uri(path='?uploads&prefix={prefix}&marker={nextmarker}'
+                                 .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker))))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+            if rt.status_code == 200:
+                root = minidom.parseString(rt.content).documentElement
+                IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                if IsTruncated == 'true':
+                    NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+
+                logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                     code=rt.status_code,
+                     headers=rt.headers,
+                     text=rt.text))
+                fileset = root.getElementsByTagName("Upload")
+                for _file in fileset:
+                    self._file_num += 1
+                    _key = _file.getElementsByTagName("Key")[0].childNodes[0].data
+                    _uploadid = _file.getElementsByTagName("UploadId")[0].childNodes[0].data
+                    logger.info("Aborting part, Key:{key}, UploadId:{uploadid}".format(key=_key, uploadid=_uploadid))
+                    _url = self._conf.uri(path='{key}?uploadId={uploadid}'.format(key=_key, uploadid=_uploadid))
+                    _rt = self._session.delete(url=_url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+                    if _rt.status_code == 204:
+                        _success_num += 1
+                    else:
+                        _fail_num += 1
+            else:
+                logger.warn(response_info(rt))
+                return False
+        logger.info(u"{files} files successful, {fail_files} files failed"
+                    .format(files=_success_num, fail_files=_fail_num))
+        if _fail_num == 0:
+            return True
+        else:
+            return False
+
     def list_objects(self, cos_path, _recursive=False, _all=False, _num=100, _human=False):
         NextMarker = ""
         IsTruncated = "true"
@@ -1023,7 +1071,6 @@ class Interface(object):
         _file_num = 0
         _success_num = 0
         _fail_num = 0
-        _skip_num = 0
         cos_path = to_unicode(cos_path)
         while IsTruncated == "true":
             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
