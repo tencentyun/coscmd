@@ -87,24 +87,28 @@ coscmd upload -h  //查看 upload 命令使用方法
 ### 配置参数
 COSCMD 工具在使用前需要进行参数配置。用户可以通过如下命令来配置：
 ```
-coscmd config -a <secret_id> -s <secret_key> -b <bucket> -r <region> [-m <max_thread>] [-p <parts_size>]      
+coscmd  config [-h] -a <SECRET_ID> -s <SECRET_KEY> -b <BUCKET>
+                         (-r <REGION> | -e <ENDPOINT>) [-m <MAX_THREAD>]
+                         [-p <PART_SIZE>] [-u <APPID>] [--do-not-use-ssl]
+                         [--anonymous <ANONYMOUS>]      
 ```
 上述示例中使用"<>"的字段为必选参数，使用"[]"的字段为可选参数。其中：
 
 | 名称         | 描述                                       | 有效值  |
 | :---------| :---------------------------------------- | :---- |
-| secret_id  | 必选参数，APPID 对应的密钥 ID，可从控制台获取，参考 [基本概念](https://cloud.tencent.com/doc/product/436/6225)。 | 字符串  |
-| secret_key | 必选参数，APPID 对应的密钥 Key，可从控制台获取，参考 [基本概念](https://cloud.tencent.com/doc/product/436/6225)。 | 字符串  |
-| bucket     | 必选参数，指定的存储桶名称，bucket的命名规则为{name}-{appid} ，参考 [创建存储桶](https://cloud.tencent.com/doc/product/436/6232)。 | 字符串  |
-| region     | 必选参数，存储桶所在地域。参考 [可用地域](https://cloud.tencent.com/doc/product/436/6224)。 | 字符串  |
-| max_thread | 可选参数，多线程上传时的最大线程数（默认为 5），有效值：1~10         | 数字   |
-| parts_size | 可选参数，分块上传的单块大小（单位为 MB，默认为 1MB），有效值：1~10     | 数字   |
+| SECRET_ID| 必选参数，APPID 对应的密钥 ID，可从控制台获取，参考 [基本概念](https://cloud.tencent.com/doc/product/436/6225)。 | 字符串  |
+| SECRET_KEY| 必选参数，APPID 对应的密钥 Key，可从控制台获取，参考 [基本概念](https://cloud.tencent.com/doc/product/436/6225)。 | 字符串  |
+| BUCKET| 必选参数，指定的存储桶名称，bucket的命名规则为{name}-{appid} ，参考 [创建存储桶](https://cloud.tencent.com/doc/product/436/6232)。 | 字符串  |
+| REGION| 必选参数，存储桶所在地域。参考 [可用地域](https://cloud.tencent.com/doc/product/436/6224)。 | 字符串  |
+| MAX_THREAD| 可选参数，多线程上传时的最大线程数（默认为 5），有效值：1~10         | 数字   |
+| PART_SIZE| 可选参数，分块上传的单块大小（单位为 MB，默认为 1MB），有效值：1~10     | 数字   |
 
 > **注意：** 
 1. 可以直接编辑`~/.cos.conf`文件 （在 Windows 环境下，该文件是位于`我的文档`下的一个隐藏文件）。
 配置完成之后的`.cos.conf`文件内容示例如下所示：
 2. 可以在配置文件中增加`schema`项来选择`http / https`，默认为`https`
-3. bucket的命名规则为 `{name}-{appid}`
+3. 可以在`anonymous`项中选择 `True/False`,来使用匿名模式，即签名保持为空。
+4. bucket的命名规则为 `{name}-{appid}`
 ```
  [common]
 secret_id = AChT4ThiXAbpBDEFGhT4ThiXAbpHIJK
