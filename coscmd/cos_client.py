@@ -124,7 +124,7 @@ def change_to_human(_size):
 
 class CosConfig(object):
 
-    def __init__(self, appid, region, endpoint, bucket, secret_id, secret_key, part_size=1, max_thread=5, schema='https', *args, **kwargs):
+    def __init__(self, appid, region, endpoint, bucket, secret_id, secret_key, part_size=1, max_thread=5, schema='https', anonymous='False', *args, **kwargs):
         self._appid = appid
         self._region = region
         self._endpoint = endpoint
@@ -134,6 +134,7 @@ class CosConfig(object):
         self._part_size = min(10, part_size)
         self._max_thread = min(10, max_thread)
         self._schema = schema
+        self._anonymous = anonymous
         logger.debug("config parameter-> appid: {appid}, region: {region}, endpoint: {endpoint}, bucket: {bucket}, part_size: {part_size}, max_thread: {max_thread}".format(
                  appid=appid,
                  region=region,
@@ -221,7 +222,7 @@ class Interface(object):
                 url = self._conf.uri(path=cos_path + '?uploadId={UploadId}&upload&max-parts=1000&part-number-marker={nextmarker}'.format(
                                                     UploadId=self._upload_id,
                                                     nextmarker=NextMarker))
-                rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
                 if rt.status_code == 200:
                     root = minidom.parseString(rt.content).documentElement
                     IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
@@ -287,7 +288,7 @@ class Interface(object):
 
         def check_file_md5(_local_path, _cos_path):
             url = self._conf.uri(path=_cos_path)
-            rt = self._session.head(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), stream=True)
+            rt = self._session.head(url=url, auth=CosS3Auth(self._conf), stream=True)
             if rt.status_code != 200:
                 return False
             tmp = os.stat(_local_path)
@@ -312,7 +313,7 @@ class Interface(object):
                     http_header = _http_header
                     http_header['x-cos-meta-md5'] = _md5
                     rt = self._session.put(url=url,
-                                           auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), data=data, headers=http_header)
+                                           auth=CosS3Auth(self._conf), data=data, headers=http_header)
                     if rt.status_code == 200:
                         return True
                     else:
@@ -342,7 +343,7 @@ class Interface(object):
                     return True
             http_header = _http_header
             http_header['x-cos-meta-md5'] = _md5
-            rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
+            rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf), headers=http_header)
             logger.debug("Init resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
                  headers=rt.headers,
@@ -371,7 +372,7 @@ class Interface(object):
                 for j in range(self._retry):
                     http_header = _http_header
                     rt = self._session.put(url=url,
-                                           auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
+                                           auth=CosS3Auth(self._conf),
                                            data=data, headers=http_header)
                     logger.debug("Multi part result: part{part}, round{round}, code: {code}, headers: {headers}, text: {text}".format(
                         part=idx,
@@ -456,7 +457,7 @@ class Interface(object):
                 logger.debug('complete url: ' + url)
                 logger.debug("complete data: " + data)
             try:
-                with closing(self._session.post(url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), data=data, stream=True)) as rt:
+                with closing(self._session.post(url, auth=CosS3Auth(self._conf), data=data, stream=True)) as rt:
                     logger.debug("complete status code: {code}".format(code=rt.status_code))
                     logger.debug("complete headers: {headers}".format(headers=rt.headers))
                 if rt.status_code == 200:
@@ -532,7 +533,7 @@ class Interface(object):
                     prefix=quote(to_printable_str(source_path)),
                     nextmarker=quote(to_printable_str(NextMarker)))
             url = self._conf._schema + "://" + source_schema + tmp_url
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
             if rt.status_code == 200:
                 root = minidom.parseString(rt.content).documentElement
                 IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
@@ -578,7 +579,7 @@ class Interface(object):
                     http_header = dict()
                     http_header['x-cos-copy-source'] = source_path
                     rt = self._session.put(url=url,
-                                           auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
+                                           auth=CosS3Auth(self._conf), headers=http_header)
                     if rt.status_code == 200:
                         logger.info(u"Copy {source_path}   =>   cos://{bucket}/{cos_path}  [100%]".format(
                                                                     bucket=self._conf._bucket,
@@ -602,7 +603,7 @@ class Interface(object):
             self._have_finished = 0
             self._upload_id = None
             http_header = dict()
-            rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header)
+            rt = self._session.post(url=url+"?uploads", auth=CosS3Auth(self._conf), headers=http_header)
             logger.debug(u"Init resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
                  headers=rt.headers,
@@ -639,7 +640,7 @@ class Interface(object):
                 http_header['x-cos-copy-source-range'] = "bytes="+str(offset)+"-"+str(offset+length-1)
                 for j in range(self._retry):
                     rt = self._session.put(url=url,
-                                           auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
+                                           auth=CosS3Auth(self._conf),
                                            headers=http_header)
                     logger.debug(u"Copy part result: part{part}, round{round}, code: {code}, headers: {headers}, text: {text}".format(
                         part=idx,
@@ -718,7 +719,7 @@ class Interface(object):
                 logger.debug(u"Complete url: " + url)
                 logger.debug(u"Complete data: " + data)
             try:
-                with closing(self._session.post(url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), data=data, stream=True)) as rt:
+                with closing(self._session.post(url, auth=CosS3Auth(self._conf), data=data, stream=True)) as rt:
                     logger.debug(u"Complete status code: {code}".format(code=rt.status_code))
                     logger.debug(u"Complete headers: {headers}".format(headers=rt.headers))
                 if rt.status_code == 200:
@@ -730,7 +731,7 @@ class Interface(object):
                 return False
             return True
         source_path = quote(to_printable_str(source_path))
-        rt = self._session.head(url="http://"+source_path, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+        rt = self._session.head(url="http://"+source_path, auth=CosS3Auth(self._conf))
         if rt.status_code != 200:
             logger.warn(u"Replication sources do not exist")
             return False
@@ -780,7 +781,7 @@ class Interface(object):
             file_list = []
             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
                                  .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker))))
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
             if rt.status_code == 200:
                 try:
                     root = minidom.parseString(rt.content).documentElement
@@ -812,7 +813,7 @@ class Interface(object):
                 md5_ETag = md5_ETag.digest()
                 http_header['Content-MD5'] = base64.b64encode(md5_ETag)
                 url_file = self._conf.uri(path="?delete")
-                rt = self._session.post(url=url_file, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), data=data_xml, headers=http_header)
+                rt = self._session.post(url=url_file, auth=CosS3Auth(self._conf), data=data_xml, headers=http_header)
                 if rt.status_code == 204 or rt.status_code == 200:
                     for file_name in file_list:
                         logger.info(u"Delete {file}".format(file=file_name))
@@ -833,7 +834,7 @@ class Interface(object):
             file_list = []
             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
                                  .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker))))
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
             if rt.status_code == 200:
                 try:
                     root = minidom.parseString(rt.content).documentElement
@@ -874,7 +875,7 @@ class Interface(object):
                 return False
         url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         try:
-            rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+            rt = self._session.delete(url=url, auth=CosS3Auth(self._conf))
             logger.debug(u"init resp, status code: {code}, headers: {headers}".format(
                  code=rt.status_code,
                  headers=rt.headers))
@@ -903,7 +904,7 @@ class Interface(object):
             table.border = False
             url = self._conf.uri(path='?uploads&prefix={prefix}&marker={nextmarker}'
                                  .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker))))
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
             if rt.status_code == 200:
                 root = minidom.parseString(rt.content).documentElement
                 IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
@@ -921,7 +922,7 @@ class Interface(object):
                     _uploadid = _file.getElementsByTagName("UploadId")[0].childNodes[0].data
                     logger.info("Aborting part, Key:{key}, UploadId:{uploadid}".format(key=_key, uploadid=_uploadid))
                     _url = self._conf.uri(path='{key}?uploadId={uploadid}'.format(key=_key, uploadid=_uploadid))
-                    _rt = self._session.delete(url=_url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+                    _rt = self._session.delete(url=_url, auth=CosS3Auth(self._conf))
                     if _rt.status_code == 204:
                         _success_num += 1
                     else:
@@ -956,7 +957,7 @@ class Interface(object):
             table.border = False
             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}{delimiter}'
                                  .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker)), delimiter=Delimiter))
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
             if rt.status_code == 200:
                 root = minidom.parseString(rt.content).documentElement
                 IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
@@ -1014,7 +1015,7 @@ class Interface(object):
         url = self._conf.uri(path=cos_path)
         logger.info("Info with : " + url)
         try:
-            rt = self._session.head(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+            rt = self._session.head(url=url, auth=CosS3Auth(self._conf))
             logger.debug(u"info resp, status code: {code}, headers: {headers}".format(
                  code=rt.status_code,
                  headers=rt.headers))
@@ -1028,7 +1029,7 @@ class Interface(object):
                 table.add_row(['Last mod', _time])
                 url = self._conf.uri(cos_path+"?acl")
                 try:
-                    rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+                    rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
                     logger.debug(u"get resp, status code: {code}, headers: {headers}".format(
                          code=rt.status_code,
                          headers=rt.headers))
@@ -1075,7 +1076,7 @@ class Interface(object):
         while IsTruncated == "true":
             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
                                  .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker))))
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
             if rt.status_code == 200:
                 root = minidom.parseString(rt.content).documentElement
                 IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
@@ -1112,7 +1113,7 @@ class Interface(object):
 
         def check_file_md5(_local_path, _cos_path):
             url = self._conf.uri(path=_cos_path)
-            rt = self._session.head(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), stream=True)
+            rt = self._session.head(url=url, auth=CosS3Auth(self._conf), stream=True)
             if rt.status_code != 200:
                 return False
             tmp = os.stat(_local_path)
@@ -1129,7 +1130,7 @@ class Interface(object):
             # logger.info("download {file}".format(file=to_printable_str(cos_path)))
             url = self._conf.uri(path=cos_path)
             try:
-                rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), stream=True)
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf), stream=True)
                 logger.debug("get resp, status code: {code}, headers: {headers}".format(
                      code=rt.status_code,
                      headers=rt.headers))
@@ -1172,7 +1173,7 @@ class Interface(object):
                 local_path = local_path + "_" + str(idx)
                 http_header = {}
                 http_header['Range'] = 'bytes=' + str(offset) + "-" + str(offset+length-1)
-                rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), headers=http_header, stream=True)
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf), headers=http_header, stream=True)
                 logger.debug(u"get resp, status code: {code}, headers: {headers}".format(
                      code=rt.status_code,
                      headers=rt.headers))
@@ -1228,7 +1229,7 @@ class Interface(object):
 
         url = self._conf.uri(path=cos_path)
         try:
-            rt = self._session.head(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+            rt = self._session.head(url=url, auth=CosS3Auth(self._conf))
             logger.debug(u"download resp, status code: {code}, headers: {headers}".format(
                  code=rt.status_code,
                  headers=rt.headers))
@@ -1322,7 +1323,7 @@ class Interface(object):
         stamp = time.mktime(now.timetuple())
         http_header['Date'] = format_date_time(stamp)
         try:
-            rt = self._session.post(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), data=data_xml, headers=http_header)
+            rt = self._session.post(url=url, auth=CosS3Auth(self._conf), data=data_xml, headers=http_header)
             logger.debug(u"init resp, status code: {code}, headers: {headers}".format(
                  code=rt.status_code,
                  headers=rt.headers))
@@ -1353,7 +1354,7 @@ class Interface(object):
         url = self._conf.uri(cos_path+"?acl")
         logger.info(u"Put with : " + url)
         try:
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
             if rt.status_code != 200:
                 logger.warn(response_info(rt))
                 return False
@@ -1395,7 +1396,7 @@ class Interface(object):
 '''
 
             logger.debug(data)
-            rt = self._session.put(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), data=data)
+            rt = self._session.put(url=url, auth=CosS3Auth(self._conf), data=data)
             logger.debug(u"put resp, status code: {code}, headers: {headers}".format(
                 code=rt.status_code,
                 headers=rt.headers))
@@ -1416,7 +1417,7 @@ class Interface(object):
         table.align = "l"
         table.padding_width = 3
         try:
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
             logger.debug(u"get resp, status code: {code}, headers: {headers}".format(
                  code=rt.status_code,
                  headers=rt.headers))
@@ -1446,7 +1447,7 @@ class Interface(object):
         self._have_finished = 0
         logger.debug("create bucket with : " + url)
         try:
-            rt = self._session.put(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+            rt = self._session.put(url=url, auth=CosS3Auth(self._conf))
             logger.debug(u"put resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
                  headers=rt.headers,
@@ -1466,7 +1467,7 @@ class Interface(object):
         self._have_finished = 0
         logger.debug(u"delete bucket with : " + url)
         try:
-            rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+            rt = self._session.delete(url=url, auth=CosS3Auth(self._conf))
             logger.debug(u"delete resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
                  headers=rt.headers,
@@ -1491,7 +1492,7 @@ class Interface(object):
             pagecount += 1
             logger.info(u"Get bucket with page {page}".format(page=pagecount))
             url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}'.format(nextmarker=NextMarker))
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
 
             if rt.status_code == 200:
                 root = minidom.parseString(rt.content).documentElement
@@ -1536,7 +1537,7 @@ class Interface(object):
         url = self._conf.uri("?acl")
         logger.info("Put with : " + url)
         try:
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
             if rt.status_code != 200:
                 logger.warn(response_info(rt))
                 return False
@@ -1578,7 +1579,7 @@ class Interface(object):
 '''
 
             logger.debug(data)
-            rt = self._session.put(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key), data=data)
+            rt = self._session.put(url=url, auth=CosS3Auth(self._conf), data=data)
             logger.debug(u"put resp, status code: {code}, headers: {headers}".format(
                 code=rt.status_code,
                 headers=rt.headers))
@@ -1599,7 +1600,7 @@ class Interface(object):
         table.align = "l"
         table.padding_width = 3
         try:
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
             logger.debug(u"get resp, status code: {code}, headers: {headers}".format(
                  code=rt.status_code,
                  headers=rt.headers))

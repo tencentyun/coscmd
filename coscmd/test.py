@@ -61,6 +61,7 @@ def test_download_file():
     rt = os.system("python coscmd/cos_cmd.py delete -f tmp")
     assert rt == 0
     os.remove("tmp")
+    os.remove("tmp_download")
 
 
 def test_bucketacl():
