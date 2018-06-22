@@ -68,10 +68,7 @@ def config(args):
             cp.set('common', 'schema', 'http')
         else:
             cp.set('common', 'schema', 'https')
-        if args.anonymous:
-            cp.set('common', 'anonymous', 'True')
-        else:
-            cp.set('common', 'schema', 'False')
+        cp.set('common', 'anonymous', args.anonymous)
         cp.write(f)
         logger.info("Created configuration file in {path}".format(path=to_printable_str(conf_path)))
 
