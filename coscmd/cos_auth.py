@@ -21,9 +21,10 @@ logger = logging.getLogger(__name__)
 
 class CosS3Auth(AuthBase):
 
-    def __init__(self, access_id, secret_key, expire=10000):
-        self._access_id = access_id
-        self._secret_key = secret_key
+    def __init__(self, conf, expire=10000):
+        self._access_id = conf._secret_id
+        self._secret_key = conf._secret_key
+        self._anonymous = conf._anonymous
         self._expire = expire
 
     def __call__(self, r):
@@ -74,6 +75,8 @@ class CosS3Auth(AuthBase):
             headers=';'.join(sorted(headers.keys())),
             sign=sign
         )
+        if self._anonymous == "True" or self._anonymous == "true":
+            r.headers['Authorization'] = ""
         r.headers['User-agent'] = 'coscmd-v' + Version
         logger.debug("sign_key" + str(sign_key))
         logger.debug(r.headers['Authorization'])

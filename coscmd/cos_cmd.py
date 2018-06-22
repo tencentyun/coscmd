@@ -68,6 +68,10 @@ def config(args):
             cp.set('common', 'schema', 'http')
         else:
             cp.set('common', 'schema', 'https')
+        if args.anonymous:
+            cp.set('common', 'anonymous', 'True')
+        else:
+            cp.set('common', 'schema', 'False')
         cp.write(f)
         logger.info("Created configuration file in {path}".format(path=to_printable_str(conf_path)))
 
@@ -128,6 +132,10 @@ def load_conf():
             schema = cp.get('common', 'schema')
         except:
             schema = 'https'
+        try:
+            anonymous = cp.get('common', 'anonymous')
+        except:
+            anonymous = 'False'
         region, endpoint = None, None
         if cp.has_option('common', 'region'):
             region = cp.get('common', 'region')
@@ -149,7 +157,8 @@ def load_conf():
             bucket=bucket,
             part_size=part_size,
             max_thread=max_thread,
-            schema=schema
+            schema=schema,
+            anonymous=anonymous
         )
         return conf
 
@@ -495,6 +504,7 @@ def command_thread():
     parser_config.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1)
     parser_config.add_argument('-u', '--appid', help='specify your appid', type=str, default="")
     parser_config.add_argument('--do-not-use-ssl', help="use http://", action="store_true", default=False, dest="use_http")
+    parser_config.add_argument('--anonymous', help="anonymous", type=str, default="False")
     parser_config.set_defaults(func=config)
 
     parser_upload = sub_parser.add_parser("upload", help="upload file or directory to COS.")
