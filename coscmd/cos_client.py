@@ -208,7 +208,7 @@ class Interface(object):
         s = requests.Session()
         req = requests.Request('GET',  url)
         prepped = s.prepare_request(req)
-        signature = CosS3Auth(self._conf._secret_id, self._conf._secret_key, timeout).__call__(prepped).headers['Authorization']
+        signature = CosS3Auth(self._conf, timeout).__call__(prepped).headers['Authorization']
 
         return to_printable_str(url + '?sign=' + quote(signature))
 
