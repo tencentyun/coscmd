@@ -33,8 +33,6 @@ def concat_path(sorce_path, target_path):
     if target_path.endswith('/') is True:
         target_path += sorce_path.split('/')[-2]
     sorce_path = sorce_path[:-1]
-    if target_path.startswith('/'):
-        target_path = target_path[1:]
     return sorce_path, target_path
 
 
@@ -222,6 +220,7 @@ class Op(object):
         if not isinstance(args. cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
         args.cos_path, args.local_path = concat_path(args.cos_path, args.local_path)
+        print args.local_path
         kwargs = {}
         kwargs['force'] = args.force
         kwargs['sync'] = args.sync
