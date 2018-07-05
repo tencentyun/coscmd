@@ -7,7 +7,6 @@ import sys
 import logging
 import os
 from threading import Thread
-from numpy import source
 
 if sys.version > '3':
     from coscmd.cos_client import CosConfig, CosS3Client
