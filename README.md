@@ -104,11 +104,8 @@ coscmd  config [-h] -a <SECRET_ID> -s <SECRET_KEY> -b <BUCKET>
 | PART_SIZE| 可选参数，分块上传的单块大小（单位为 MB，默认为 1MB），有效值：1~10     | 数字   |
 
 > **注意：** 
-1. 可以直接编辑`~/.cos.conf`文件 （在 Windows 环境下，该文件是位于`我的文档`下的一个隐藏文件）。
+1. 可以直接编辑`~/.cos.conf`文件 （在 Windows 环境下，该文件是位于`我的文档`下的一个隐藏文件），该文件初始时不存在，是通过`coscmd config`命令生成，用户也可以手动创建。
 配置完成之后的`.cos.conf`文件内容示例如下所示：
-2. 可以在配置文件中增加`schema`项来选择`http / https`，默认为`https`
-3. 可以在`anonymous`项中选择 `True/False`,来使用匿名模式，即签名保持为空。
-4. bucket的命名规则为 `{name}-{appid}`
 ```
  [common]
 secret_id = AChT4ThiXAbpBDEFGhT4ThiXAbpHIJK
@@ -119,6 +116,10 @@ max_thread = 5
 part_size = 1
 schema = https
 ```
+2. 可以在配置文件中增加`schema`项来选择`http / https`，默认为`https`
+3. 可以在`anonymous`项中选择 `True/False`,来使用匿名模式，即签名保持为空。
+4. bucket的命名规则为 `{name}-{appid}`
+
 
 ### 指定 Bucket 的命令
 -  通过`-b <bucket> 指定 Bucket`可以指定特定 Bucket。
@@ -156,6 +157,7 @@ coscmd upload /home/aaa/123.txt bbb/  //操作示例
 coscmd upload -r <localpath> <cospath>  //命令格式
 coscmd upload -r /home/aaa/ bbb/aaa  //操作示例
 coscmd upload -r /home/aaa/ bbb/  //操作示例
+coscmd upload -r /home/aaa  bbb/  //操作示例，该操作会在bbb/目录下新建一个aaa/文件夹
 coscmd upload -r /home/aaa/ /  //上传到bucket根目录
 coscmd upload -rs /home/aaa/ /home/aaa  //同步上传，跳过md5相同的文件
 coscmd upload -rs /home/aaa/ /home/aaa --ignore *.txt,*.doc //忽略.txt和.doc的后缀文件
