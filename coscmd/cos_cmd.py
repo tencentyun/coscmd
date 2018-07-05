@@ -219,7 +219,6 @@ class Op(object):
         if not isinstance(args. cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
         args.cos_path, args.local_path = concat_path(args.cos_path, args.local_path)
-        print args.local_path
         kwargs = {}
         kwargs['force'] = args.force
         kwargs['sync'] = args.sync
