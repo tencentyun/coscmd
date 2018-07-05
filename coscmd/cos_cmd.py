@@ -7,6 +7,7 @@ import sys
 import logging
 import os
 from threading import Thread
+from numpy import source
 
 if sys.version > '3':
     from coscmd.cos_client import CosConfig, CosS3Client
@@ -29,10 +30,8 @@ def concat_path(sorce_path, target_path):
     sorce_path = sorce_path.replace('\\', '/')
     target_path = target_path.replace('\\', '/')
     if sorce_path.endswith('/') is False:
-        sorce_path += '/'
-    if target_path.endswith('/') is True:
-        target_path += sorce_path.split('/')[-2]
-    sorce_path = sorce_path[:-1]
+        if target_path.endswith('/') is True:
+            target_path += sorce_path.split('/')[-1]
     return sorce_path, target_path
 
 
