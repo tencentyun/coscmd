@@ -66,7 +66,7 @@ def test_download_file():
 
 def test_bucketacl():
     """test bucketacl"""
-    rt = os.system("python coscmd/cos_cmd.py putbucketacl --grant-read anyone --grant-write anyone --grant-full-control 327874225")
+    rt = os.system("python coscmd/cos_cmd.py putbucketacl --grant-read anyone --grant-write anyone --grant-full-control anyone")
     assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py getbucketacl")
     assert rt == 0
@@ -78,7 +78,7 @@ def test_objectacl():
     rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
     assert rt == 0
     os.remove("tmp")
-    rt = os.system("python coscmd/cos_cmd.py putobjectacl tmp --grant-read anyone --grant-write anyone --grant-full-control 327874225")
+    rt = os.system("python coscmd/cos_cmd.py putobjectacl tmp --grant-read anyone --grant-write anyone --grant-full-control anyone")
     assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py getobjectacl tmp")
     assert rt == 0
