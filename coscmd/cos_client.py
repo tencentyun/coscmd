@@ -1352,7 +1352,6 @@ class Interface(object):
                 if len(i) > 0:
                     acl.append([i, "FULL_CONTROL"])
         url = self._conf.uri(cos_path+"?acl")
-        logger.info(u"Put with : " + url)
         try:
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
             if rt.status_code != 200:
@@ -1412,7 +1411,6 @@ class Interface(object):
 
     def get_object_acl(self, cos_path):
         url = self._conf.uri(cos_path+"?acl")
-        logger.info("Get with : " + url)
         table = PrettyTable([cos_path, ""])
         table.align = "l"
         table.padding_width = 3
@@ -1535,7 +1533,6 @@ class Interface(object):
                 if len(i) > 0:
                     acl.append([i, "FULL_CONTROL"])
         url = self._conf.uri("?acl")
-        logger.info("Put with : " + url)
         try:
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
             if rt.status_code != 200:
@@ -1595,7 +1592,6 @@ class Interface(object):
 
     def get_bucket_acl(self):
         url = self._conf.uri("?acl")
-        logger.info(u"Get with : " + url)
         table = PrettyTable([self._conf._bucket, ""])
         table.align = "l"
         table.padding_width = 3
@@ -1625,6 +1621,47 @@ class Interface(object):
             return False
         return False
 
+    def put_bucket_versioning(self, status):
+        url = self._conf.uri("?versioning")
+        try:
+            data = '''
+        <VersioningConfiguration>
+  <Status>{status}</Status>
+</VersioningConfiguration>
+'''.format(status=status)
+            rt = self._session.put(url=url, auth=CosS3Auth(self._conf), data=data)
+            logger.debug(u"put resp, status code: {code}, headers: {headers}".format(
+                code=rt.status_code,
+                headers=rt.headers))
+            if rt.status_code == 200:
+                return True
+            else:
+                logger.warn(response_info(rt))
+                return False
+        except Exception as e:
+            logger.warn(str(e))
+            return False
+        return False
+
+    def get_bucket_versioning(self):
+        url = self._conf.uri("?versioning")
+        try:
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
+            logger.debug(u"get resp, status code: {code}, headers: {headers}".format(
+                 code=rt.status_code,
+                 headers=rt.headers))
+            root = minidom.parseString(rt.content).documentElement
+            status = root.getElementsByTagName("Status")[0].childNodes[0].data
+            if rt.status_code == 200:
+                logger.info(status)
+                return True
+            else:
+                logger.warn(response_info(rt))
+                return False
+        except Exception as e:
+            logger.warn(str(e))
+            return False
+        return False
 
 class CosS3Client(object):
 

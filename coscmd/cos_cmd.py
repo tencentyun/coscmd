@@ -469,6 +469,30 @@ class Op(object):
             logger.warn("get fail!")
             return -1
 
+    @staticmethod
+    def put_bucket_versioning(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        Interface = client.op_int()
+        rt = Interface.put_bucket_versioning(args.status)
+        if rt is True:
+            return 0
+        else:
+            logger.warn("put fail!")
+            return -1
+
+    @staticmethod
+    def get_bucket_versioning(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        Interface = client.op_int()
+        rt = Interface.get_bucket_versioning()
+        if rt is True:
+            return 0
+        else:
+            logger.warn("get fail!")
+            return -1
+
 
 def command_thread():
     global res
@@ -592,7 +616,7 @@ def command_thread():
     parser_get_bucket_acl.set_defaults(func=Op.get_bucket_acl)
     
     parser_put_bucket_versioning = sub_parser.add_parser("putbucketversioning", help="Set the versioning state")
-    parser_put_bucket_versioning.add_argument("status",  help="Status as a/b.txt", type=str, choices=['enable', 'suspend'], default='enable')
+    parser_put_bucket_versioning.add_argument("status",  help="Status as a/b.txt", type=str, choices=['Enable', 'Suspended'], default='Enable')
     parser_put_bucket_versioning.set_defaults(func=Op.put_bucket_versioning)
     
     parser_get_bucket_versioning = sub_parser.add_parser("getbucketversioning", help="Get the versioning state")
