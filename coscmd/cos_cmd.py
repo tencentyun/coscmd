@@ -590,6 +590,13 @@ def command_thread():
 
     parser_get_bucket_acl = sub_parser.add_parser("getbucketacl", help='get bucket acl')
     parser_get_bucket_acl.set_defaults(func=Op.get_bucket_acl)
+    
+    parser_put_bucket_versioning = sub_parser.add_parser("putbucketversioning", help="set the versioning state")
+    parser_put_bucket_versioning.add_argument("status",  help="status as a/b.txt", type=str, choices=['enable', 'suspend'], default='enable')
+    parser_put_bucket_versioning.set_defaults(func=Op.put_bucket_versioning)
+    
+    parser_get_bucket_versioning = sub_parser.add_parser("getbucketversioning", help="get the versioning state")
+    parser_get_bucket_versioning.set_defaults(func=Op.get_bucket_versioning)
 
     parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + Version)
 
