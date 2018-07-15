@@ -312,7 +312,13 @@ class Op(object):
         if not isinstance(args. cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
         Interface = client.op_int()
-        if Interface.list_objects(cos_path=args.cos_path, _recursive=args.recursive, _all=args.all, _num=args.num, _human=args.human):
+        kwargs = {}
+        kwargs['recursive'] = args.recursive
+        kwargs['all'] = args.all
+        kwargs['num'] = args.num
+        kwargs['human'] = args.human
+        kwargs['versions'] = args.versions
+        if Interface.list_objects(cos_path=args.cos_path, **kwargs):
             return 0
         else:
             return -1
@@ -565,6 +571,7 @@ def command_thread():
     parser_list.add_argument('-a', '--all', help="List all the files", action="store_true", default=False)
     parser_list.add_argument('-r', '--recursive', help="List files recursively", action="store_true", default=False)
     parser_list.add_argument('-n', '--num', help='Specify max num of files to list', type=int, default=100)
+    parser_list.add_argument('-v', '--versions', help='List object with versions', action="store_true", default=False)
     parser_list.add_argument('--human', help='Humanized display', action="store_true", default=False)
     parser_list.set_defaults(func=Op.list)
 
@@ -577,7 +584,7 @@ def command_thread():
     parser_mget.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
     parser_mget.add_argument('local_path', help="Local file path as /tmp/a.txt", type=str)
     parser_mget.set_defaults(func=Op.mget)
-
+    
     parser_restore = sub_parser.add_parser("restore", help="Restore")
     parser_restore.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
     parser_restore.add_argument('-d', '--day', help='Specify lifetime of the restored (active) copy', type=int, default=7)
