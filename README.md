@@ -29,7 +29,7 @@ pip install coscmd -U
 ```
 
 > **注意：** 
-不论是在 Linux 还是 Windows 环境下，都可以通过以上的方法安装或更新。
+当pip版本大于等于10.0.0时，升级或安装依赖库时可能会出现失败。需要降低pip版本至9.x。（pip install pip==9.0.0）
 
 ## 使用方法
 ### 查看 help
