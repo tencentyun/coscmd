@@ -944,7 +944,6 @@ class Interface(object):
         _human = kwargs['human']
         _versions = kwargs['versions']
         NextMarker = ""
-        NextVersionMarker = ""
         IsTruncated = "true"
         Delimiter = "&delimiter=/"
         if _recursive is True:
@@ -955,6 +954,8 @@ class Interface(object):
         self._total_size = 0
         cos_path = to_printable_str(cos_path)
         if _versions == True:
+            NextMarker = "/"
+            NextVersionMarker = "/"
             while IsTruncated == "true":
                 table = PrettyTable(["Path", "Size/Type", "Time", "VersionId"])
                 table.align = "l"
