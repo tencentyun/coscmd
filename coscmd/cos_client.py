@@ -953,6 +953,7 @@ class Interface(object):
         self._file_num = 0
         self._total_size = 0
         cos_path = to_printable_str(cos_path)
+        # list bucket versions
         if _versions == True:
             NextMarker = "/"
             NextVersionMarker = "/"
