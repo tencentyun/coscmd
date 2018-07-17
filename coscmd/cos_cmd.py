@@ -31,6 +31,8 @@ def concat_path(sorce_path, target_path):
     if sorce_path.endswith('/') is False:
         if target_path.endswith('/') is True:
             target_path += sorce_path.split('/')[-1]
+    if target_path.startswith('/'):
+        target_path = target_path[1:]
     return sorce_path, target_path
 
 
