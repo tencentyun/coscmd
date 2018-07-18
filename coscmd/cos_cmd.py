@@ -254,19 +254,21 @@ class Op(object):
         if not isinstance(args. cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
 
+        kwargs = {}
+        kwargs['force'] = args.force
         if args.recursive:
             if args.cos_path.endswith('/') is False:
                 args.cos_path += '/'
             if args.cos_path == '/':
                 args.cos_path = ''
-            if Interface.delete_folder(args.cos_path, args.force):
+            if Interface.delete_folder(args.cos_path, **kwargs):
                 logger.debug("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)))
                 return 0
             else:
                 logger.debug("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)))
                 return -1
         else:
-            if Interface.delete_file(args.cos_path, args.force):
+            if Interface.delete_file(args.cos_path, **kwargs):
                 logger.debug("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)))
                 return 0
             else:

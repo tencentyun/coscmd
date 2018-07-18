@@ -762,8 +762,9 @@ class Interface(object):
             logger.warn(u"Complete multipart copy failed")
             return False
 
-    def delete_folder(self, cos_path, _force=False):
+    def delete_folder(self, cos_path, **kwargs):
 
+        _force = kwargs['force']
         cos_path = to_unicode(cos_path)
         if cos_path == "/":
             cos_path = ""
@@ -771,6 +772,7 @@ class Interface(object):
         if _force is False:
             if query_yes_no(u"WARN: you are deleting all files under cos_path '{cos_path}', please make sure".format(cos_path=cos_path)) is False:
                 return False
+        kwargs['force'] = True
         self._have_finished = 0
         self._fail_num = 0
         self._file_num = 0
@@ -850,7 +852,7 @@ class Interface(object):
                 contentset = root.getElementsByTagName("Key")
                 for content in contentset:
                     file_name = to_unicode(content.childNodes[0].data)
-                    if self.delete_file(file_name, True) is True:
+                    if self.delete_file(file_name, kwargs) is True:
                         logger.info(u"Delete {file}".format(file=to_printable_str(file_name)))
                     else:
                         logger.info(u"Delete {file} fail".format(file=to_printable_str(file_name)))
@@ -869,7 +871,7 @@ class Interface(object):
         else:
             return False
 
-    def delete_file(self, cos_path, _force=False):
+    def delete_file(self, cos_path, **kwargs):
         if _force is False:
             if query_yes_no(u"WARN: you are deleting the file in the '{cos_path}' cos_path, please make sure".format(cos_path=cos_path)) is False:
                 return False
@@ -957,6 +959,9 @@ class Interface(object):
         if _versions == True:
             NextMarker = "/"
             NextVersionMarker = "/"
+            if cos_path == "":
+                NextMarker = ""
+                NextVersionMarker = ""
             while IsTruncated == "true":
                 table = PrettyTable(["Path", "Size/Type", "Time", "VersionId"])
                 table.align = "l"
