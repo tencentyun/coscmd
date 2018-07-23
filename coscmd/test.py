@@ -84,29 +84,29 @@ def test_upload_file_02():
 
 
 def test_upload_file_03():
-    """test upload file_tmp_/usr/"""
+    """test upload file_tmp_/home/"""
     gen_file("tmp", 5.1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp /usr/")
+    rt = os.system("python coscmd/cos_cmd.py upload tmp /home/")
     assert rt == 0
-    assert check_file_same("/usr/tmp", "tmp") == 0
+    assert check_file_same("/home/tmp", "tmp") == 0
 
     gen_file("tmp", 1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp /usr/")
+    rt = os.system("python coscmd/cos_cmd.py upload tmp /home/")
     assert rt == 0
-    assert check_file_same("/usr/tmp", "tmp") == 0
+    assert check_file_same("/home/tmp", "tmp") == 0
 
 
 def test_upload_file_04():
-    """test upload file_tmp_usr/"""
+    """test upload file_tmp_home/"""
     gen_file("tmp", 5.1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp usr/")
+    rt = os.system("python coscmd/cos_cmd.py upload tmp home/")
     assert rt == 0
-    assert check_file_same("usr/tmp", "tmp") == 0
+    assert check_file_same("home/tmp", "tmp") == 0
 
     gen_file("tmp", 1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp usr/")
+    rt = os.system("python coscmd/cos_cmd.py upload tmp home/")
     assert rt == 0
-    assert check_file_same("usr/tmp", "tmp") == 0
+    assert check_file_same("home/tmp", "tmp") == 0
 
 
 def test_download_file_01():
@@ -137,17 +137,17 @@ def test_download_file_02():
 
 
 def test_download_file_03():
-    """test download file_tmp_/usr/testfolder/"""
+    """test download file_tmp_/home/testfolder/"""
     gen_file("tmp", 7.1)
     rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
     assert rt == 0
-    rt = os.system("python coscmd/cos_cmd.py download -f tmp /usr/testfolder/")
+    rt = os.system("python coscmd/cos_cmd.py download -f tmp /home/testfolder/")
     assert rt == 0
-    rt = os.path.exists("/usr/testfolder/tmp")
+    rt = os.path.exists("/home/testfolder/tmp")
     assert rt is True
     os.remove("tmp")
-    os.remove("/usr/testfolder/tmp")
-    os.removedirs("/usr/testfolder/")
+    os.remove("/home/testfolder/tmp")
+    os.removedirs("/home/testfolder/")
 
 
 def test_bucketacl():
