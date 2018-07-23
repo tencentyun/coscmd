@@ -5,6 +5,7 @@ import string
 import sys
 import os
 import time
+import filecmp
 from _threading_local import local
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
@@ -28,16 +29,6 @@ def tearDown():
     time.sleep(5)
 
 
-def gen_name():
-    salt = ''.join(random.sample(string.ascii_letters + string.digits, 8))
-    return salt
-
-
-def gen_name():
-    salt = ''.join(random.sample(string.ascii_letters + string.digits, 8))
-    return salt
-
-
 def gen_file(filePath, fileSize):
     ds = 0
     with open(filePath, "w") as f:
@@ -52,7 +43,11 @@ def check_file_same(local_path, cos_path):
                    .format(cos_path=cos_path, local_path=local_path))
     if rt != 0:
         return rt
-    rt = os.system("fc {local_path} {local_path}_download".format(local_path=local_path))
+    rt = os.path.exists(local_path+"_download")
+    if rt:
+        rt = 0
+    else:
+        rt = -1
     try:
         os.remove("{local_path}".format(local_path=local_path))
         os.remove("{local_path}_download".format(local_path=local_path))
@@ -121,8 +116,8 @@ def test_download_file_01():
     assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py download -f tmp tmp_download")
     assert rt == 0
-    rt = os.system("fc tmp tmp_download")
-    assert rt == 0
+    rt = os.path.exists("tmp_download")
+    assert rt is True
     os.remove("tmp")
     os.remove("tmp_download")
 
@@ -134,25 +129,25 @@ def test_download_file_02():
     assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py download -f tmp testfolder/")
     assert rt == 0
-    rt = os.system("fc tmp testfolder/tmp")
-    assert rt == 0
+    rt = os.path.exists("testfolder/tmp")
+    assert rt is True
     os.remove("tmp")
     os.remove("testfolder/tmp")
     os.removedirs("testfolder/")
 
 
 def test_download_file_03():
-    """test download file_tmp_/usr/testfolder/"""
+    """test download file_tmp_/data/testfolder/"""
     gen_file("tmp", 7.1)
     rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
     assert rt == 0
-    rt = os.system("python coscmd/cos_cmd.py download -f tmp /usr/testfolder/")
+    rt = os.system("python coscmd/cos_cmd.py download -f tmp /data/testfolder/")
     assert rt == 0
-    rt = os.system("fc tmp /usr/testfolder/tmp")
-    assert rt == 0
+    rt = os.path.exists("/data/testfolder/tmp")
+    assert rt is True
     os.remove("tmp")
-    os.remove("/usr/testfolder/tmp")
-    os.removedirs("/usr/testfolder/")
+    os.remove("/data/testfolder/tmp")
+    os.removedirs("/data/testfolder/")
 
 
 def test_bucketacl():
