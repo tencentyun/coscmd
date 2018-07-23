@@ -31,6 +31,11 @@ def gen_name():
     salt = ''.join(random.sample(string.ascii_letters + string.digits, 8))
     return salt
 
+def gen_name():
+    salt = ''.join(random.sample(string.ascii_letters + string.digits, 8))
+    return salt
+
+
 def gen_file(filePath, fileSize):
     ds = 0
     with open(filePath, "w") as f:
@@ -42,7 +47,7 @@ def gen_file(filePath, fileSize):
 
 def check_file_same(local_path, cos_path):
     rt = os.system("python coscmd/cos_cmd.py download -f {cos_path} {local_path}_download"
-                     .format(cos_path=cos_path, local_path=local_path))
+                   .format(cos_path=cos_path, local_path=local_path))
     if rt != 0:
         return rt
     rt = os.system("fc {local_path} {local_path}_download".format(local_path=local_path))
@@ -53,20 +58,19 @@ def check_file_same(local_path, cos_path):
         pass
     return rt
 
-    
+ 
 def test_upload_file_01():
     """test upload file_tmp_tmp"""
     gen_file("tmp", 5.1)
     rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
     assert rt == 0
     assert check_file_same("tmp", "tmp") == 0
-    
     gen_file("tmp", 1)
     rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
     assert rt == 0
     assert check_file_same("tmp", "tmp") == 0
 
-    
+
 def test_upload_file_02():
     """test upload file_tmp_/"""
     local_path = "tmp"
@@ -75,7 +79,7 @@ def test_upload_file_02():
     rt = os.system("python coscmd/cos_cmd.py upload tmp /")
     assert rt == 0
     assert check_file_same("tmp", "tmp") == 0
-    
+
     gen_file("tmp", 1)
     rt = os.system("python coscmd/cos_cmd.py upload tmp /")
     assert rt == 0
@@ -83,29 +87,29 @@ def test_upload_file_02():
 
 
 def test_upload_file_03():
-    """test upload file_tmp_/usr/"""
+    """test upload file_tmp_/data/"""
     gen_file("tmp", 5.1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp /usr/")
+    rt = os.system("python coscmd/cos_cmd.py upload tmp /data/")
     assert rt == 0
-    assert check_file_same("/usr/tmp", "tmp") == 0
-     
+    assert check_file_same("/data/tmp", "tmp") == 0
+
     gen_file("tmp", 1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp /usr/")
+    rt = os.system("python coscmd/cos_cmd.py upload tmp /data/")
     assert rt == 0
-    assert check_file_same("/usr/tmp", "tmp") == 0
+    assert check_file_same("/data/tmp", "tmp") == 0
 
 
 def test_upload_file_04():
-    """test upload file_tmp_usr/"""
+    """test upload file_tmp_data/"""
     gen_file("tmp", 5.1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp usr/")
+    rt = os.system("python coscmd/cos_cmd.py upload tmp data/")
     assert rt == 0
-    assert check_file_same("usr/tmp", "tmp") == 0
-    
+    assert check_file_same("data/tmp", "tmp") == 0
+
     gen_file("tmp", 1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp usr/")
+    rt = os.system("python coscmd/cos_cmd.py upload tmp data/")
     assert rt == 0
-    assert check_file_same("usr/tmp", "tmp") == 0
+    assert check_file_same("data/tmp", "tmp") == 0
 
 
 def test_download_file_01():
