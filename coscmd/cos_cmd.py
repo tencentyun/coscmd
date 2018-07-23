@@ -31,8 +31,6 @@ def concat_path(sorce_path, target_path):
     if sorce_path.endswith('/') is False:
         if target_path.endswith('/') is True:
             target_path += sorce_path.split('/')[-1]
-    if target_path.startswith('/'):
-        target_path = target_path[1:]
     return sorce_path, target_path
 
 
@@ -182,6 +180,8 @@ class Op(object):
             logger.warn('local_path %s is not readable!' % to_printable_str(args.local_path))
             return -1
         args.local_path, args.cos_path = concat_path(args.local_path, args.cos_path)
+        if args.cos_path.startswith('/'):
+            args.cos_path = args.cos_path[1:];
         kwargs = {}
         kwargs['sync'] = args.sync
         kwargs['skipmd5'] = args.skipmd5
@@ -220,6 +220,8 @@ class Op(object):
         if not isinstance(args. cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
         args.cos_path, args.local_path = concat_path(args.cos_path, args.local_path)
+        if args.cos_path.startswith('/'):
+            args.cos_path = args.cos_path[1:];
         kwargs = {}
         kwargs['force'] = args.force
         kwargs['sync'] = args.sync
@@ -283,6 +285,8 @@ class Op(object):
             args.cos_path = args.cos_path[1:]
         Interface = client.op_int()
         _, args.cos_path = concat_path(args.source_path, args.cos_path)
+        if args.cos_path.startswith('/'):
+            args.cos_path = args.cos_path[1:];
         if not isinstance(args.source_path, text_type):
             args.source_path = args.source_path.decode(fs_coding)
         if not isinstance(args.cos_path, text_type):
@@ -291,8 +295,8 @@ class Op(object):
             _, args.cos_path = concat_path(args.source_path, args.cos_path)
             if args.cos_path.endswith('/') is False:
                 args.cos_path += '/'
-            if args.cos_path == '/':
-                args.cos_path = ''
+            if args.cos_path.startswith('/'):
+                args.cos_path = args.cos_path[1:];
 
             if Interface.copy_folder(args.source_path, args.cos_path) is True:
                 return 0
