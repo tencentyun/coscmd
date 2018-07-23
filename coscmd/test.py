@@ -27,9 +27,11 @@ def tearDown():
     os.system("python coscmd/cos_cmd.py deletebucket")
     time.sleep(5)
 
+
 def gen_name():
     salt = ''.join(random.sample(string.ascii_letters + string.digits, 8))
     return salt
+
 
 def gen_name():
     salt = ''.join(random.sample(string.ascii_letters + string.digits, 8))
@@ -58,7 +60,7 @@ def check_file_same(local_path, cos_path):
         pass
     return rt
 
- 
+
 def test_upload_file_01():
     """test upload file_tmp_tmp"""
     gen_file("tmp", 5.1)
