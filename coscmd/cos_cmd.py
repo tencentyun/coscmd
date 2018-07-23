@@ -297,7 +297,6 @@ class Op(object):
                 args.cos_path += '/'
             if args.cos_path.startswith('/'):
                 args.cos_path = args.cos_path[1:]
-
             if Interface.copy_folder(args.source_path, args.cos_path) is True:
                 return 0
             else:

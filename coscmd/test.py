@@ -27,6 +27,9 @@ def tearDown():
     os.system("python coscmd/cos_cmd.py deletebucket")
     time.sleep(5)
 
+def gen_name():
+    salt = ''.join(random.sample(string.ascii_letters + string.digits, 8))
+    return salt
 
 def gen_name():
     salt = ''.join(random.sample(string.ascii_letters + string.digits, 8))
@@ -55,14 +58,13 @@ def check_file_same(local_path, cos_path):
         pass
     return rt
 
-
+ 
 def test_upload_file_01():
     """test upload file_tmp_tmp"""
     gen_file("tmp", 5.1)
     rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
     assert rt == 0
     assert check_file_same("tmp", "tmp") == 0
-
     gen_file("tmp", 1)
     rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
     assert rt == 0
@@ -138,17 +140,17 @@ def test_download_file_02():
 
 
 def test_download_file_03():
-    """test download file_tmp_/data/testfolder/"""
+    """test download file_tmp_/usr/testfolder/"""
     gen_file("tmp", 7.1)
     rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
     assert rt == 0
-    rt = os.system("python coscmd/cos_cmd.py download -f tmp /data/testfolder/")
+    rt = os.system("python coscmd/cos_cmd.py download -f tmp /usr/testfolder/")
     assert rt == 0
-    rt = os.system("fc tmp /data/testfolder/tmp")
+    rt = os.system("fc tmp /usr/testfolder/tmp")
     assert rt == 0
     os.remove("tmp")
-    os.remove("/data/testfolder/tmp")
-    os.removedirs("/data/testfolder/")
+    os.remove("/usr/testfolder/tmp")
+    os.removedirs("/usr/testfolder/")
 
 
 def test_bucketacl():
