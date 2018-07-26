@@ -543,11 +543,12 @@ class Interface(object):
                 for _file in fileset:
                     _tmp = _file.getElementsByTagName("Key")[0].childNodes[0].data
                     _source_path = source_schema + _tmp
-                    if source_path.endswith('/') is False:
+                    if source_path.endswith('/') is False and len(source_path) != 0:
                         _cos_path = cos_path + _tmp[len(source_path)+1:]
                     else:
                         _cos_path = cos_path + _tmp[len(source_path):]
                     _cos_path = to_unicode(_cos_path)
+                    
                     _source_path = to_unicode(_source_path)
 
                     if _cos_path.endswith('/'):
