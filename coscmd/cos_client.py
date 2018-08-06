@@ -548,9 +548,7 @@ class Interface(object):
                     else:
                         _cos_path = cos_path + _tmp[len(source_path):]
                     _cos_path = to_unicode(_cos_path)
-                    
                     _source_path = to_unicode(_source_path)
-
                     if _cos_path.endswith('/'):
                         continue
                     _file_num += 1
@@ -751,7 +749,6 @@ class Interface(object):
                 else:
                     return False
                 logger.debug(u"Init multipart copy ok")
-    
                 rt = copy_parts(file_size=file_size)
                 if rt is False:
                     return False
@@ -972,7 +969,6 @@ class Interface(object):
                     IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
                     if IsTruncated == 'true':
                         NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
-    
                     logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
                          code=rt.status_code,
                          headers=rt.headers,
@@ -1515,7 +1511,6 @@ class Interface(object):
                     IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
                     if IsTruncated == 'true':
                         NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
-    
                     logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
                          code=rt.status_code,
                          headers=rt.headers,
