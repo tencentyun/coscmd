@@ -731,36 +731,40 @@ class Interface(object):
             except Exception:
                 return False
             return True
-        source_path = quote(to_printable_str(source_path))
-        rt = self._session.head(url="http://"+source_path, auth=CosS3Auth(self._conf))
-        if rt.status_code != 200:
-            logger.warn(u"Replication sources do not exist")
-            return False
-        file_size = int(rt.headers['Content-Length'])
-        if file_size < self._conf._part_size * 1024 * 1024 + 1024:
-            for _ in range(self._retry):
-                if single_copy() is True:
-                    return True
-            return False
-        else:
-            for _ in range(self._retry):
-                rt = init_multiupload()
-                if rt:
-                    break
+        try:
+            source_path = quote(to_printable_str(source_path))
+            rt = self._session.head(url="http://"+source_path, auth=CosS3Auth(self._conf))
+            if rt.status_code != 200:
+                logger.warn(u"Copy sources do not exist")
+                return False
+            file_size = int(rt.headers['Content-Length'])
+            if file_size < self._conf._part_size * 1024 * 1024 + 1024:
+                for _ in range(self._retry):
+                    if single_copy() is True:
+                        return True
+                return False
             else:
+                for _ in range(self._retry):
+                    rt = init_multiupload()
+                    if rt:
+                        break
+                else:
+                    return False
+                logger.debug(u"Init multipart copy ok")
+    
+                rt = copy_parts(file_size=file_size)
+                if rt is False:
+                    return False
+                logger.debug(u"Multipart copy ok")
+                for _ in range(self._retry):
+                    rt = complete_multiupload()
+                    if rt:
+                        logger.debug(u"Complete multipart copy ok")
+                        return True
+                logger.warn(u"Complete multipart copy failed")
                 return False
-            logger.debug(u"Init multipart copy ok")
-
-            rt = copy_parts(file_size=file_size)
-            if rt is False:
-                return False
-            logger.debug(u"Multipart copy ok")
-            for _ in range(self._retry):
-                rt = complete_multiupload()
-                if rt:
-                    logger.debug(u"Complete multipart copy ok")
-                    return True
-            logger.warn(u"Complete multipart copy failed")
+        except Exception as e:
+            logger.warn(e)
             return False
 
     def delete_folder(self, cos_path, _force=False):
@@ -881,6 +885,9 @@ class Interface(object):
                  code=rt.status_code,
                  headers=rt.headers))
             if rt.status_code == 204 or rt.status_code == 200:
+                logger.info(u"Delete cos://{bucket}/{cos_path}".format(
+                                                        bucket=self._conf._bucket,
+                                                        cos_path=cos_path))
                 return True
             else:
                 logger.warn(response_info(rt))
@@ -958,45 +965,49 @@ class Interface(object):
             table.border = False
             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}{delimiter}'
                                  .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker)), delimiter=Delimiter))
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-            if rt.status_code == 200:
-                root = minidom.parseString(rt.content).documentElement
-                IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                if IsTruncated == 'true':
-                    NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
-
-                logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                     code=rt.status_code,
-                     headers=rt.headers,
-                     text=rt.text))
-                folderset = root.getElementsByTagName("CommonPrefixes")
-                for _folder in folderset:
-                    _time = ""
-                    _type = "DIR"
-                    _path = _folder.getElementsByTagName("Prefix")[0].childNodes[0].data
-                    table.add_row([_path, _type, _time])
-                fileset = root.getElementsByTagName("Contents")
-                for _file in fileset:
-                    self._file_num += 1
-                    _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
-                    _time = time.localtime(utc_to_local(_time))
-                    _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
-                    _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
-                    self._total_size += int(_size)
-                    if _human is True:
-                        _size = change_to_human(_size)
-                    _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
-                    table.add_row([_path, _size, _time])
+            try:
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
+                if rt.status_code == 200:
+                    root = minidom.parseString(rt.content).documentElement
+                    IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                    if IsTruncated == 'true':
+                        NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+    
+                    logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                         code=rt.status_code,
+                         headers=rt.headers,
+                         text=rt.text))
+                    folderset = root.getElementsByTagName("CommonPrefixes")
+                    for _folder in folderset:
+                        _time = ""
+                        _type = "DIR"
+                        _path = _folder.getElementsByTagName("Prefix")[0].childNodes[0].data
+                        table.add_row([_path, _type, _time])
+                    fileset = root.getElementsByTagName("Contents")
+                    for _file in fileset:
+                        self._file_num += 1
+                        _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
+                        _time = time.localtime(utc_to_local(_time))
+                        _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
+                        _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
+                        self._total_size += int(_size)
+                        if _human is True:
+                            _size = change_to_human(_size)
+                        _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
+                        table.add_row([_path, _size, _time])
+                        if self._file_num == _num:
+                            break
+                    try:
+                        print(unicode(table))
+                    except Exception:
+                        print(table)
                     if self._file_num == _num:
                         break
-                try:
-                    print(unicode(table))
-                except Exception:
-                    print(table)
-                if self._file_num == _num:
-                    break
-            else:
-                logger.warn(response_info(rt))
+                else:
+                    logger.warn(response_info(rt))
+                    return False
+            except Exception as e:
+                logger.warn(e)
                 return False
         if _human:
             self._total_size = change_to_human(str(self._total_size))
@@ -1114,8 +1125,12 @@ class Interface(object):
 
         def check_file_md5(_local_path, _cos_path):
             url = self._conf.uri(path=_cos_path)
-            rt = self._session.head(url=url, auth=CosS3Auth(self._conf), stream=True)
-            if rt.status_code != 200:
+            try:
+                rt = self._session.head(url=url, auth=CosS3Auth(self._conf), stream=True)
+                if rt.status_code != 200:
+                    return False
+            except Exception as e:
+                logger.warn(e)
                 return False
             tmp = os.stat(_local_path)
             if tmp.st_size != int(rt.headers['Content-Length']):
@@ -1493,27 +1508,30 @@ class Interface(object):
             pagecount += 1
             logger.info(u"Get bucket with page {page}".format(page=pagecount))
             url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}'.format(nextmarker=NextMarker))
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-
-            if rt.status_code == 200:
-                root = minidom.parseString(rt.content).documentElement
-                IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                if IsTruncated == 'true':
-                    NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
-
-                logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                     code=rt.status_code,
-                     headers=rt.headers,
-                     text=rt.text))
-                contentset = root.getElementsByTagName("Contents")
-                for content in contentset:
-                    filecount += 1
-                    sizecount += int(content.getElementsByTagName("Size")[0].childNodes[0].data)
-                    print(to_printable_str(content.toxml()))
-                    if filecount == max_keys:
-                        break
-            else:
-                logger.warn(response_info(rt))
+            try:
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
+                if rt.status_code == 200:
+                    root = minidom.parseString(rt.content).documentElement
+                    IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                    if IsTruncated == 'true':
+                        NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+    
+                    logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                         code=rt.status_code,
+                         headers=rt.headers,
+                         text=rt.text))
+                    contentset = root.getElementsByTagName("Contents")
+                    for content in contentset:
+                        filecount += 1
+                        sizecount += int(content.getElementsByTagName("Size")[0].childNodes[0].data)
+                        print(to_printable_str(content.toxml()))
+                        if filecount == max_keys:
+                            break
+                else:
+                    logger.warn(response_info(rt))
+                    return False
+            except Exception as e:
+                logger.warn(e)
                 return False
 
         logger.info(u"filecount: %d" % filecount)
