@@ -83,17 +83,17 @@ def test_upload_file_02():
     assert check_file_same("tmp", "tmp") == 0
 
 
-def test_upload_file_03():
-    """test upload file_tmp_/home/"""
-    gen_file("tmp", 5.1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp /home/")
-    assert rt == 0
-    assert check_file_same("/home/tmp", "tmp") == 0
-
-    gen_file("tmp", 1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp /home/")
-    assert rt == 0
-    assert check_file_same("/home/tmp", "tmp") == 0
+# def test_upload_file_03():
+#     """test upload file_tmp_/home/"""
+#     gen_file("tmp", 5.1)
+#     rt = os.system("python coscmd/cos_cmd.py upload tmp /home/")
+#     assert rt == 0
+#     assert check_file_same("/home/tmp", "tmp") == 0
+#
+#     gen_file("tmp", 1)
+#     rt = os.system("python coscmd/cos_cmd.py upload tmp /home/")
+#     assert rt == 0
+#     assert check_file_same("/home/tmp", "tmp") == 0
 
 
 def test_upload_file_04():
@@ -136,18 +136,18 @@ def test_download_file_02():
     os.removedirs("testfolder/")
 
 
-def test_download_file_03():
-    """test download file_tmp_/home/testfolder/"""
-    gen_file("tmp", 7.1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
-    assert rt == 0
-    rt = os.system("python coscmd/cos_cmd.py download -f tmp /home/testfolder/")
-    assert rt == 0
-    rt = os.path.exists("/home/testfolder/tmp")
-    assert rt is True
-    os.remove("tmp")
-    os.remove("/home/testfolder/tmp")
-    os.removedirs("/home/testfolder/")
+# def test_download_file_03():
+#     """test download file_tmp_/home/testfolder/"""
+#     gen_file("tmp", 7.1)
+#     rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
+#     assert rt == 0
+#     rt = os.system("python coscmd/cos_cmd.py download -f tmp /home/testfolder/")
+#     assert rt == 0
+#     rt = os.path.exists("/home/testfolder/tmp")
+#     assert rt is True
+#     os.remove("tmp")
+#     os.remove("/home/testfolder/tmp")
+#     os.removedirs("/home/testfolder/")
 
 
 def test_bucketacl():
