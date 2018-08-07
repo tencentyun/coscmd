@@ -1,9 +1,12 @@
 # -*- coding=utf-8
 import logging
 import random
+import string
 import sys
 import os
 import time
+import filecmp
+from _threading_local import local
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
 access_id = os.environ["COS_KEY"]
@@ -35,33 +38,116 @@ def gen_file(filePath, fileSize):
             ds = os.path.getsize(filePath)
 
 
-def test_upload_small_file():
-    """test upload small file"""
-    gen_file("tmp", 1.1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
-    assert rt == 0
-    os.remove("tmp")
+def check_file_same(local_path, cos_path):
+    rt = os.system("python coscmd/cos_cmd.py download -f {cos_path} {local_path}_download"
+                   .format(cos_path=cos_path, local_path=local_path))
+    if rt != 0:
+        return rt
+    rt = os.path.exists(local_path+"_download")
+    if rt:
+        rt = 0
+    else:
+        rt = -1
+    try:
+        os.remove("{local_path}".format(local_path=local_path))
+        os.remove("{local_path}_download".format(local_path=local_path))
+    except:
+        pass
+    return rt
 
 
-def test_upload_big_file():
-    """test upload small file"""
+def test_upload_file_01():
+    """test upload file_tmp_tmp"""
     gen_file("tmp", 5.1)
     rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
     assert rt == 0
-    os.remove("tmp")
+    assert check_file_same("tmp", "tmp") == 0
+    gen_file("tmp", 1)
+    rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
+    assert rt == 0
+    assert check_file_same("tmp", "tmp") == 0
 
 
-def test_download_file():
-    """test download file"""
+def test_upload_file_02():
+    """test upload file_tmp_/"""
+    local_path = "tmp"
+    cos_path = "/"
+    gen_file("tmp", 5.1)
+    rt = os.system("python coscmd/cos_cmd.py upload tmp /")
+    assert rt == 0
+    assert check_file_same("tmp", "tmp") == 0
+
+    gen_file("tmp", 1)
+    rt = os.system("python coscmd/cos_cmd.py upload tmp /")
+    assert rt == 0
+    assert check_file_same("tmp", "tmp") == 0
+
+
+# def test_upload_file_03():
+#     """test upload file_tmp_/home/"""
+#     gen_file("tmp", 5.1)
+#     rt = os.system("python coscmd/cos_cmd.py upload tmp /home/")
+#     assert rt == 0
+#     assert check_file_same("/home/tmp", "tmp") == 0
+#
+#     gen_file("tmp", 1)
+#     rt = os.system("python coscmd/cos_cmd.py upload tmp /home/")
+#     assert rt == 0
+#     assert check_file_same("/home/tmp", "tmp") == 0
+
+
+def test_upload_file_04():
+    """test upload file_tmp_home/"""
+    gen_file("tmp", 5.1)
+    rt = os.system("python coscmd/cos_cmd.py upload tmp home/")
+    assert rt == 0
+    assert check_file_same("home/tmp", "tmp") == 0
+
+    gen_file("tmp", 1)
+    rt = os.system("python coscmd/cos_cmd.py upload tmp home/")
+    assert rt == 0
+    assert check_file_same("home/tmp", "tmp") == 0
+
+
+def test_download_file_01():
+    """test download file_tmp_tmp"""
     gen_file("tmp", 7.1)
     rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
     assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py download -f tmp tmp_download")
     assert rt == 0
-    rt = os.system("python coscmd/cos_cmd.py delete -f tmp")
-    assert rt == 0
+    rt = os.path.exists("tmp_download")
+    assert rt is True
     os.remove("tmp")
     os.remove("tmp_download")
+
+
+def test_download_file_02():
+    """test download file_tmp_testfolder/"""
+    gen_file("tmp", 7.1)
+    rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
+    assert rt == 0
+    rt = os.system("python coscmd/cos_cmd.py download -f tmp testfolder/")
+    assert rt == 0
+    rt = os.path.exists("testfolder/tmp")
+    assert rt is True
+    os.remove("tmp")
+    os.remove("testfolder/tmp")
+    os.removedirs("testfolder/")
+
+
+# def test_download_file_03():
+#     """test download file_tmp_/home/testfolder/"""
+#     gen_file("tmp", 7.1)
+#     rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
+#     assert rt == 0
+#     rt = os.system("python coscmd/cos_cmd.py download -f tmp /home/testfolder/")
+#     assert rt == 0
+#     rt = os.path.exists("/home/testfolder/tmp")
+#     assert rt is True
+#     os.remove("tmp")
+#     os.remove("/home/testfolder/tmp")
+#     os.removedirs("/home/testfolder/")
 
 
 def test_bucketacl():

@@ -29,7 +29,7 @@ pip install coscmd -U
 ```
 
 > **注意：** 
-不论是在 Linux 还是 Windows 环境下，都可以通过以上的方法安装或更新。
+当pip版本大于等于10.0.0时，升级或安装依赖库时可能会出现失败。需要降低pip版本至9.x。（pip install pip==9.0.0）
 
 ## 使用方法
 ### 查看 help
@@ -274,8 +274,8 @@ coscmd putbucketacl --grant-read 12345678,12345678/11111 --grant-write anyone --
 ```
 使用如下命令设置 Object 的访问控制：
 ```
-coscmd putbucketacl [--grant-read GRANT_READ] [--grant-write GRANT_WRITE] [--grant-full-control GRANT_FULL_CONTROL] <cospath> //命令格式
-coscmd putbucketacl --grant-read 12345678,12345678/11111 --grant-write anyone --grant-full-control 12345678/22222 aaa/aaa.txt //操作示例
+coscmd putobjectacl [--grant-read GRANT_READ] [--grant-write GRANT_WRITE] [--grant-full-control GRANT_FULL_CONTROL] <cospath> //命令格式
+coscmd putobjectacl  --grant-read 12345678,12345678/11111 --grant-write anyone --grant-full-control 12345678/22222 aaa/aaa.txt //操作示例
 ```
 
 #### ACL 设置指南
