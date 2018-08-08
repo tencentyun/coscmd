@@ -458,17 +458,6 @@ class Op(object):
             return -1
 
     @staticmethod
-    def list_bucket(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        Interface = client.op_int()
-        if Interface.get_bucket(args.cos_path):
-            return 0
-        else:
-            logger.warn("List bucket fail")
-            return -1
-
-    @staticmethod
     def put_bucket_acl(args):
         conf = load_conf()
         client = CosS3Client(conf)

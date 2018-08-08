@@ -1642,46 +1642,6 @@ class Interface(object):
             return False
         return True
 
-    def get_bucket(self, max_keys=10):
-        NextMarker = ""
-        IsTruncated = "true"
-        pagecount = 0
-        filecount = 0
-        sizecount = 0
-        while IsTruncated == "true":
-            pagecount += 1
-            logger.info(u"Get bucket with page {page}".format(page=pagecount))
-            url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}'.format(nextmarker=NextMarker))
-            try:
-                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-                if rt.status_code == 200:
-                    root = minidom.parseString(rt.content).documentElement
-                    IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                    if IsTruncated == 'true':
-                        NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
-                    logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                         code=rt.status_code,
-                         headers=rt.headers,
-                         text=rt.text))
-                    contentset = root.getElementsByTagName("Contents")
-                    for content in contentset:
-                        filecount += 1
-                        sizecount += int(content.getElementsByTagName("Size")[0].childNodes[0].data)
-                        print(to_printable_str(content.toxml()))
-                        if filecount == max_keys:
-                            break
-                else:
-                    logger.warn(response_info(rt))
-                    return False
-            except Exception as e:
-                logger.warn(e)
-                return False
-
-        logger.info(u"filecount: %d" % filecount)
-        logger.info(u"sizecount: %d" % sizecount)
-        logger.debug(u"get bucket success")
-        return True
-
     def put_bucket_acl(self, grant_read, grant_write, grant_full_control):
         acl = []
         if grant_read is not None:
