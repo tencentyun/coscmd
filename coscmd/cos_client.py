@@ -1620,7 +1620,7 @@ class Interface(object):
         _force = kwargs["force"]
         try:
             if _force:
-                logger.info("Clearing redundant files in the bucket")
+                logger.info("Clearing files and upload parts in the bucket")
                 self.abort_parts("")
                 kwargs['versions'] = False
                 self.delete_folder("", **kwargs)
