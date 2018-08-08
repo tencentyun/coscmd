@@ -284,6 +284,7 @@ class Op(object):
         except Exception as e:
             logger.warn(e)
             return -1
+
     @staticmethod
     def copy(args):
         conf = load_conf()
@@ -603,7 +604,7 @@ def command_thread():
     parser_mget.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
     parser_mget.add_argument('local_path', help="Local file path as /tmp/a.txt", type=str)
     parser_mget.set_defaults(func=Op.mget)
-    
+
     parser_restore = sub_parser.add_parser("restore", help="Restore")
     parser_restore.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
     parser_restore.add_argument('-d', '--day', help='Specify lifetime of the restored (active) copy', type=int, default=7)
@@ -641,11 +642,11 @@ def command_thread():
 
     parser_get_bucket_acl = sub_parser.add_parser("getbucketacl", help='Get bucket acl')
     parser_get_bucket_acl.set_defaults(func=Op.get_bucket_acl)
-    
+
     parser_put_bucket_versioning = sub_parser.add_parser("putbucketversioning", help="Set the versioning state")
     parser_put_bucket_versioning.add_argument("status",  help="Status as a/b.txt", type=str, choices=['Enabled', 'Suspended'], default='Enable')
     parser_put_bucket_versioning.set_defaults(func=Op.put_bucket_versioning)
-    
+
     parser_get_bucket_versioning = sub_parser.add_parser("getbucketversioning", help="Get the versioning state")
     parser_get_bucket_versioning.set_defaults(func=Op.get_bucket_versioning)
 

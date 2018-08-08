@@ -781,7 +781,7 @@ class Interface(object):
         self._file_num = 0
         NextMarker = ""
         IsTruncated = "true"
-        if _versions == True:
+        if _versions:
             Delimiter = ""
             NextMarker = "/"
             NextVersionMarker = "/"
@@ -973,7 +973,6 @@ class Interface(object):
                     IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
                     if IsTruncated == 'true':
                         NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
-    
                     logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
                          code=rt.status_code,
                          headers=rt.headers,
@@ -1019,8 +1018,7 @@ class Interface(object):
         self._file_num = 0
         self._total_size = 0
         cos_path = to_printable_str(cos_path)
-         # list bucket versions
-        if _versions == True:
+        if _versions:
             KeyMarker = ""
             VersionIdMarker = ""
             while IsTruncated == "true":
@@ -1049,7 +1047,6 @@ class Interface(object):
                          code=rt.status_code,
                          headers=rt.headers,
                          text=rt.text))
-                    
                     folderset = root.getElementsByTagName("CommonPrefixes")
                     for _folder in folderset:
                         _time = ""
@@ -1116,7 +1113,7 @@ class Interface(object):
                     IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
                     if IsTruncated == 'true':
                         NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
-    
+
                     logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
                          code=rt.status_code,
                          headers=rt.headers,
@@ -1829,6 +1826,7 @@ class Interface(object):
             logger.warn(str(e))
             return False
         return False
+
 
 class CosS3Client(object):
 
