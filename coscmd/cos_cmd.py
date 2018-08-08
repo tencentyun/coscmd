@@ -260,24 +260,30 @@ class Op(object):
 
         kwargs = {}
         kwargs['force'] = args.force
-        if args.recursive:
-            if args.cos_path.endswith('/') is False:
-                args.cos_path += '/'
-            if args.cos_path == '/':
-                args.cos_path = ''
-            if Interface.delete_folder(args.cos_path, **kwargs):
-                logger.debug("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)))
-                return 0
+        kwargs['versions'] = args.versions
+        kwargs['versionId'] = args.versionId
+        try:
+            if args.recursive:
+                if args.cos_path.endswith('/') is False:
+                    args.cos_path += '/'
+                if args.cos_path == '/':
+                    args.cos_path = ''
+                if Interface.delete_folder(args.cos_path, **kwargs):
+                    logger.debug("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)))
+                    return 0
+                else:
+                    logger.debug("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)))
+                    return -1
             else:
-                logger.debug("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)))
-                return -1
-        else:
-            if Interface.delete_file(args.cos_path, **kwargs):
-                logger.debug("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)))
-                return 0
-            else:
-                logger.debug("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)))
-                return -1
+                if Interface.delete_file(args.cos_path, **kwargs):
+                    logger.debug("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)))
+                    return 0
+                else:
+                    logger.debug("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)))
+                    return -1
+        except Exception as e:
+            logger.warn(e)
+            return -1
 
     @staticmethod
     def copy(args):
@@ -323,9 +329,13 @@ class Op(object):
         kwargs['num'] = args.num
         kwargs['human'] = args.human
         kwargs['versions'] = args.versions
-        if Interface.list_objects(cos_path=args.cos_path, **kwargs):
-            return 0
-        else:
+        try:
+            if Interface.list_objects(cos_path=args.cos_path, **kwargs):
+                return 0
+            else:
+                return -1
+        except Exception as e:
+            logger.warn(e)
             return -1
 
     @staticmethod
@@ -387,7 +397,7 @@ class Op(object):
             logger.info(rt)
             return True
         except Exception:
-            logger.warn('geturl failed')
+            logger.warn('Geturl fail')
             return False
 
     @staticmethod
@@ -403,7 +413,7 @@ class Op(object):
         if rt is True:
             return 0
         else:
-            logger.warn("put fail!")
+            logger.warn("Put object acl fail")
             return -1
 
     @staticmethod
@@ -420,7 +430,7 @@ class Op(object):
         if rt is True:
             return 0
         else:
-            logger.warn("get fail!")
+            logger.warn("Get object acl fail")
             return -1
 
     @staticmethod
@@ -431,7 +441,7 @@ class Op(object):
         if Interface.create_bucket():
             return 0
         else:
-            logger.warn("create fail!")
+            logger.warn("Create bucket fail")
             return -1
 
     @staticmethod
@@ -439,21 +449,12 @@ class Op(object):
         conf = load_conf()
         client = CosS3Client(conf)
         Interface = client.op_int()
-        if Interface.delete_bucket():
+        kwargs = {}
+        kwargs['force'] = args.force
+        if Interface.delete_bucket(**kwargs):
             return 0
         else:
-            logger.warn("delete fail!")
-            return -1
-
-    @staticmethod
-    def list_bucket(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        Interface = client.op_int()
-        if Interface.get_bucket(args.cos_path):
-            return 0
-        else:
-            logger.warn("list fail!")
+            logger.warn("Delete bucket fail")
             return -1
 
     @staticmethod
@@ -465,7 +466,7 @@ class Op(object):
         if rt is True:
             return 0
         else:
-            logger.warn("put fail!")
+            logger.warn("put bucket acl fail")
             return -1
 
     @staticmethod
@@ -477,7 +478,7 @@ class Op(object):
         if rt is True:
             return 0
         else:
-            logger.warn("get fail!")
+            logger.warn("Get bucket acl fail")
             return -1
 
     @staticmethod
@@ -489,7 +490,7 @@ class Op(object):
         if rt is True:
             return 0
         else:
-            logger.warn("put fail!")
+            logger.warn("Put bucket versioning fail")
             return -1
 
     @staticmethod
@@ -501,7 +502,7 @@ class Op(object):
         if rt is True:
             return 0
         else:
-            logger.warn("get fail!")
+            logger.warn("Get bucket versioning fail")
             return -1
 
 
@@ -551,12 +552,15 @@ def command_thread():
     parser_download.add_argument('-f', '--force', help="Overwrite the saved files", action="store_true", default=False)
     parser_download.add_argument('-r', '--recursive', help="Download recursively when upload directory", action="store_true", default=False)
     parser_download.add_argument('-s', '--sync', help="Download and skip the same file", action="store_true", default=False)
+    parser_download.add_argument('--versionId', help='Specify versionId of object to list', type=str, default="")
     parser_download.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
     parser_download.set_defaults(func=Op.download)
 
     parser_delete = sub_parser.add_parser("delete", help="Delete file or files on COS")
     parser_delete.add_argument("cos_path", nargs='?', help="Cos_path as a/b.txt", type=str, default='')
     parser_delete.add_argument('-r', '--recursive', help="Delete files recursively, WARN: all files with the prefix will be deleted!", action="store_true", default=False)
+    parser_delete.add_argument('--versions', help='Delete objects with versions', action="store_true", default=False)
+    parser_delete.add_argument('--versionId', help='Specify versionId of object to list', type=str, default="")
     parser_delete.add_argument('-f', '--force', help="Delete directly without confirmation", action="store_true", default=False)
     parser_delete.set_defaults(func=Op.delete)
 
@@ -589,7 +593,7 @@ def command_thread():
     parser_mget.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
     parser_mget.add_argument('local_path', help="Local file path as /tmp/a.txt", type=str)
     parser_mget.set_defaults(func=Op.mget)
-    
+
     parser_restore = sub_parser.add_parser("restore", help="Restore")
     parser_restore.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
     parser_restore.add_argument('-d', '--day', help='Specify lifetime of the restored (active) copy', type=int, default=7)
@@ -605,6 +609,7 @@ def command_thread():
     parser_create_bucket.set_defaults(func=Op.create_bucket)
 
     parser_delete_bucket = sub_parser.add_parser("deletebucket", help='Delete bucket')
+    parser_delete_bucket.add_argument('-f', '--force', help="Clear all inside the bucket and delete bucket", action="store_true", default=False)
     parser_delete_bucket.set_defaults(func=Op.delete_bucket)
 
     parser_put_object_acl = sub_parser.add_parser("putobjectacl", help='''Set object acl''')
@@ -626,11 +631,11 @@ def command_thread():
 
     parser_get_bucket_acl = sub_parser.add_parser("getbucketacl", help='Get bucket acl')
     parser_get_bucket_acl.set_defaults(func=Op.get_bucket_acl)
-    
+
     parser_put_bucket_versioning = sub_parser.add_parser("putbucketversioning", help="Set the versioning state")
-    parser_put_bucket_versioning.add_argument("status",  help="Status as a/b.txt", type=str, choices=['Enable', 'Suspended'], default='Enable')
+    parser_put_bucket_versioning.add_argument("status",  help="Status as a/b.txt", type=str, choices=['Enabled', 'Suspended'], default='Enable')
     parser_put_bucket_versioning.set_defaults(func=Op.put_bucket_versioning)
-    
+
     parser_get_bucket_versioning = sub_parser.add_parser("getbucketversioning", help="Get the versioning state")
     parser_get_bucket_versioning.set_defaults(func=Op.get_bucket_versioning)
 

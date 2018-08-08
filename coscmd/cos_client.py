@@ -767,6 +767,7 @@ class Interface(object):
     def delete_folder(self, cos_path, **kwargs):
 
         _force = kwargs['force']
+        _versions = kwargs['versions']
         cos_path = to_unicode(cos_path)
         if cos_path == "/":
             cos_path = ""
@@ -780,88 +781,134 @@ class Interface(object):
         self._file_num = 0
         NextMarker = ""
         IsTruncated = "true"
-        while IsTruncated == "true":
-            data_xml = ""
-            file_list = []
-            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
-                                 .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker))))
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-            if rt.status_code == 200:
-                try:
+        if _versions:
+            Delimiter = ""
+            NextMarker = "/"
+            NextVersionMarker = "/"
+            KeyMarker = ""
+            VersionIdMarker = ""
+            while IsTruncated == "true":
+                params = '?versions&prefix={prefix}'.format(prefix=cos_path)
+                if KeyMarker != "":
+                    params += "&key-marker={keymarker}".format(keymarker=KeyMarker)
+                if VersionIdMarker != "":
+                    params += "&version-id-marker={versionidmakrer}".format(versionidmakrer=VersionIdMarker)
+                url = self._conf.uri(path=params)
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
+                if rt.status_code == 200:
                     root = minidom.parseString(rt.content).documentElement
                     IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
                     if IsTruncated == 'true':
-                        NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
-                except Exception as e:
-                    logger.warn(str(e))
-                logger.debug(u"Init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                     code=rt.status_code,
-                     headers=rt.headers,
-                     text=rt.text))
-                contentset = root.getElementsByTagName("Key")
-                for content in contentset:
-                    self._file_num += 1
-                    file_name = to_unicode(content.childNodes[0].data)
-                    file_list.append(file_name)
-                    data_xml = data_xml + '''
-    <Object>
-        <Key>{Key}</Key>
-    </Object>'''.format(Key=to_printable_str(file_name))
-                data_xml = '''
-<Delete>
-    <Quiet>true</Quiet>'''+data_xml+'''
-</Delete>'''
-                http_header = dict()
-                md5_ETag = md5()
-                md5_ETag.update(to_bytes(data_xml))
-                md5_ETag = md5_ETag.digest()
-                http_header['Content-MD5'] = base64.b64encode(md5_ETag)
-                url_file = self._conf.uri(path="?delete")
-                rt = self._session.post(url=url_file, auth=CosS3Auth(self._conf), data=data_xml, headers=http_header)
-                if rt.status_code == 204 or rt.status_code == 200:
-                    for file_name in file_list:
-                        logger.info(u"Delete {file}".format(file=file_name))
-                    self._have_finished += len(file_list)
+                        KeyMarker = root.getElementsByTagName("NextKeyMarker")[0].childNodes[0].data
+                        VersionIdMarker = root.getElementsByTagName("NextVersionIdMarker")[0].childNodes[0].data
+
+                    logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                         code=rt.status_code,
+                         headers=rt.headers,
+                         text=rt.text))
+                    fileset = root.getElementsByTagName("Version")
+                    for _file in fileset:
+                        self._file_num += 1
+                        _versionid = _file.getElementsByTagName("VersionId")[0].childNodes[0].data
+                        _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
+                        kwargs["versionId"] = _versionid
+                        if self.delete_file(_path, **kwargs):
+                            self._have_finished += 1
+                        else:
+                            self._fail_num += 1
+                    fileset = root.getElementsByTagName("DeleteMarker")
+                    for _file in fileset:
+                        self._file_num += 1
+                        _versionid = _file.getElementsByTagName("VersionId")[0].childNodes[0].data
+                        _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
+                        kwargs["versionId"] = _versionid
+                        if self.delete_file(_path, **kwargs):
+                            self._have_finished += 1
+                        else:
+                            self._fail_num += 1
                 else:
-                    for file_name in file_list:
-                        logger.info(u"Delete {file} fail".format(file=file_name))
-                    self._fail_num += len(file_list)
-            else:
-                logger.warn(response_info(rt))
-                logger.debug("get folder error")
-                return False
-        # Clipping
-        logger.info(u"Delete the remaining files again")
-        IsTruncated = "true"
-        while IsTruncated == "true":
-            data_xml = ""
-            file_list = []
-            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
-                                 .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker))))
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-            if rt.status_code == 200:
-                try:
-                    root = minidom.parseString(rt.content).documentElement
-                    IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                    if IsTruncated == 'true':
-                        NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
-                except Exception as e:
-                    logger.warn(str(e))
-                logger.debug(u"Init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                     code=rt.status_code,
-                     headers=rt.headers,
-                     text=rt.text))
-                contentset = root.getElementsByTagName("Key")
-                for content in contentset:
-                    file_name = to_unicode(content.childNodes[0].data)
-                    if self.delete_file(file_name, kwargs) is True:
-                        logger.info(u"Delete {file}".format(file=to_printable_str(file_name)))
+                    logger.warn(response_info(rt))
+                    return False
+        else:
+            while IsTruncated == "true":
+                data_xml = ""
+                file_list = []
+                url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
+                                     .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker))))
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
+                if rt.status_code == 200:
+                    try:
+                        root = minidom.parseString(rt.content).documentElement
+                        IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                        if IsTruncated == 'true':
+                            NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+                    except Exception as e:
+                        logger.warn(str(e))
+                    logger.debug(u"Init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                         code=rt.status_code,
+                         headers=rt.headers,
+                         text=rt.text))
+                    contentset = root.getElementsByTagName("Key")
+                    for content in contentset:
+                        self._file_num += 1
+                        file_name = to_unicode(content.childNodes[0].data)
+                        file_list.append(file_name)
+                        data_xml = data_xml + '''
+        <Object>
+            <Key>{Key}</Key>
+        </Object>'''.format(Key=to_printable_str(file_name))
+                    data_xml = '''
+    <Delete>
+        <Quiet>true</Quiet>'''+data_xml+'''
+    </Delete>'''
+                    http_header = dict()
+                    md5_ETag = md5()
+                    md5_ETag.update(to_bytes(data_xml))
+                    md5_ETag = md5_ETag.digest()
+                    http_header['Content-MD5'] = base64.b64encode(md5_ETag)
+                    url_file = self._conf.uri(path="?delete")
+                    rt = self._session.post(url=url_file, auth=CosS3Auth(self._conf), data=data_xml, headers=http_header)
+                    if rt.status_code == 204 or rt.status_code == 200:
+                        for file_name in file_list:
+                            logger.info(u"Delete {file}".format(file=file_name))
+                        self._have_finished += len(file_list)
                     else:
-                        logger.info(u"Delete {file} fail".format(file=to_printable_str(file_name)))
-            else:
-                logger.warn(response_info(rt))
-                logger.debug(u"get folder error")
-                return False
+                        for file_name in file_list:
+                            logger.info(u"Delete {file} fail".format(file=file_name))
+                        self._fail_num += len(file_list)
+                else:
+                    logger.warn(response_info(rt))
+                    logger.debug("get folder error")
+                    return False
+            # Clipping
+            logger.info(u"Delete the remaining files again")
+            IsTruncated = "true"
+            while IsTruncated == "true":
+                data_xml = ""
+                file_list = []
+                url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
+                                     .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker))))
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
+                if rt.status_code == 200:
+                    try:
+                        root = minidom.parseString(rt.content).documentElement
+                        IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                        if IsTruncated == 'true':
+                            NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+                    except Exception as e:
+                        logger.warn(str(e))
+                    logger.debug(u"Init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                         code=rt.status_code,
+                         headers=rt.headers,
+                         text=rt.text))
+                    contentset = root.getElementsByTagName("Key")
+                    for content in contentset:
+                        file_name = to_unicode(content.childNodes[0].data)
+                        self.delete_file(file_name, **kwargs)
+                else:
+                    logger.warn(response_info(rt))
+                    logger.debug(u"get folder error")
+                    return False
         if self._file_num == 0:
             logger.info(u"The directory does not exist")
             return False
@@ -874,19 +921,27 @@ class Interface(object):
             return False
 
     def delete_file(self, cos_path, **kwargs):
-        if _force is False:
+        if kwargs['force'] is False:
             if query_yes_no(u"WARN: you are deleting the file in the '{cos_path}' cos_path, please make sure".format(cos_path=cos_path)) is False:
                 return False
-        url = self._conf.uri(path=quote(to_printable_str(cos_path)))
+        _versionId = kwargs["versionId"]
+        url = self._conf.uri(path="{path}?versionId={versionId}"
+                             .format(path=quote(to_printable_str(cos_path)), versionId=_versionId))
         try:
             rt = self._session.delete(url=url, auth=CosS3Auth(self._conf))
             logger.debug(u"init resp, status code: {code}, headers: {headers}".format(
                  code=rt.status_code,
                  headers=rt.headers))
             if rt.status_code == 204 or rt.status_code == 200:
-                logger.info(u"Delete cos://{bucket}/{cos_path}".format(
+                if _versionId == "":
+                    logger.info(u"Delete cos://{bucket}/{cos_path}".format(
                                                         bucket=self._conf._bucket,
                                                         cos_path=cos_path))
+                else:
+                    logger.info(u"Delete cos://{bucket}/{cos_path}?versionId={versionId}".format(
+                                                        bucket=self._conf._bucket,
+                                                        cos_path=cos_path,
+                                                        versionId=_versionId))
                 return True
             else:
                 logger.warn(response_info(rt))
@@ -902,46 +957,50 @@ class Interface(object):
         _success_num = 0
         _fail_num = 0
         cos_path = to_printable_str(cos_path)
-        while IsTruncated == "true":
-            table = PrettyTable(["Path", "Size/Type", "Time"])
-            table.align = "l"
-            table.align['Size/Type'] = 'r'
-            table.padding_width = 3
-            table.header = False
-            table.border = False
-            url = self._conf.uri(path='?uploads&prefix={prefix}&marker={nextmarker}'
-                                 .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker))))
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-            if rt.status_code == 200:
-                root = minidom.parseString(rt.content).documentElement
-                IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                if IsTruncated == 'true':
-                    NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
-
-                logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                     code=rt.status_code,
-                     headers=rt.headers,
-                     text=rt.text))
-                fileset = root.getElementsByTagName("Upload")
-                for _file in fileset:
-                    self._file_num += 1
-                    _key = _file.getElementsByTagName("Key")[0].childNodes[0].data
-                    _uploadid = _file.getElementsByTagName("UploadId")[0].childNodes[0].data
-                    logger.info("Aborting part, Key:{key}, UploadId:{uploadid}".format(key=_key, uploadid=_uploadid))
-                    _url = self._conf.uri(path='{key}?uploadId={uploadid}'.format(key=_key, uploadid=_uploadid))
-                    _rt = self._session.delete(url=_url, auth=CosS3Auth(self._conf))
-                    if _rt.status_code == 204:
-                        _success_num += 1
-                    else:
-                        _fail_num += 1
+        try:
+            while IsTruncated == "true":
+                table = PrettyTable(["Path", "Size/Type", "Time"])
+                table.align = "l"
+                table.align['Size/Type'] = 'r'
+                table.padding_width = 3
+                table.header = False
+                table.border = False
+                url = self._conf.uri(path='?uploads&prefix={prefix}&marker={nextmarker}'
+                                     .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker))))
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
+                if rt.status_code == 200:
+                    root = minidom.parseString(rt.content).documentElement
+                    IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                    if IsTruncated == 'true':
+                        NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+                    logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                         code=rt.status_code,
+                         headers=rt.headers,
+                         text=rt.text))
+                    fileset = root.getElementsByTagName("Upload")
+                    for _file in fileset:
+                        self._file_num += 1
+                        _key = _file.getElementsByTagName("Key")[0].childNodes[0].data
+                        _uploadid = _file.getElementsByTagName("UploadId")[0].childNodes[0].data
+                        _url = self._conf.uri(path="{key}?uploadId={uploadid}".format(key=quote(to_printable_str(_key)), uploadid=_uploadid))
+                        _rt = self._session.delete(url=_url, auth=CosS3Auth(self._conf))
+                        if _rt.status_code == 204:
+                            logger.info(u"Aborting part, Key:{key}, UploadId:{uploadid}".format(key=_key, uploadid=_uploadid))
+                            _success_num += 1
+                        else:
+                            logger.info(u"Aborting part, Key:{key}, UploadId:{uploadid} fail".format(key=_key, uploadid=_uploadid))
+                            _fail_num += 1
+                else:
+                    logger.warn(response_info(rt))
+                    return False
+            logger.info(u"{files} files successful, {fail_files} files failed"
+                        .format(files=_success_num, fail_files=_fail_num))
+            if _fail_num == 0:
+                return True
             else:
-                logger.warn(response_info(rt))
                 return False
-        logger.info(u"{files} files successful, {fail_files} files failed"
-                    .format(files=_success_num, fail_files=_fail_num))
-        if _fail_num == 0:
-            return True
-        else:
+        except Exception as e:
+            logger.warn(e)
             return False
 
     def list_objects(self, cos_path, **kwargs):
@@ -950,9 +1009,8 @@ class Interface(object):
         _num = kwargs['num']
         _human = kwargs['human']
         _versions = kwargs['versions']
-        NextMarker = ""
         IsTruncated = "true"
-        Delimiter = "&delimiter=/"
+        Delimiter = "/"
         if _recursive is True:
             Delimiter = ""
         if _all is True:
@@ -960,44 +1018,55 @@ class Interface(object):
         self._file_num = 0
         self._total_size = 0
         cos_path = to_printable_str(cos_path)
-        try:
-             # list bucket versions
-            if _versions == True:
-                NextMarker = "/"
-                NextVersionMarker = "/"
-                if cos_path == "":
-                    NextMarker = ""
-                    NextVersionMarker = ""
-                while IsTruncated == "true":
-                    table = PrettyTable(["Path", "Size/Type", "Time", "VersionId"])
-                    table.align = "l"
-                    table.align['Size/Type'] = 'r'
-                    table.padding_width = 3
-                    table.header = False
-                    table.border = False
-                    url = self._conf.uri(path='?versions&prefix={prefix}&key-marker={nextmarker}version-id-marker={nextversionmarker}{delimiter}'
-                                         .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker)), nextversionmarker=quote(to_printable_str(NextVersionMarker)), delimiter=Delimiter))
-                    rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-                    if rt.status_code == 200:
-                        root = minidom.parseString(rt.content).documentElement
-                        IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                        if IsTruncated == 'true':
-                            NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
-                            NextVersionMarker = root.getElementsByTagName("NextVersionIdMarker")[0].childNodes[0].data
-    
-                        logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                             code=rt.status_code,
-                             headers=rt.headers,
-                             text=rt.text))
-                        folderset = root.getElementsByTagName("CommonPrefixes")
-                        for _folder in folderset:
-                            _time = ""
-                            _type = "DIR"
-                            _path = _folder.getElementsByTagName("Prefix")[0].childNodes[0].data
-                            table.add_row([_path, _type, _time, ""])
+        if _versions:
+            KeyMarker = ""
+            VersionIdMarker = ""
+            while IsTruncated == "true":
+                table = PrettyTable(["Path", "Size/Type", "Time", "VersionId"])
+                table.align = "l"
+                table.align['Size/Type'] = 'r'
+                table.padding_width = 3
+                table.header = False
+                table.border = False
+                params = "?versions&prefix={prefix}".format(prefix=cos_path)
+                if KeyMarker != "":
+                    params += "&key-marker={keymarker}".format(keymarker=KeyMarker)
+                if VersionIdMarker != "":
+                    params += "&version-id-marker={versionidmakrer}".format(versionidmakrer=VersionIdMarker)
+                if Delimiter != "":
+                    params += "&delimiter={delimiter}".format(delimiter=Delimiter)
+                url = self._conf.uri(path=params)
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
+                if rt.status_code == 200:
+                    root = minidom.parseString(rt.content).documentElement
+                    IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                    if IsTruncated == 'true':
+                        KeyMarker = root.getElementsByTagName("NextKeyMarker")[0].childNodes[0].data
+                        VersionIdMarker = root.getElementsByTagName("NextVersionIdMarker")[0].childNodes[0].data
+                    logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                         code=rt.status_code,
+                         headers=rt.headers,
+                         text=rt.text))
+                    folderset = root.getElementsByTagName("CommonPrefixes")
+                    for _folder in folderset:
+                        _time = ""
+                        _type = "DIR"
+                        _path = _folder.getElementsByTagName("Prefix")[0].childNodes[0].data
+                        table.add_row([_path, _type, _time, ""])
+                    fileset = root.getElementsByTagName("DeleteMarker")
+                    for _file in fileset:
+                        _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
+                        _time = time.localtime(utc_to_local(_time))
+                        _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
+                        _versionid = _file.getElementsByTagName("VersionId")[0].childNodes[0].data
+                        _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
+                        table.add_row([_path, 0, _time, _versionid])
+                        self._file_num += 1
+                        if self._file_num == _num:
+                            break
+                    if self._file_num < _num:
                         fileset = root.getElementsByTagName("Version")
                         for _file in fileset:
-                            self._file_num += 1
                             _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
                             _time = time.localtime(utc_to_local(_time))
                             _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
@@ -1008,90 +1077,86 @@ class Interface(object):
                                 _size = change_to_human(_size)
                             _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
                             table.add_row([_path, _size, _time, _versionid])
-                            if self._file_num == _num:
-                                break
-                        try:
-                            print(unicode(table))
-                        except Exception:
-                            print(table)
-                        if self._file_num == _num:
-                            break
-                    else:
-                        logger.warn(response_info(rt))
-                        return False
-                if _human:
-                    self._total_size = change_to_human(str(self._total_size))
-                else:
-                    self._total_size = str(self._total_size)
-                if _recursive:
-                    logger.info(u" Files num: {file_num}".format(file_num=str(self._file_num)))
-                    logger.info(u" Files size: {file_size}".format(file_size=self._total_size))
-                if _all is False and self._file_num == _num:
-                    logger.info(u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
-                return True
-            else:
-                while IsTruncated == "true":
-                    table = PrettyTable(["Path", "Size/Type", "Time"])
-                    table.align = "l"
-                    table.align['Size/Type'] = 'r'
-                    table.padding_width = 3
-                    table.header = False
-                    table.border = False
-                    url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}{delimiter}'
-                                         .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker)), delimiter=Delimiter))
-                    rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-                    if rt.status_code == 200:
-                        root = minidom.parseString(rt.content).documentElement
-                        IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                        if IsTruncated == 'true':
-                            NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
-        
-                        logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                             code=rt.status_code,
-                             headers=rt.headers,
-                             text=rt.text))
-                        folderset = root.getElementsByTagName("CommonPrefixes")
-                        for _folder in folderset:
-                            _time = ""
-                            _type = "DIR"
-                            _path = _folder.getElementsByTagName("Prefix")[0].childNodes[0].data
-                            table.add_row([_path, _type, _time])
-                        fileset = root.getElementsByTagName("Contents")
-                        for _file in fileset:
                             self._file_num += 1
-                            _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
-                            _time = time.localtime(utc_to_local(_time))
-                            _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
-                            _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
-                            self._total_size += int(_size)
-                            if _human is True:
-                                _size = change_to_human(_size)
-                            _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
-                            table.add_row([_path, _size, _time])
                             if self._file_num == _num:
                                 break
-                        try:
-                            print(unicode(table))
-                        except Exception:
-                            print(table)
+                    try:
+                        print(unicode(table))
+                    except Exception:
+                        print(table)
+                    if self._file_num == _num:
+                        break
+                else:
+                    logger.warn(response_info(rt))
+                    return False
+            if _all is False and self._file_num == _num:
+                logger.info(u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
+            return True
+        else:
+            NextMarker = ""
+            while IsTruncated == "true":
+                table = PrettyTable(["Path", "Size/Type", "Time"])
+                table.align = "l"
+                table.align['Size/Type'] = 'r'
+                table.padding_width = 3
+                table.header = False
+                table.border = False
+                params = "?prefix={prefix}".format(prefix=cos_path)
+                if NextMarker != "":
+                    params += "&marker={marker}".format(marker=NextMarker)
+                if Delimiter != "":
+                    params += "&delimiter={delimiter}".format(delimiter=Delimiter)
+                url = self._conf.uri(path=params)
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
+                if rt.status_code == 200:
+                    root = minidom.parseString(rt.content).documentElement
+                    IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                    if IsTruncated == 'true':
+                        NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+
+                    logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                         code=rt.status_code,
+                         headers=rt.headers,
+                         text=rt.text))
+                    folderset = root.getElementsByTagName("CommonPrefixes")
+                    for _folder in folderset:
+                        _time = ""
+                        _type = "DIR"
+                        _path = _folder.getElementsByTagName("Prefix")[0].childNodes[0].data
+                        table.add_row([_path, _type, _time])
+                    fileset = root.getElementsByTagName("Contents")
+                    for _file in fileset:
+                        self._file_num += 1
+                        _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
+                        _time = time.localtime(utc_to_local(_time))
+                        _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
+                        _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
+                        self._total_size += int(_size)
+                        if _human is True:
+                            _size = change_to_human(_size)
+                        _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
+                        table.add_row([_path, _size, _time])
                         if self._file_num == _num:
                             break
-                    else:
-                        logger.warn(response_info(rt))
-                        return False
-                if _human:
-                    self._total_size = change_to_human(str(self._total_size))
+                    try:
+                        print(unicode(table))
+                    except Exception:
+                        print(table)
+                    if self._file_num == _num:
+                        break
                 else:
-                    self._total_size = str(self._total_size)
-                if _recursive:
-                    logger.info(u" Files num: {file_num}".format(file_num=str(self._file_num)))
-                    logger.info(u" Files size: {file_size}".format(file_size=self._total_size))
-                if _all is False and self._file_num == _num:
-                    logger.info(u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
-                return True
-        except Exception as e:
-            logger.warn(e)
-            return False
+                    logger.warn(response_info(rt))
+                    return False
+            if _human:
+                self._total_size = change_to_human(str(self._total_size))
+            else:
+                self._total_size = str(self._total_size)
+            if _recursive:
+                logger.info(u" Files num: {file_num}".format(file_num=str(self._file_num)))
+                logger.info(u" Files size: {file_size}".format(file_size=self._total_size))
+            if _all is False and self._file_num == _num:
+                logger.info(u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
+            return True
 
     def info_object(self, cos_path, _human=False):
         table = PrettyTable([cos_path, ""])
@@ -1532,7 +1597,6 @@ class Interface(object):
     def create_bucket(self):
         url = self._conf.uri(path='')
         self._have_finished = 0
-        logger.debug("create bucket with : " + url)
         try:
             rt = self._session.put(url=url, auth=CosS3Auth(self._conf))
             logger.debug(u"put resp, status code: {code}, headers: {headers}, text: {text}".format(
@@ -1540,6 +1604,7 @@ class Interface(object):
                  headers=rt.headers,
                  text=rt.text))
             if rt.status_code == 200:
+                logger.info(u"Create cos://{bucket}".format(bucket=self._conf._bucket))
                 return True
             else:
                 logger.warn(response_info(rt))
@@ -1549,17 +1614,25 @@ class Interface(object):
             return False
         return True
 
-    def delete_bucket(self):
+    def delete_bucket(self, **kwargs):
         url = self._conf.uri(path='')
         self._have_finished = 0
-        logger.debug(u"delete bucket with : " + url)
+        _force = kwargs["force"]
         try:
+            if _force:
+                logger.info("Clearing files and upload parts in the bucket")
+                self.abort_parts("")
+                kwargs['versions'] = False
+                self.delete_folder("", **kwargs)
+                kwargs['versions'] = True
+                self.delete_folder("", **kwargs)
             rt = self._session.delete(url=url, auth=CosS3Auth(self._conf))
             logger.debug(u"delete resp, status code: {code}, headers: {headers}, text: {text}".format(
                  code=rt.status_code,
                  headers=rt.headers,
                  text=rt.text))
             if rt.status_code == 204:
+                logger.info(u"Delete cos://{bucket}".format(bucket=self._conf._bucket))
                 return True
             else:
                 logger.warn(response_info(rt))
@@ -1567,46 +1640,6 @@ class Interface(object):
         except Exception as e:
             logger.warn(str(e))
             return False
-        return True
-
-    def get_bucket(self, max_keys=10):
-        NextMarker = ""
-        IsTruncated = "true"
-        pagecount = 0
-        filecount = 0
-        sizecount = 0
-        while IsTruncated == "true":
-            pagecount += 1
-            logger.info(u"Get bucket with page {page}".format(page=pagecount))
-            url = self._conf.uri(path='?max-keys=1000&marker={nextmarker}'.format(nextmarker=NextMarker))
-            try:
-                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-                if rt.status_code == 200:
-                    root = minidom.parseString(rt.content).documentElement
-                    IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                    if IsTruncated == 'true':
-                        NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
-                    logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                         code=rt.status_code,
-                         headers=rt.headers,
-                         text=rt.text))
-                    contentset = root.getElementsByTagName("Contents")
-                    for content in contentset:
-                        filecount += 1
-                        sizecount += int(content.getElementsByTagName("Size")[0].childNodes[0].data)
-                        print(to_printable_str(content.toxml()))
-                        if filecount == max_keys:
-                            break
-                else:
-                    logger.warn(response_info(rt))
-                    return False
-            except Exception as e:
-                logger.warn(e)
-                return False
-
-        logger.info(u"filecount: %d" % filecount)
-        logger.info(u"sizecount: %d" % sizecount)
-        logger.debug(u"get bucket success")
         return True
 
     def put_bucket_acl(self, grant_read, grant_write, grant_full_control):
@@ -1738,12 +1771,12 @@ class Interface(object):
         url = self._conf.uri("?versioning")
         try:
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-            logger.debug(u"get resp, status code: {code}, headers: {headers}".format(
-                 code=rt.status_code,
-                 headers=rt.headers))
-            root = minidom.parseString(rt.content).documentElement
-            status = root.getElementsByTagName("Status")[0].childNodes[0].data
             if rt.status_code == 200:
+                try:
+                    root = minidom.parseString(rt.content).documentElement
+                    status = root.getElementsByTagName("Status")[0].childNodes[0].data
+                except:
+                    status = "Not configured"
                 logger.info(status)
                 return True
             else:
@@ -1753,6 +1786,7 @@ class Interface(object):
             logger.warn(str(e))
             return False
         return False
+
 
 class CosS3Client(object):
 
