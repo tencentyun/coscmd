@@ -89,7 +89,7 @@ def load_conf():
         logger.warn("{conf} couldn't be found, please use \'coscmd config -h\' to learn how to config coscmd!".format(conf=to_printable_str(conf_path)))
         raise IOError
     else:
-        logger.debug('{conf} is found.'.format(conf=to_printable_str(conf_path)))
+        logger.debug('{conf} is found'.format(conf=to_printable_str(conf_path)))
 
     with open(conf_path, 'r') as f:
         cp = SafeConfigParser()
@@ -199,7 +199,7 @@ class Op(object):
                     return -1
         else:
             if os.path.isdir(args.local_path):
-                logger.warn("\"{path}\" is a directory, use \'-r\' option to upload it please.".format(path=to_printable_str(args.local_path)))
+                logger.warn("\"{path}\" is a directory, use \'-r\' option to upload it please".format(path=to_printable_str(args.local_path)))
                 return -1
             if os.path.isfile(args.local_path) is False:
                 logger.warn("cannot stat '%s': No such file or directory" % to_printable_str(args.local_path))
@@ -258,24 +258,32 @@ class Op(object):
         if not isinstance(args. cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
 
-        if args.recursive:
-            if args.cos_path.endswith('/') is False:
-                args.cos_path += '/'
-            if args.cos_path == '/':
-                args.cos_path = ''
-            if Interface.delete_folder(args.cos_path, args.force):
-                logger.debug("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)))
-                return 0
+        kwargs = {}
+        kwargs['force'] = args.force
+        kwargs['versions'] = args.versions
+        kwargs['versionId'] = args.versionId
+        try:
+            if args.recursive:
+                if args.cos_path.endswith('/') is False:
+                    args.cos_path += '/'
+                if args.cos_path == '/':
+                    args.cos_path = ''
+                if Interface.delete_folder(args.cos_path, **kwargs):
+                    logger.debug("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)))
+                    return 0
+                else:
+                    logger.debug("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)))
+                    return -1
             else:
-                logger.debug("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)))
-                return -1
-        else:
-            if Interface.delete_file(args.cos_path, args.force):
-                logger.debug("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)))
-                return 0
-            else:
-                logger.debug("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)))
-                return -1
+                if Interface.delete_file(args.cos_path, **kwargs):
+                    logger.debug("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)))
+                    return 0
+                else:
+                    logger.debug("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)))
+                    return -1
+        except Exception as e:
+            logger.warn(e)
+            return -1
 
     @staticmethod
     def copy(args):
@@ -315,9 +323,19 @@ class Op(object):
         if not isinstance(args. cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
         Interface = client.op_int()
-        if Interface.list_objects(cos_path=args.cos_path, _recursive=args.recursive, _all=args.all, _num=args.num, _human=args.human):
-            return 0
-        else:
+        kwargs = {}
+        kwargs['recursive'] = args.recursive
+        kwargs['all'] = args.all
+        kwargs['num'] = args.num
+        kwargs['human'] = args.human
+        kwargs['versions'] = args.versions
+        try:
+            if Interface.list_objects(cos_path=args.cos_path, **kwargs):
+                return 0
+            else:
+                return -1
+        except Exception as e:
+            logger.warn(e)
             return -1
 
     @staticmethod
@@ -379,7 +397,7 @@ class Op(object):
             logger.info(rt)
             return True
         except Exception:
-            logger.warn('geturl failed')
+            logger.warn('Geturl fail')
             return False
 
     @staticmethod
@@ -395,7 +413,7 @@ class Op(object):
         if rt is True:
             return 0
         else:
-            logger.warn("put fail!")
+            logger.warn("Put object acl fail")
             return -1
 
     @staticmethod
@@ -412,7 +430,7 @@ class Op(object):
         if rt is True:
             return 0
         else:
-            logger.warn("get fail!")
+            logger.warn("Get object acl fail")
             return -1
 
     @staticmethod
@@ -423,7 +441,7 @@ class Op(object):
         if Interface.create_bucket():
             return 0
         else:
-            logger.warn("create fail!")
+            logger.warn("Create bucket fail")
             return -1
 
     @staticmethod
@@ -431,21 +449,12 @@ class Op(object):
         conf = load_conf()
         client = CosS3Client(conf)
         Interface = client.op_int()
-        if Interface.delete_bucket():
+        kwargs = {}
+        kwargs['force'] = args.force
+        if Interface.delete_bucket(**kwargs):
             return 0
         else:
-            logger.warn("delete fail!")
-            return -1
-
-    @staticmethod
-    def list_bucket(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        Interface = client.op_int()
-        if Interface.get_bucket(args.cos_path):
-            return 0
-        else:
-            logger.warn("list fail!")
+            logger.warn("Delete bucket fail")
             return -1
 
     @staticmethod
@@ -457,7 +466,7 @@ class Op(object):
         if rt is True:
             return 0
         else:
-            logger.warn("put fail!")
+            logger.warn("put bucket acl fail")
             return -1
 
     @staticmethod
@@ -469,7 +478,31 @@ class Op(object):
         if rt is True:
             return 0
         else:
-            logger.warn("get fail!")
+            logger.warn("Get bucket acl fail")
+            return -1
+
+    @staticmethod
+    def put_bucket_versioning(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        Interface = client.op_int()
+        rt = Interface.put_bucket_versioning(args.status)
+        if rt is True:
+            return 0
+        else:
+            logger.warn("Put bucket versioning fail")
+            return -1
+
+    @staticmethod
+    def get_bucket_versioning(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        Interface = client.op_int()
+        rt = Interface.get_bucket_versioning()
+        if rt is True:
+            return 0
+        else:
+            logger.warn("Get bucket versioning fail")
             return -1
 
 
@@ -480,119 +513,131 @@ def command_thread():
               try \'coscmd -h\' to get more informations.
               try \'coscmd sub-command -h\' to learn all command usage, likes \'coscmd upload -h\'"""
     parser = ArgumentParser(description=desc)
-    parser.add_argument('-d', '--debug', help="debug mode", action="store_true", default=False)
-    parser.add_argument('-b', '--bucket', help="set bucket", type=str, default="")
-    parser.add_argument('-r', '--region', help="set region", type=str, default="")
-    parser.add_argument('-c', '--config_path', help="set config_path", type=str, default="~/.cos.conf")
-    parser.add_argument('-l', '--log_path', help="set log_path", type=str, default="~/.cos.log")
+    parser.add_argument('-d', '--debug', help="Debug mode", action="store_true", default=False)
+    parser.add_argument('-b', '--bucket', help="Specify bucket", type=str, default="")
+    parser.add_argument('-r', '--region', help="Specify region", type=str, default="")
+    parser.add_argument('-c', '--config_path', help="Specify config_path", type=str, default="~/.cos.conf")
+    parser.add_argument('-l', '--log_path', help="Specify log_path", type=str, default="~/.cos.log")
 
     sub_parser = parser.add_subparsers()
-    parser_config = sub_parser.add_parser("config", help="config your information at first.")
-    parser_config.add_argument('-a', '--secret_id', help='specify your secret id', type=str, required=True)
-    parser_config.add_argument('-s', '--secret_key', help='specify your secret key', type=str, required=True)
-    parser_config.add_argument('-b', '--bucket', help='specify your bucket', type=str, required=True)
+    parser_config = sub_parser.add_parser("config", help="Config your information at first")
+    parser_config.add_argument('-a', '--secret_id', help='Specify your secret id', type=str, required=True)
+    parser_config.add_argument('-s', '--secret_key', help='Specify your secret key', type=str, required=True)
+    parser_config.add_argument('-b', '--bucket', help='Specify your bucket', type=str, required=True)
 
     group = parser_config.add_mutually_exclusive_group(required=True)
-    group.add_argument('-r', '--region', help='specify your region', type=str)
-    group.add_argument('-e', '--endpoint', help='specify COS endpoint', type=str)
+    group.add_argument('-r', '--region', help='Specify your region', type=str)
+    group.add_argument('-e', '--endpoint', help='Specify COS endpoint', type=str)
 
-    parser_config.add_argument('-m', '--max_thread', help='specify the number of threads (default 5)', type=int, default=5)
+    parser_config.add_argument('-m', '--max_thread', help='Specify the number of threads (default 5)', type=int, default=5)
     parser_config.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1)
-    parser_config.add_argument('-u', '--appid', help='specify your appid', type=str, default="")
-    parser_config.add_argument('--do-not-use-ssl', help="use http://", action="store_true", default=False, dest="use_http")
-    parser_config.add_argument('--anonymous', help="anonymous", type=str, default="False")
+    parser_config.add_argument('-u', '--appid', help='Specify your appid', type=str, default="")
+    parser_config.add_argument('--do-not-use-ssl', help="Use http://", action="store_true", default=False, dest="use_http")
+    parser_config.add_argument('--anonymous', help="Anonymous operation", type=str, default="False")
     parser_config.set_defaults(func=config)
 
-    parser_upload = sub_parser.add_parser("upload", help="upload file or directory to COS.")
-    parser_upload.add_argument('local_path', help="local file path as /tmp/a.txt or directory", type=str)
-    parser_upload.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_upload.add_argument('-r', '--recursive', help="upload recursively when upload directory", action="store_true", default=False)
-    parser_upload.add_argument('-H', '--headers', help="set HTTP headers", type=str, default='{}')
+    parser_upload = sub_parser.add_parser("upload", help="Upload file or directory to COS")
+    parser_upload.add_argument('local_path', help="Local file path as /tmp/a.txt or directory", type=str)
+    parser_upload.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
+    parser_upload.add_argument('-r', '--recursive', help="Upload recursively when upload directory", action="store_true", default=False)
+    parser_upload.add_argument('-H', '--headers', help="Specify HTTP headers", type=str, default='{}')
     parser_upload.add_argument('-s', '--sync', help="Upload and skip the same file", action="store_true", default=False)
-    parser_upload.add_argument('--ignore', help='Set ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
-    parser_upload.add_argument('--skipmd5', help='upload without x-cos-meta-md5', action="store_true", default=False)
+    parser_upload.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
+    parser_upload.add_argument('--skipmd5', help='Upload without x-cos-meta-md5', action="store_true", default=False)
     parser_upload.set_defaults(func=Op.upload)
 
-    parser_download = sub_parser.add_parser("download", help="download file from COS to local.")
-    parser_download.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_download.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
+    parser_download = sub_parser.add_parser("download", help="Download file from COS to local")
+    parser_download.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
+    parser_download.add_argument('local_path', help="Local file path as /tmp/a.txt", type=str)
     parser_download.add_argument('-f', '--force', help="Overwrite the saved files", action="store_true", default=False)
     parser_download.add_argument('-r', '--recursive', help="Download recursively when upload directory", action="store_true", default=False)
     parser_download.add_argument('-s', '--sync', help="Download and skip the same file", action="store_true", default=False)
-    parser_download.add_argument('--ignore', help='Set ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
+    parser_download.add_argument('--versionId', help='Specify versionId of object to list', type=str, default="")
+    parser_download.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
     parser_download.set_defaults(func=Op.download)
 
-    parser_delete = sub_parser.add_parser("delete", help="delete file or files on COS")
-    parser_delete.add_argument("cos_path", nargs='?', help="cos_path as a/b.txt", type=str, default='')
-    parser_delete.add_argument('-r', '--recursive', help="delete files recursively, WARN: all files with the prefix will be deleted!", action="store_true", default=False)
+    parser_delete = sub_parser.add_parser("delete", help="Delete file or files on COS")
+    parser_delete.add_argument("cos_path", nargs='?', help="Cos_path as a/b.txt", type=str, default='')
+    parser_delete.add_argument('-r', '--recursive', help="Delete files recursively, WARN: all files with the prefix will be deleted!", action="store_true", default=False)
+    parser_delete.add_argument('--versions', help='Delete objects with versions', action="store_true", default=False)
+    parser_delete.add_argument('--versionId', help='Specify versionId of object to list', type=str, default="")
     parser_delete.add_argument('-f', '--force', help="Delete directly without confirmation", action="store_true", default=False)
     parser_delete.set_defaults(func=Op.delete)
 
-    parser_abort = sub_parser.add_parser("abort", help='aborts upload parts on COS')
-    parser_abort.add_argument("cos_path", nargs='?', help="cos_path as a/b.txt", type=str, default='')
+    parser_abort = sub_parser.add_parser("abort", help='Aborts upload parts on COS')
+    parser_abort.add_argument("cos_path", nargs='?', help="Cos_path as a/b.txt", type=str, default='')
     parser_abort.set_defaults(func=Op.abort)
 
-    parser_copy = sub_parser.add_parser("copy", help="copy file from COS to COS.")
-    parser_copy.add_argument('source_path', help="source file path as 'bucket-appid.cos.ap-guangzhou.myqcloud.com/a.txt'", type=str)
-    parser_copy.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_copy.add_argument('-r', '--recursive', help="copy files recursively", action="store_true", default=False)
-    parser_copy.add_argument('-t', '--type', help='specify x-cos-storage-class of files to upload', type=str, choices=['STANDARD', 'STANDARD_IA', 'NEARLINE'], default='STANDARD')
+    parser_copy = sub_parser.add_parser("copy", help="Copy file from COS to COS")
+    parser_copy.add_argument('source_path', help="Source file path as 'bucket-appid.cos.ap-guangzhou.myqcloud.com/a.txt'", type=str)
+    parser_copy.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
+    parser_copy.add_argument('-r', '--recursive', help="Copy files recursively", action="store_true", default=False)
+    parser_copy.add_argument('-t', '--type', help='Specify x-cos-storage-class of files to upload', type=str, choices=['STANDARD', 'STANDARD_IA', 'NEARLINE'], default='STANDARD')
     parser_copy.set_defaults(func=Op.copy)
 
-    parser_list = sub_parser.add_parser("list", help='list files on COS')
-    parser_list.add_argument("cos_path", nargs='?', help="cos_path as a/b.txt", type=str, default='')
-    parser_list.add_argument('-a', '--all', help="list all the files", action="store_true", default=False)
-    parser_list.add_argument('-r', '--recursive', help="list files recursively", action="store_true", default=False)
-    parser_list.add_argument('-n', '--num', help='specify max num of files to list', type=int, default=100)
-    parser_list.add_argument('--human', help='humanized display', action="store_true", default=False)
+    parser_list = sub_parser.add_parser("list", help='List files on COS')
+    parser_list.add_argument("cos_path", nargs='?', help="Cos_path as a/b.txt", type=str, default='')
+    parser_list.add_argument('-a', '--all', help="List all the files", action="store_true", default=False)
+    parser_list.add_argument('-r', '--recursive', help="List files recursively", action="store_true", default=False)
+    parser_list.add_argument('-n', '--num', help='Specify max num of files to list', type=int, default=100)
+    parser_list.add_argument('-v', '--versions', help='List object with versions', action="store_true", default=False)
+    parser_list.add_argument('--human', help='Humanized display', action="store_true", default=False)
     parser_list.set_defaults(func=Op.list)
 
-    parser_info = sub_parser.add_parser("info", help="get the information of file on COS")
-    parser_info.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_info.add_argument('--human', help='humanized display', action="store_true", default=False)
+    parser_info = sub_parser.add_parser("info", help="Get the information of file on COS")
+    parser_info.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
+    parser_info.add_argument('--human', help='Humanized display', action="store_true", default=False)
     parser_info.set_defaults(func=Op.info)
 
-    parser_mget = sub_parser.add_parser("mget", help="download file from COS to local.")
-    parser_mget.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_mget.add_argument('local_path', help="local file path as /tmp/a.txt", type=str)
+    parser_mget = sub_parser.add_parser("mget", help="Download file from COS to local")
+    parser_mget.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
+    parser_mget.add_argument('local_path', help="Local file path as /tmp/a.txt", type=str)
     parser_mget.set_defaults(func=Op.mget)
 
-    parser_restore = sub_parser.add_parser("restore", help="restore")
-    parser_restore.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_restore.add_argument('-d', '--day', help='specify lifetime of the restored (active) copy', type=int, default=7)
-    parser_restore.add_argument('-t', '--tier', help='specify the data access tier', type=str, choices=['Expedited', 'Standard', 'Bulk'], default='Standard')
+    parser_restore = sub_parser.add_parser("restore", help="Restore")
+    parser_restore.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
+    parser_restore.add_argument('-d', '--day', help='Specify lifetime of the restored (active) copy', type=int, default=7)
+    parser_restore.add_argument('-t', '--tier', help='Specify the data access tier', type=str, choices=['Expedited', 'Standard', 'Bulk'], default='Standard')
     parser_restore.set_defaults(func=Op.restore)
 
-    parser_signurl = sub_parser.add_parser("signurl", help="get download url")
-    parser_signurl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_signurl.add_argument('-t', '--timeout', help='specify the signature valid time', type=int, default=10000)
+    parser_signurl = sub_parser.add_parser("signurl", help="Get download url")
+    parser_signurl.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
+    parser_signurl.add_argument('-t', '--timeout', help='Specify the signature valid time', type=int, default=10000)
     parser_signurl.set_defaults(func=Op.signurl)
 
-    parser_create_bucket = sub_parser.add_parser("createbucket", help='create bucket')
+    parser_create_bucket = sub_parser.add_parser("createbucket", help='Create bucket')
     parser_create_bucket.set_defaults(func=Op.create_bucket)
 
-    parser_delete_bucket = sub_parser.add_parser("deletebucket", help='delete bucket')
+    parser_delete_bucket = sub_parser.add_parser("deletebucket", help='Delete bucket')
+    parser_delete_bucket.add_argument('-f', '--force', help="Clear all inside the bucket and delete bucket", action="store_true", default=False)
     parser_delete_bucket.set_defaults(func=Op.delete_bucket)
 
-    parser_put_object_acl = sub_parser.add_parser("putobjectacl", help='''set object acl''')
-    parser_put_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
-    parser_put_object_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
-    parser_put_object_acl.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
-    parser_put_object_acl.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
+    parser_put_object_acl = sub_parser.add_parser("putobjectacl", help='''Set object acl''')
+    parser_put_object_acl.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
+    parser_put_object_acl.add_argument('--grant-read', dest='grant_read', help='Set grant-read', type=str, required=False)
+    parser_put_object_acl.add_argument('--grant-write', dest='grant_write', help='Set grant-write', type=str, required=False)
+    parser_put_object_acl.add_argument('--grant-full-control', dest='grant_full_control', help='Set grant-full-control', type=str, required=False)
     parser_put_object_acl.set_defaults(func=Op.put_object_acl)
 
-    parser_get_object_acl = sub_parser.add_parser("getobjectacl", help='get object acl')
-    parser_get_object_acl.add_argument("cos_path", help="cos_path as a/b.txt", type=str)
+    parser_get_object_acl = sub_parser.add_parser("getobjectacl", help='Get object acl')
+    parser_get_object_acl.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
     parser_get_object_acl.set_defaults(func=Op.get_object_acl)
 
-    parser_put_bucket_acl = sub_parser.add_parser("putbucketacl", help='''set bucket acl''')
-    parser_put_bucket_acl.add_argument('--grant-read', dest='grant_read', help='set grant-read', type=str, required=False)
-    parser_put_bucket_acl.add_argument('--grant-write', dest='grant_write', help='set grant-write', type=str, required=False)
-    parser_put_bucket_acl.add_argument('--grant-full-control', dest='grant_full_control', help='set grant-full-control', type=str, required=False)
+    parser_put_bucket_acl = sub_parser.add_parser("putbucketacl", help='''Set bucket acl''')
+    parser_put_bucket_acl.add_argument('--grant-read', dest='grant_read', help='Set grant-read', type=str, required=False)
+    parser_put_bucket_acl.add_argument('--grant-write', dest='grant_write', help='Set grant-write', type=str, required=False)
+    parser_put_bucket_acl.add_argument('--grant-full-control', dest='grant_full_control', help='Set grant-full-control', type=str, required=False)
     parser_put_bucket_acl.set_defaults(func=Op.put_bucket_acl)
 
-    parser_get_bucket_acl = sub_parser.add_parser("getbucketacl", help='get bucket acl')
+    parser_get_bucket_acl = sub_parser.add_parser("getbucketacl", help='Get bucket acl')
     parser_get_bucket_acl.set_defaults(func=Op.get_bucket_acl)
+
+    parser_put_bucket_versioning = sub_parser.add_parser("putbucketversioning", help="Set the versioning state")
+    parser_put_bucket_versioning.add_argument("status",  help="Status as a/b.txt", type=str, choices=['Enabled', 'Suspended'], default='Enable')
+    parser_put_bucket_versioning.set_defaults(func=Op.put_bucket_versioning)
+
+    parser_get_bucket_versioning = sub_parser.add_parser("getbucketversioning", help="Get the versioning state")
+    parser_get_bucket_versioning.set_defaults(func=Op.get_bucket_versioning)
 
     parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + Version)
 
