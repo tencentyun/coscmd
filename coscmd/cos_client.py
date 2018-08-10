@@ -1528,16 +1528,18 @@ class Interface(object):
                 else:
                     logger.warn("ID format error!")
                     return False
+                id = ""
                 if subid != "anyone":
-                    subid = subid
-                    rootid = rootid
+                    id = rootid + "/" + subid
+                else:
+                    id = "qcs::cam::anyone:anyone"
                 grants += '''
         <Grant>
             <Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="{accounttype}">
-                <ID>{rootid}/{subid}</ID>
+                <ID>{id}</ID>
             </Grantee>
             <Permission>{permissiontype}</Permission>
-        </Grant>'''.format(rootid=rootid, subid=subid, accounttype=accounttype, permissiontype=Type)
+        </Grant>'''.format(id=id, accounttype=accounttype, permissiontype=Type)
 
             data = '''<AccessControlPolicy>
     <Owner>
@@ -1679,16 +1681,18 @@ class Interface(object):
                 else:
                     logger.warn(u"ID format error!")
                     return False
+                id = ""
                 if subid != "anyone":
-                    subid = subid
-                    rootid = rootid
+                    id = rootid + "/" + subid
+                else:
+                    id = "qcs::cam::anyone:anyone"
                 grants += '''
         <Grant>
             <Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="{accounttype}">
-                <ID>{rootid}/{subid}</ID>
+                <ID>{id}</ID>
             </Grantee>
             <Permission>{permissiontype}</Permission>
-        </Grant>'''.format(rootid=rootid, subid=subid, accounttype=accounttype, permissiontype=Type)
+        </Grant>'''.format(id=id, accounttype=accounttype, permissiontype=Type)
 
             data = '''<AccessControlPolicy>
     <Owner>
