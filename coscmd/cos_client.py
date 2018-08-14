@@ -1530,7 +1530,10 @@ class Interface(object):
                     return False
                 id = ""
                 if subid != "anyone":
-                    id = rootid + "/" + subid
+                    if subid == rootid:
+                        id = rootid
+                    else:
+                        id = rootid + "/" + subid
                 else:
                     id = "qcs::cam::anyone:anyone"
                 grants += '''
@@ -1683,7 +1686,10 @@ class Interface(object):
                     return False
                 id = ""
                 if subid != "anyone":
-                    id = rootid + "/" + subid
+                    if subid == rootid:
+                        id = rootid
+                    else:
+                        id = rootid + "/" + subid
                 else:
                     id = "qcs::cam::anyone:anyone"
                 grants += '''
