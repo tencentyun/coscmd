@@ -1325,7 +1325,7 @@ class Interface(object):
         def get_parts_data(local_path, offset, length, parts_size, idx):
             for j in range(self._retry):
                 try:
-                    time.sleep(1<<j)
+                    time.sleep(1 << j)
                     local_path = local_path + "_" + str(idx)
                     http_header = {}
                     http_header['Range'] = 'bytes=' + str(offset) + "-" + str(offset+length-1)
