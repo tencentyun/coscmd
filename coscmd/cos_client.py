@@ -23,10 +23,12 @@ if sys.version > '3':
     from coscmd.cos_auth import CosS3Auth
     from coscmd.cos_threadpool import SimpleThreadPool
     from coscmd.cos_comm import to_bytes, to_unicode, get_file_md5
+    n_0755 = 0o755
 else:
     from cos_auth import CosS3Auth
     from cos_threadpool import SimpleThreadPool
     from cos_comm import to_bytes, to_unicode, get_file_md5
+    n_0755 = 0755
 
 logger = logging.getLogger(__name__)
 
@@ -1298,7 +1300,7 @@ class Interface(object):
                         dir_path = os.path.dirname(local_path)
                         if os.path.isdir(dir_path) is False and dir_path != '':
                             try:
-                                os.makedirs(dir_path, 0755)
+                                os.makedirs(dir_path, n_0755)
                             except Exception:
                                 pass
                         try:
@@ -1343,7 +1345,7 @@ class Interface(object):
                         dir_path = os.path.dirname(local_path)
                         if os.path.isdir(dir_path) is False and dir_path != '':
                             try:
-                                os.makedirs(dir_path, 0755)
+                                os.makedirs(dir_path, n_0755)
                             except Exception as e:
                                 pass
                         with open(local_path, 'wb') as f:
