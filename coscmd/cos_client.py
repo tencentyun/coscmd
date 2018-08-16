@@ -1298,9 +1298,9 @@ class Interface(object):
                         dir_path = os.path.dirname(local_path)
                         if os.path.isdir(dir_path) is False and dir_path != '':
                             try:
-                                os.makedirs(dir_path)
-                            except Exception as e:
-                                raise Exception(u"Unable to create the corresponding folder")
+                                os.makedirs(dir_path, 0755)
+                            except Exception:
+                                pass
                         try:
                             with open(local_path, 'wb') as f:
                                 for chunk in rt.iter_content(chunk_size=1024):
@@ -1323,42 +1323,45 @@ class Interface(object):
             return True
 
         def get_parts_data(local_path, offset, length, parts_size, idx):
-            try:
-                local_path = local_path + "_" + str(idx)
-                http_header = {}
-                http_header['Range'] = 'bytes=' + str(offset) + "-" + str(offset+length-1)
-                rt = self._session.get(url=url, auth=CosS3Auth(self._conf), headers=http_header, stream=True)
-                logger.debug(u"get resp, status code: {code}, headers: {headers}".format(
-                     code=rt.status_code,
-                     headers=rt.headers))
-                if 'Content-Length' in rt.headers:
-                    content_len = int(rt.headers['Content-Length'])
-                else:
-                    raise IOError(u"Download failed without Content-Length header")
-                if rt.status_code in [206, 200]:
-                    file_len = 0
-                    dir_path = os.path.dirname(local_path)
-                    if os.path.isdir(dir_path) is False and dir_path != '':
-                        try:
-                            os.makedirs(dir_path)
-                        except Exception as e:
-                            logger.warn(str(e))
-                            return False
-                    with open(local_path, 'wb') as f:
-                        for chunk in rt.iter_content(chunk_size=1024*1024):
-                            if chunk:
-                                file_len += len(chunk)
-                                f.write(chunk)
-                                self._pbar.update(len(chunk))
-                        f.flush()
-                    if file_len != content_len:
-                        raise IOError(u"Download failed with incomplete file")
-                    return True
-                else:
-                    logger.warn(response_info(rt))
-                    return False
-            except Exception as e:
-                logger.warn(str(e))
+            for j in range(self._retry):
+                try:
+                    time.sleep(1<<j)
+                    local_path = local_path + "_" + str(idx)
+                    http_header = {}
+                    http_header['Range'] = 'bytes=' + str(offset) + "-" + str(offset+length-1)
+                    rt = self._session.get(url=url, auth=CosS3Auth(self._conf), headers=http_header, stream=True)
+                    logger.debug(u"get resp, status code: {code}, headers: {headers}".format(
+                         code=rt.status_code,
+                         headers=rt.headers))
+                    if 'Content-Length' in rt.headers:
+                        content_len = int(rt.headers['Content-Length'])
+                    else:
+                        logger.warn(u"Download failed without Content-Length header")
+                        continue
+                    if rt.status_code in [206, 200]:
+                        file_len = 0
+                        dir_path = os.path.dirname(local_path)
+                        if os.path.isdir(dir_path) is False and dir_path != '':
+                            try:
+                                os.makedirs(dir_path, 0755)
+                            except Exception as e:
+                                pass
+                        with open(local_path, 'wb') as f:
+                            for chunk in rt.iter_content(chunk_size=1024*1024):
+                                if chunk:
+                                    file_len += len(chunk)
+                                    f.write(chunk)
+                                    self._pbar.update(len(chunk))
+                            f.flush()
+                        if file_len != content_len:
+                            raise IOError(u"Download failed with incomplete file")
+                        return True
+                    else:
+                        logger.warn(response_info(rt))
+                        continue
+                except Exception as e:
+                    logger.warn(str(e))
+                    continue
             return False
 
         cos_path = cos_path.lstrip('/')
