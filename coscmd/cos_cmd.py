@@ -189,6 +189,7 @@ class Op(object):
         if args.recursive:
             if os.path.isfile(args.local_path) is True:
                 rt = Interface.upload_file(args.local_path, args.cos_path, args.headers, **kwargs)
+                return 0
             elif os.path.isdir(args.local_path):
                 rt = Interface.upload_folder(args.local_path, args.cos_path, args.headers, **kwargs)
                 if rt:
