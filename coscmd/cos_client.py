@@ -384,7 +384,7 @@ class Interface(object):
                     logger.debug("local md5: {key}".format(key=self._md5[idx]))
                     logger.debug("cos md5: {key}".format(key=md5(data).hexdigest()))
                     if rt.status_code == 200:
-                        if(self._md5[idx] == md5(data).hexdigest()):
+                        if(kwargs['skipmd5'] or self._md5[idx] == md5(data).hexdigest()):
                             self._have_finished += 1
                             self._pbar.update(length)
                             break
