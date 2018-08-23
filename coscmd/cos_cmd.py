@@ -126,6 +126,10 @@ def load_conf():
         except:
             schema = 'https'
         try:
+            verify = cp.get('common', 'verify')
+        except:
+            verify = 'md5'
+        try:
             anonymous = cp.get('common', 'anonymous')
         except:
             anonymous = 'False'
@@ -151,7 +155,8 @@ def load_conf():
             part_size=part_size,
             max_thread=max_thread,
             schema=schema,
-            anonymous=anonymous
+            anonymous=anonymous,
+            verify=verify
         )
         return conf
 
