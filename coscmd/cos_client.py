@@ -121,12 +121,10 @@ def change_to_human(_size):
         res = str(s)
     return res
 
+
 class CosConfig(object):
 
-    def __init__(self, appid, region, endpoint, bucket, secret_id, secret_key,
-                part_size=1, max_thread=5, schema='https',
-                anonymous='False', vertify='md5',
-                *args, **kwargs):
+    def __init__(self, appid, region, endpoint, bucket, secret_id, secret_key, part_size=1, max_thread=5, schema='https', anonymous='False', verify='md5', *args, **kwargs):
         self._appid = appid
         self._region = region
         self._endpoint = endpoint
@@ -137,7 +135,7 @@ class CosConfig(object):
         self._max_thread = min(10, max_thread)
         self._schema = schema
         self._anonymous = anonymous
-        self._vertify = vertify
+        self._verify = verify
         logger.debug("config parameter-> appid: {appid}, region: {region}, endpoint: {endpoint}, bucket: {bucket}, part_size: {part_size}, max_thread: {max_thread}".format(
                  appid=appid,
                  region=region,
@@ -385,20 +383,21 @@ class Interface(object):
                         text=to_printable_str(rt.text)))
                     self._md5[idx] = rt.headers[self._etag][1:-1]
                     if rt.status_code == 200:
-                        if(kwargs['skipmd5']):
-                            if self._conf.vertify == "md5":
-                                local_encryption = md5(data).hexdigest()
-                            elif self._conf.vertify == "sha1":
-                                local_encryption = sha1(data).hexdigest()
-                            logger.debug("cos encryption: {key}".format(key=self._md5[idx]))
-                            logger.debug("local encryption: {key}".format(key=local_encryption))
-                            if (self._md5[idx] == local_encryption):
-                                self._have_finished += 1
-                                self._pbar.update(length)
-                                break
-                            else:
-                                logger.warn("Encryption verification is inconsistent")
-                                continue
+                        if kwargs['skipmd5']:
+                            break
+                        if self._conf._verify == "sha1":
+                            local_encryption = sha1(data).hexdigest()
+                        else:
+                            local_encryption = md5(data).hexdigest()
+                        logger.debug("cos encryption: {key}".format(key=self._md5[idx]))
+                        logger.debug("local encryption: {key}".format(key=local_encryption))
+                        if (self._md5[idx] == local_encryption):
+                            self._have_finished += 1
+                            self._pbar.update(length)
+                            break
+                        else:
+                            logger.warn("Encryption verification is inconsistent")
+                            continue
                     else:
                         logger.warn(response_info(rt))
                         time.sleep(2**j)
