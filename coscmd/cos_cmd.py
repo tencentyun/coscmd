@@ -528,7 +528,7 @@ def version_check():
 and the latest version is {v2}. It is recommended \
 to upgrade coscmd with the command'pip install coscmd -U'.".format(v1=cos_global.Version, v2=latest_version))
     except Exception as e:
-        logger.info(e)
+        logger.debug(e)
 
 
 def command_thread():
