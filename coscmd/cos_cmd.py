@@ -6,7 +6,10 @@ from logging.handlers import RotatingFileHandler
 import sys
 import logging
 import os
+import json
+import requests
 from threading import Thread
+from coscmd import cos_global
 
 if sys.version > '3':
     from coscmd.cos_client import CosConfig, CosS3Client
@@ -513,6 +516,21 @@ class Op(object):
             return -1
 
 
+def version_check():
+    try:
+        ret = requests.get("https://pypi.org/pypi/coscmd/json").content
+        res_json = json.loads(ret)
+        latest_version = res_json["info"]["version"]
+        lat_spl = latest_version.split('.')
+        cur_spl = cos_global.Version.split('.')
+        if cur_spl[0] < lat_spl[0] or cur_spl[1] < lat_spl[1] or cur_spl[2] < lat_spl[2]:
+            logger.info("The current version of coscmd is {v1}\
+             and the latest version is {v2}. It is recommended\
+              to upgrade coscmd with the command'pip install coscmd -U'.".format(v1=cos_global.Version, v2=latest_version))
+    except Exception as e:
+        logger.info(e)
+
+
 def command_thread():
     global res
     res = -1
@@ -697,13 +715,13 @@ def main_thread():
 
 
 def _main():
-
     thread_ = Thread(target=main_thread)
     thread_.daemon = True
     thread_.start()
     try:
         while thread_.is_alive():
             thread_.join(2)
+        version_check()
     except KeyboardInterrupt:
         logger.info('exiting')
         return 1
