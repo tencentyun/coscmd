@@ -524,9 +524,9 @@ def version_check():
         lat_spl = latest_version.split('.')
         cur_spl = cos_global.Version.split('.')
         if cur_spl[0] < lat_spl[0] or cur_spl[1] < lat_spl[1] or cur_spl[2] < lat_spl[2]:
-            logger.info("The current version of coscmd is {v1}\
-             and the latest version is {v2}. It is recommended\
-              to upgrade coscmd with the command'pip install coscmd -U'.".format(v1=cos_global.Version, v2=latest_version))
+            logger.info("The current version of coscmd is {v1} \
+and the latest version is {v2}. It is recommended \
+to upgrade coscmd with the command'pip install coscmd -U'.".format(v1=cos_global.Version, v2=latest_version))
     except Exception as e:
         logger.info(e)
 
