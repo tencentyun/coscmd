@@ -131,8 +131,8 @@ class CosConfig(object):
         self._bucket = bucket
         self._secret_id = secret_id
         self._secret_key = secret_key
-        self._part_size = min(10, part_size)
-        self._max_thread = min(10, max_thread)
+        self._part_size = part_size
+        self._max_thread = max_thread
         self._schema = schema
         self._anonymous = anonymous
         self._verify = verify
@@ -220,7 +220,7 @@ class Interface(object):
         cos_path = to_printable_str(cos_path)
         try:
             while IsTruncated == "true":
-                url = self._conf.uri(path=cos_path + '?uploadId={UploadId}&upload&max-parts=1000&part-number-marker={nextmarker}'.format(
+                url = self._conf.uri(path=quote(to_printable_str(cos_path)) + '?uploadId={UploadId}&upload&max-parts=1000&part-number-marker={nextmarker}'.format(
                                                     UploadId=self._upload_id,
                                                     nextmarker=NextMarker))
                 rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
@@ -789,7 +789,6 @@ class Interface(object):
         NextMarker = ""
         IsTruncated = "true"
         if _versions:
-            Delimiter = ""
             NextMarker = "/"
             NextVersionMarker = "/"
             KeyMarker = ""
@@ -863,7 +862,7 @@ class Interface(object):
                         data_xml = data_xml + '''
         <Object>
             <Key>{Key}</Key>
-        </Object>'''.format(Key=to_printable_str(file_name))
+        </Object>'''.format(Key=quote(to_printable_str(file_name)))
                     data_xml = '''
     <Delete>
         <Quiet>true</Quiet>'''+data_xml+'''
@@ -1289,7 +1288,7 @@ class Interface(object):
         def single_download(cos_path, local_path):
 
             # logger.info("download {file}".format(file=to_printable_str(cos_path)))
-            url = self._conf.uri(path=cos_path)
+            url = self._conf.uri(path=quote(to_printable_str(cos_path)))
             try:
                 rt = self._session.get(url=url, auth=CosS3Auth(self._conf), stream=True)
                 logger.debug("get resp, status code: {code}, headers: {headers}".format(
@@ -1391,7 +1390,7 @@ class Interface(object):
                     logger.warn(u"The file {file} already exists, please use -f to overwrite the file".format(file=cos_path))
                     return False
 
-        url = self._conf.uri(path=cos_path)
+        url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         try:
             rt = self._session.head(url=url, auth=CosS3Auth(self._conf))
             logger.debug(u"download resp, status code: {code}, headers: {headers}".format(
@@ -1411,7 +1410,7 @@ class Interface(object):
             return rt
         else:
             # mget
-            url = self._conf.uri(path=cos_path)
+            url = self._conf.uri(path=quote(to_printable_str(cos_path)))
             logger.debug("mget with : " + url)
             offset = 0
             logger.debug("file size: " + str(file_size))
@@ -1474,8 +1473,7 @@ class Interface(object):
             return True
 
     def restore_object(self, cos_path, _day, _tier):
-        cos_path = to_printable_str(cos_path)
-        url = self._conf.uri(path=cos_path+"?restore")
+        url = self._conf.uri(path=quote(to_printable_str(cos_path))+"?restore")
         data_xml = '''<RestoreRequest>
    <Days>{day}</Days>
    <CASJobParameters>
@@ -1515,7 +1513,7 @@ class Interface(object):
             for i in grant_full_control.split(","):
                 if len(i) > 0:
                     acl.append([i, "FULL_CONTROL"])
-        url = self._conf.uri(cos_path+"?acl")
+        url = self._conf.uri(quote(to_printable_str(cos_path))+"?acl")
         try:
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
             if rt.status_code != 200:
@@ -1579,7 +1577,7 @@ class Interface(object):
         return False
 
     def get_object_acl(self, cos_path):
-        url = self._conf.uri(cos_path+"?acl")
+        url = self._conf.uri(quote(to_printable_str(cos_path))+"?acl")
         table = PrettyTable([cos_path, ""])
         table.align = "l"
         table.padding_width = 3
