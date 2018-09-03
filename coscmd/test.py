@@ -39,7 +39,7 @@ def gen_file(filePath, fileSize):
 
 
 def check_file_same(local_path, cos_path):
-    rt = os.system("python coscmd/cos_cmd.py download -f {cos_path} {local_path}_download"
+    rt = os.system("python coscmd/cos_cmd.py download -f \"{cos_path}\" \"{local_path}_download\""
                    .format(cos_path=cos_path, local_path=local_path))
     if rt != 0:
         return rt
@@ -83,17 +83,18 @@ def test_upload_file_02():
     assert check_file_same("tmp", "tmp") == 0
 
 
-# def test_upload_file_03():
-#     """test upload file_tmp_/home/"""
-#     gen_file("tmp", 5.1)
-#     rt = os.system("python coscmd/cos_cmd.py upload tmp /home/")
-#     assert rt == 0
-#     assert check_file_same("/home/tmp", "tmp") == 0
-#
-#     gen_file("tmp", 1)
-#     rt = os.system("python coscmd/cos_cmd.py upload tmp /home/")
-#     assert rt == 0
-#     assert check_file_same("/home/tmp", "tmp") == 0
+def test_upload_file_03():
+    """test upload file_tmp_/home/"""
+    key = "→↓←→↖↗↙↘! #$%&\'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+    gen_file("tmp", 5.1)
+    rt = os.system("python coscmd/cos_cmd.py upload tmp \"{key}\"".format(key=key))
+    assert rt == 0
+    assert check_file_same("/home/tmp", key) == 0
+
+    gen_file("tmp", 1)
+    rt = os.system("python coscmd/cos_cmd.py upload tmp \"{key}\"".format(key=key))
+    assert rt == 0
+    assert check_file_same("/home/tmp", key) == 0
 
 
 def test_upload_file_04():

@@ -29,7 +29,7 @@ class CosS3Auth(AuthBase):
 
     def __call__(self, r):
         method = r.method.lower()
-        uri = unquote(r.url)
+        uri = r.url
         uri = uri.split('?')[0]
         tmp_r = {}
         rt = urlparse(uri)
@@ -47,7 +47,7 @@ class CosS3Auth(AuthBase):
         headers = dict([(k.lower(), quote(v).lower()) for k, v in r.headers.items()])
         format_str = "{method}\n{host}\n{params}\n{headers}\n".format(
             method=method.lower(),
-            host=rt.path,
+            host=unquote(rt.path),
             params=urlencode(uri_params),
             headers='&'.join(map(lambda p: (lambda x, y: "%s=%s" % (x, y))(*p), sorted(headers.items())))
          )
