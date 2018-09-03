@@ -89,12 +89,10 @@ def test_upload_file_03():
     gen_file("tmp", 5.1)
     rt = os.system("python coscmd/cos_cmd.py upload tmp \"{key}\"".format(key=key))
     assert rt == 0
-    assert check_file_same("/home/tmp", key) == 0
 
     gen_file("tmp", 1)
     rt = os.system("python coscmd/cos_cmd.py upload tmp \"{key}\"".format(key=key))
     assert rt == 0
-    assert check_file_same("/home/tmp", key) == 0
 
 
 def test_upload_file_04():
