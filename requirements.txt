@@ -1,8 +1,8 @@
-requests>=2.12.4		
-argparse>=1.4.0		
+requests>=2.6	
+argparse>=1.4.0
+six>=1.11.0		
 prettytable==0.7		
 pytz==2017.2		
 datetime==4.2		
 tqdm==4.15.0
 pyyaml==3.12
-six==1.11.0
