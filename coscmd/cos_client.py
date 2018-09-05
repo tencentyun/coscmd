@@ -252,6 +252,7 @@ class Interface(object):
         global _fail_num
         _success_num = 0
         _fail_num = 0
+        pool = SimpleThreadPool(self._conf._max_thread)
 
         def recursive_upload_folder(_local_path, _cos_path):
             _local_path = to_unicode(_local_path)
@@ -263,19 +264,29 @@ class Interface(object):
                 _local_path += '/'
             _cos_path = _cos_path.lstrip('/')
             for filename in filelist:
+#                 print filename
                 filepath = os.path.join(_local_path, filename)
                 if os.path.isdir(filepath):
                     recursive_upload_folder(filepath, _cos_path+filename)
                 else:
-                    if self.upload_file(local_path=filepath, cos_path=_cos_path+filename, _http_headers=_http_headers, **kwargs) is False:
-                        global _fail_num
-                        _fail_num += 1
-                        logger.debug("Upload {file} fail".format(file=to_printable_str(filepath)))
-                    else:
-                        global _success_num
-                        _success_num += 1
-                        logger.debug("Upload {file} success".format(file=to_printable_str(filepath)))
+                    pool.add_task(self.upload_file, filepath, _cos_path+filename, _http_headers, **kwargs)
+                
+#                         global _fail_num
+#                         _fail_num += 1
+#                         logger.debug("Upload {file} fail".format(file=to_printable_str(filepath)))
+#                     else:
+#                         global _success_num
+#                         _success_num += 1
+#                         logger.debug("Upload {file} success".format(file=to_printable_str(filepath)))
         recursive_upload_folder(local_path, cos_path)
+        pool.wait_completion()
+        result = pool.get_result()
+        self._pbar.close()
+        print result
+#         if result['success_all']:
+#             return True
+#         else:
+#             return False
         logger.info("{files} files successful, {fail_files} files failed"
                     .format(files=_success_num, fail_files=_fail_num))
         if _fail_num == 0:
@@ -383,15 +394,13 @@ class Interface(object):
                         text=to_printable_str(rt.text)))
                     self._md5[idx] = rt.headers[self._etag][1:-1]
                     if rt.status_code == 200:
-                        if kwargs['skipmd5']:
-                            break
                         if self._conf._verify == "sha1":
                             local_encryption = sha1(data).hexdigest()
                         else:
                             local_encryption = md5(data).hexdigest()
                         logger.debug("cos encryption: {key}".format(key=self._md5[idx]))
                         logger.debug("local encryption: {key}".format(key=local_encryption))
-                        if (self._md5[idx] == local_encryption):
+                        if (kwargs['skipmd5'] or self._md5[idx] == local_encryption):
                             self._have_finished += 1
                             self._pbar.update(length)
                             break
