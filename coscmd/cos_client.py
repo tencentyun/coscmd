@@ -206,6 +206,20 @@ class Interface(object):
         else:
             self._session = session
 
+    def check_file_md5(self, _local_path, _cos_path, _md5):
+        url = self._conf.uri(path=_cos_path)
+        rt = self._session.head(url=url, auth=CosS3Auth(self._conf), stream=True)
+        if rt.status_code != 200:
+            return False
+        tmp = os.stat(_local_path)
+        if tmp.st_size != int(rt.headers['Content-Length']):
+            return False
+        else:
+            if 'x-cos-meta-md5' not in rt.headers or _md5 != rt.headers['x-cos-meta-md5']:
+                return False
+            else:
+                return True
+
     def sign_url(self, cos_path, timeout=10000):
         cos_path = to_printable_str(cos_path)
         url = self._conf.uri(path=quote(to_printable_str(cos_path)))
@@ -318,7 +332,7 @@ class Interface(object):
             _md5 = get_file_md5(local_path)
 
         if kwargs['sync'] is True:
-            if check_file_md5(local_path, cos_path):
+            if self.check_file_md5(local_path, cos_path, _md5):
                 logger.info(u"The file on cos is the same as the local file, skip upload")
                 return True
         if len(local_path) == 0:
@@ -516,7 +530,7 @@ class Interface(object):
             _md5 = get_file_md5(local_path)
 
         if kwargs['sync'] is True:
-            if check_file_md5(local_path, cos_path):
+            if self.check_file_md5(local_path, cos_path, _md5):
                 logger.info(u"The file on cos is the same as the local file, skip upload")
                 return True
         rt = init_multiupload()
@@ -1318,7 +1332,8 @@ class Interface(object):
         if kwargs['force'] is False:
             if os.path.isfile(local_path) is True:
                 if kwargs['sync'] is True:
-                    if check_file_md5(local_path, cos_path):
+                    _md5 = get_file_md5(local_path)
+                    if self.check_file_md5(local_path, cos_path, _md5):
                         logger.info(u"The file on cos is the same as the local file, skip download")
                         return True
                 else:
@@ -1419,7 +1434,8 @@ class Interface(object):
         if kwargs['force'] is False:
             if os.path.isfile(local_path) is True:
                 if kwargs['sync'] is True:
-                    if check_file_md5(local_path, cos_path):
+                    _md5 = get_file_md5(local_path)
+                    if self.check_file_md5(local_path, cos_path):
                         logger.info(u"The file on cos is the same as the local file, skip download")
                         return True
                 else:
