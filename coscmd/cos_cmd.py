@@ -721,7 +721,6 @@ def _main():
     try:
         while thread_.is_alive():
             thread_.join(2)
-        version_check()
     except KeyboardInterrupt:
         logger.info('exiting')
         return 1
