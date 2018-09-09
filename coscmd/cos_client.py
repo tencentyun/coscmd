@@ -67,7 +67,7 @@ def query_yes_no(question, default="no"):
     while True:
         sys.stdout.write(question + prompt)
         sys.stdout.flush()
-        choice = raw_input().lower()
+        choice = input().lower()
         if default is not None and choice == '':
             return valid[default]
         elif choice in valid:
@@ -198,10 +198,27 @@ class Interface(object):
         self._have_uploaded = []
         self._etag = 'ETag'
         self._pbar = ''
+        self._inner_threadpool = SimpleThreadPool(1)
+        self._multiupload_threshold = 5 * 1024 * 1024 + 1024
+        self._multidownload_threshold = 5 * 1024 * 1024 + 1024
         if session is None:
             self._session = requests.session()
         else:
             self._session = session
+
+    def check_file_md5(self, _local_path, _cos_path, _md5):
+        url = self._conf.uri(path=_cos_path)
+        rt = self._session.head(url=url, auth=CosS3Auth(self._conf), stream=True)
+        if rt.status_code != 200:
+            return False
+        tmp = os.stat(_local_path)
+        if tmp.st_size != int(rt.headers['Content-Length']):
+            return False
+        else:
+            if 'x-cos-meta-md5' not in rt.headers or _md5 != rt.headers['x-cos-meta-md5']:
+                return False
+            else:
+                return True
 
     def sign_url(self, cos_path, timeout=10000):
         cos_path = to_printable_str(cos_path)
@@ -248,10 +265,6 @@ class Interface(object):
         return True
 
     def upload_folder(self, local_path, cos_path, _http_headers='', **kwargs):
-        global _success_num
-        global _fail_num
-        _success_num = 0
-        _fail_num = 0
 
         def recursive_upload_folder(_local_path, _cos_path):
             _local_path = to_unicode(_local_path)
@@ -263,70 +276,91 @@ class Interface(object):
                 _local_path += '/'
             _cos_path = _cos_path.lstrip('/')
             for filename in filelist:
-                filepath = os.path.join(_local_path, filename)
-                if os.path.isdir(filepath):
-                    recursive_upload_folder(filepath, _cos_path+filename)
-                else:
-                    if self.upload_file(local_path=filepath, cos_path=_cos_path+filename, _http_headers=_http_headers, **kwargs) is False:
-                        global _fail_num
-                        _fail_num += 1
-                        logger.debug("Upload {file} fail".format(file=to_printable_str(filepath)))
+                try:
+                    filepath = os.path.join(_local_path, filename)
+                    if os.path.isdir(filepath):
+                        recursive_upload_folder(filepath, _cos_path+filename)
                     else:
-                        global _success_num
-                        _success_num += 1
-                        logger.debug("Upload {file} success".format(file=to_printable_str(filepath)))
+                        file_size = os.path.getsize(filepath)
+                        if file_size <= self._multiupload_threshold:
+                            self._inner_threadpool.add_task(self.single_upload, filepath, _cos_path+filename, _http_headers, **kwargs)
+                        else:
+                            multiupload_filelist.append([filepath, _cos_path+filename])
+                except Exception as e:
+                    logger.warn(e)
+                    logger.warn(u"upload file {filename} error".format(filename=filename))
+
+        _success_num = 0
+        _fail_num = 0
+        multiupload_filelist = []
+        self._inner_threadpool = SimpleThreadPool(self._conf._max_thread)
         recursive_upload_folder(local_path, cos_path)
-        logger.info("{files} files successful, {fail_files} files failed"
+        self._inner_threadpool.wait_completion()
+        result = self._inner_threadpool.get_result()
+        for worker in result['detail']:
+            _success_num += worker[0]
+            _fail_num += worker[1]
+        for _local_path, _cos_path in multiupload_filelist:
+            rt = self.multipart_upload(_local_path, _cos_path, _http_headers, **kwargs)
+            if rt:
+                _success_num += 1
+            else:
+                _fail_num += 1
+        logger.info(u"{files} files successful, {fail_files} files failed"
                     .format(files=_success_num, fail_files=_fail_num))
         if _fail_num == 0:
             return True
         else:
             return False
 
-    def upload_file(self, local_path, cos_path, _http_headers='{}', **kwargs):
+    def single_upload(self, local_path, cos_path, _http_headers='{}', **kwargs):
+        logger.info(u"Upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
+                                                    bucket=self._conf._bucket,
+                                                    local_path=local_path,
+                                                    cos_path=cos_path))
         _md5 = ""
         _http_header = yaml.safe_load(_http_headers)
+        for rule in kwargs['ignore']:
+            if fnmatch.fnmatch(local_path, rule) is True:
+                logger.info(u"This file matches the ignore rule, skip upload")
+                return True
 
-        def check_file_md5(_local_path, _cos_path):
-            url = self._conf.uri(path=_cos_path)
-            rt = self._session.head(url=url, auth=CosS3Auth(self._conf), stream=True)
-            if rt.status_code != 200:
-                return False
-            tmp = os.stat(_local_path)
-            if tmp.st_size != int(rt.headers['Content-Length']):
-                return False
-            else:
-                if 'x-cos-meta-md5' not in rt.headers or _md5 != rt.headers['x-cos-meta-md5']:
-                    return False
-                else:
+        file_size = os.path.getsize(local_path)
+        if kwargs['skipmd5'] is False:
+            if file_size > 5 * 1024 * 1024 * 1024:
+                logger.info(u"MD5 is being calculated, please wait. If you do not need to calculate md5, you can use --skipmd5 to skip")
+            _md5 = get_file_md5(local_path)
+
+        if kwargs['sync'] is True:
+            if self.check_file_md5(local_path, cos_path, _md5):
+                logger.info(u"The file on cos is the same as the local file, skip upload")
+                return True
+        if len(local_path) == 0:
+            data = ""
+        else:
+            with open(local_path, 'rb') as File:
+                data = File.read()
+        url = self._conf.uri(path=quote(to_printable_str(cos_path)))
+        for j in range(self._retry):
+            try:
+                http_header = _http_header
+                http_header['x-cos-meta-md5'] = _md5
+                rt = self._session.put(url=url,
+                                       auth=CosS3Auth(self._conf), data=data, headers=http_header)
+                if rt.status_code == 200:
                     return True
+                else:
+                    time.sleep(2**j)
+                    logger.warn(response_info(rt))
+                    continue
+                if j+1 == self._retry:
+                    return False
+            except Exception as e:
+                logger.warn(e)
+                logger.warn("Upload file failed")
+        return False
 
-        def single_upload():
-
-            if len(local_path) == 0:
-                data = ""
-            else:
-                with open(local_path, 'rb') as File:
-                    data = File.read()
-            url = self._conf.uri(path=quote(to_printable_str(cos_path)))
-            for j in range(self._retry):
-                try:
-                    http_header = _http_header
-                    http_header['x-cos-meta-md5'] = _md5
-                    rt = self._session.put(url=url,
-                                           auth=CosS3Auth(self._conf), data=data, headers=http_header)
-                    if rt.status_code == 200:
-                        return True
-                    else:
-                        time.sleep(2**j)
-                        logger.warn(response_info(rt))
-                        continue
-                    if j+1 == self._retry:
-                        return False
-                except Exception as e:
-                    logger.warn(e)
-                    logger.warn("Upload file failed")
-            return False
+    def multipart_upload(self, local_path, cos_path, _http_headers='{}', **kwargs):
 
         def init_multiupload():
             url = self._conf.uri(path=quote(to_printable_str(cos_path)))
@@ -381,17 +415,18 @@ class Interface(object):
                         code=rt.status_code,
                         headers=rt.headers,
                         text=to_printable_str(rt.text)))
-                    self._md5[idx] = rt.headers[self._etag][1:-1]
+                    try:
+                        self._md5[idx] = rt.headers[self._etag][1:-1]
+                    except:
+                        self._md5[idx] = ""
                     if rt.status_code == 200:
-                        if kwargs['skipmd5']:
-                            break
                         if self._conf._verify == "sha1":
                             local_encryption = sha1(data).hexdigest()
                         else:
                             local_encryption = md5(data).hexdigest()
                         logger.debug("cos encryption: {key}".format(key=self._md5[idx]))
                         logger.debug("local encryption: {key}".format(key=local_encryption))
-                        if (self._md5[idx] == local_encryption):
+                        if (kwargs['skipmd5'] or self._md5[idx] == local_encryption):
                             self._have_finished += 1
                             self._pbar.update(length)
                             break
@@ -477,54 +512,53 @@ class Interface(object):
                 return False
             return True
 
-        if local_path == "":
-            file_size = 0
-        else:
-            file_size = os.path.getsize(local_path)
         logger.info(u"Upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
                                                     bucket=self._conf._bucket,
                                                     local_path=local_path,
                                                     cos_path=cos_path))
+        _md5 = ""
+        _http_header = yaml.safe_load(_http_headers)
         for rule in kwargs['ignore']:
             if fnmatch.fnmatch(local_path, rule) is True:
                 logger.info(u"This file matches the ignore rule, skip upload")
                 return True
 
+        file_size = os.path.getsize(local_path)
         if kwargs['skipmd5'] is False:
             if file_size > 5 * 1024 * 1024 * 1024:
                 logger.info(u"MD5 is being calculated, please wait. If you do not need to calculate md5, you can use --skipmd5 to skip")
             _md5 = get_file_md5(local_path)
 
         if kwargs['sync'] is True:
-            if check_file_md5(local_path, cos_path):
+            if self.check_file_md5(local_path, cos_path, _md5):
                 logger.info(u"The file on cos is the same as the local file, skip upload")
                 return True
-
-        if file_size <= self._conf._part_size * 1024 * 1024 + 1024:
-            for _ in range(self._retry):
-                if single_upload() is True:
-                    return True
-            return False
+        rt = init_multiupload()
+        if rt:
+            logger.debug(u"Init multipart upload ok")
         else:
-            rt = init_multiupload()
-            if rt:
-                logger.debug(u"Init multipart upload ok")
-            else:
-                logger.debug(u"Init multipart upload failed")
-                return False
-            rt = multiupload_parts()
-            if rt:
-                logger.debug(u"Multipart upload ok")
-            else:
-                logger.warn(u"Some partial upload failed. Please retry the last command to continue.")
-                return False
-            rt = complete_multiupload()
-            if rt:
-                logger.debug(u"Complete multipart upload ok")
-            else:
-                logger.warn(u"Complete multipart upload failed")
-                return False
-            return True
+            logger.debug(u"Init multipart upload failed")
+            return False
+        rt = multiupload_parts()
+        if rt:
+            logger.debug(u"Multipart upload ok")
+        else:
+            logger.warn(u"Some partial upload failed. Please retry the last command to continue.")
+            return False
+        rt = complete_multiupload()
+        if rt:
+            logger.debug(u"Complete multipart upload ok")
+        else:
+            logger.warn(u"Complete multipart upload failed")
+            return False
+        return True
+
+    def upload_file(self, local_path, cos_path, _http_headers='{}', **kwargs):
+        file_size = path.getsize(local_path)
+        if file_size <= self._conf._part_size * 1024 * 1024 + 1024 or file_size <= self._multiupload_threshold:
+            return self.single_upload(local_path, cos_path, _http_headers, **kwargs)
+        else:
+            return self.multipart_upload(local_path, cos_path, _http_headers, **kwargs)
 
     def copy_folder(self, source_path, cos_path):
 
@@ -1010,159 +1044,160 @@ class Interface(object):
             return False
 
     def list_objects(self, cos_path, **kwargs):
-        _recursive = kwargs['recursive']
-        _all = kwargs['all']
-        _num = kwargs['num']
-        _human = kwargs['human']
-        _versions = kwargs['versions']
-        IsTruncated = "true"
-        Delimiter = "/"
-        if _recursive is True:
-            Delimiter = ""
-        if _all is True:
-            _num = -1
-        self._file_num = 0
-        self._total_size = 0
-        cos_path = to_printable_str(cos_path)
-        if _versions:
-            KeyMarker = ""
-            VersionIdMarker = ""
-            while IsTruncated == "true":
-                table = PrettyTable(["Path", "Size/Type", "Time", "VersionId"])
-                table.align = "l"
-                table.align['Size/Type'] = 'r'
-                table.padding_width = 3
-                table.header = False
-                table.border = False
-                params = "?versions&prefix={prefix}".format(prefix=cos_path)
-                if KeyMarker != "":
-                    params += "&key-marker={keymarker}".format(keymarker=KeyMarker)
-                if VersionIdMarker != "":
-                    params += "&version-id-marker={versionidmakrer}".format(versionidmakrer=VersionIdMarker)
-                if Delimiter != "":
-                    params += "&delimiter={delimiter}".format(delimiter=Delimiter)
-                url = self._conf.uri(path=params)
-                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-                if rt.status_code == 200:
-                    root = minidom.parseString(rt.content).documentElement
-                    IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                    if IsTruncated == 'true':
-                        KeyMarker = root.getElementsByTagName("NextKeyMarker")[0].childNodes[0].data
-                        VersionIdMarker = root.getElementsByTagName("NextVersionIdMarker")[0].childNodes[0].data
-                    logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                         code=rt.status_code,
-                         headers=rt.headers,
-                         text=rt.text))
-                    folderset = root.getElementsByTagName("CommonPrefixes")
-                    for _folder in folderset:
-                        _time = ""
-                        _type = "DIR"
-                        _path = _folder.getElementsByTagName("Prefix")[0].childNodes[0].data
-                        table.add_row([_path, _type, _time, ""])
-                    fileset = root.getElementsByTagName("DeleteMarker")
-                    for _file in fileset:
-                        _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
-                        _time = time.localtime(utc_to_local(_time))
-                        _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
-                        _versionid = _file.getElementsByTagName("VersionId")[0].childNodes[0].data
-                        _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
-                        table.add_row([_path, 0, _time, _versionid])
-                        self._file_num += 1
-                        if self._file_num == _num:
-                            break
-                    if self._file_num < _num:
-                        fileset = root.getElementsByTagName("Version")
+        try:
+            _recursive = kwargs['recursive']
+            _all = kwargs['all']
+            _num = kwargs['num']
+            _human = kwargs['human']
+            _versions = kwargs['versions']
+            IsTruncated = "true"
+            Delimiter = "/"
+            if _recursive is True:
+                Delimiter = ""
+            if _all is True:
+                _num = -1
+            self._file_num = 0
+            self._total_size = 0
+            if _versions:
+                KeyMarker = ""
+                VersionIdMarker = ""
+                while IsTruncated == "true":
+                    table = PrettyTable(["Path", "Size/Type", "Time", "VersionId"])
+                    table.align = "l"
+                    table.align['Size/Type'] = 'r'
+                    table.padding_width = 3
+                    table.header = False
+                    table.border = False
+                    params = "?versions&prefix={prefix}".format(prefix=cos_path)
+                    if KeyMarker != "":
+                        params += "&key-marker={keymarker}".format(keymarker=KeyMarker)
+                    if VersionIdMarker != "":
+                        params += "&version-id-marker={versionidmakrer}".format(versionidmakrer=VersionIdMarker)
+                    if Delimiter != "":
+                        params += "&delimiter={delimiter}".format(delimiter=Delimiter)
+                    url = self._conf.uri(path=params)
+                    rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
+                    if rt.status_code == 200:
+                        root = minidom.parseString(rt.content).documentElement
+                        IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                        if IsTruncated == 'true':
+                            KeyMarker = root.getElementsByTagName("NextKeyMarker")[0].childNodes[0].data
+                            VersionIdMarker = root.getElementsByTagName("NextVersionIdMarker")[0].childNodes[0].data
+                        logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                             code=rt.status_code,
+                             headers=rt.headers,
+                             text=rt.text))
+                        folderset = root.getElementsByTagName("CommonPrefixes")
+                        for _folder in folderset:
+                            _time = ""
+                            _type = "DIR"
+                            _path = _folder.getElementsByTagName("Prefix")[0].childNodes[0].data
+                            table.add_row([_path, _type, _time, ""])
+                        fileset = root.getElementsByTagName("DeleteMarker")
                         for _file in fileset:
                             _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
                             _time = time.localtime(utc_to_local(_time))
                             _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
-                            _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
                             _versionid = _file.getElementsByTagName("VersionId")[0].childNodes[0].data
+                            _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
+                            table.add_row([_path, 0, _time, _versionid])
+                            self._file_num += 1
+                            if self._file_num == _num:
+                                break
+                        if self._file_num < _num:
+                            fileset = root.getElementsByTagName("Version")
+                            for _file in fileset:
+                                _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
+                                _time = time.localtime(utc_to_local(_time))
+                                _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
+                                _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
+                                _versionid = _file.getElementsByTagName("VersionId")[0].childNodes[0].data
+                                self._total_size += int(_size)
+                                if _human is True:
+                                    _size = change_to_human(_size)
+                                _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
+                                table.add_row([_path, _size, _time, _versionid])
+                                self._file_num += 1
+                                if self._file_num == _num:
+                                    break
+                        try:
+                            print(unicode(table))
+                        except Exception:
+                            print(table)
+                        if self._file_num == _num:
+                            break
+                    else:
+                        logger.warn(response_info(rt))
+                        return False
+                if _all is False and self._file_num == _num:
+                    logger.info(u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
+                return True
+            else:
+                NextMarker = ""
+                while IsTruncated == "true":
+                    table = PrettyTable(["Path", "Size/Type", "Time"])
+                    table.align = "l"
+                    table.align['Size/Type'] = 'r'
+                    table.padding_width = 3
+                    table.header = False
+                    table.border = False
+                    params = "?prefix={prefix}".format(prefix=cos_path)
+                    if NextMarker != "":
+                        params += "&marker={marker}".format(marker=NextMarker)
+                    if Delimiter != "":
+                        params += "&delimiter={delimiter}".format(delimiter=Delimiter)
+                    url = self._conf.uri(path=params)
+                    rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
+                    if rt.status_code == 200:
+                        root = minidom.parseString(rt.content).documentElement
+                        IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                        if IsTruncated == 'true':
+                            NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+                        logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                             code=rt.status_code,
+                             headers=rt.headers,
+                             text=rt.text))
+                        folderset = root.getElementsByTagName("CommonPrefixes")
+                        for _folder in folderset:
+                            _time = ""
+                            _type = "DIR"
+                            _path = _folder.getElementsByTagName("Prefix")[0].childNodes[0].data
+                            table.add_row([_path, _type, _time])
+                        fileset = root.getElementsByTagName("Contents")
+                        for _file in fileset:
+                            self._file_num += 1
+                            _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
+                            _time = time.localtime(utc_to_local(_time))
+                            _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
+                            _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
                             self._total_size += int(_size)
                             if _human is True:
                                 _size = change_to_human(_size)
                             _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
-                            table.add_row([_path, _size, _time, _versionid])
-                            self._file_num += 1
+                            table.add_row([_path, _size, _time])
                             if self._file_num == _num:
                                 break
-                    try:
-                        print(unicode(table))
-                    except Exception:
-                        print(table)
-                    if self._file_num == _num:
-                        break
-                else:
-                    logger.warn(response_info(rt))
-                    return False
-            if _all is False and self._file_num == _num:
-                logger.info(u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
-            return True
-        else:
-            NextMarker = ""
-            while IsTruncated == "true":
-                table = PrettyTable(["Path", "Size/Type", "Time"])
-                table.align = "l"
-                table.align['Size/Type'] = 'r'
-                table.padding_width = 3
-                table.header = False
-                table.border = False
-                params = "?prefix={prefix}".format(prefix=cos_path)
-                if NextMarker != "":
-                    params += "&marker={marker}".format(marker=NextMarker)
-                if Delimiter != "":
-                    params += "&delimiter={delimiter}".format(delimiter=Delimiter)
-                url = self._conf.uri(path=params)
-                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-                if rt.status_code == 200:
-                    root = minidom.parseString(rt.content).documentElement
-                    IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                    if IsTruncated == 'true':
-                        NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
-
-                    logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                         code=rt.status_code,
-                         headers=rt.headers,
-                         text=rt.text))
-                    folderset = root.getElementsByTagName("CommonPrefixes")
-                    for _folder in folderset:
-                        _time = ""
-                        _type = "DIR"
-                        _path = _folder.getElementsByTagName("Prefix")[0].childNodes[0].data
-                        table.add_row([_path, _type, _time])
-                    fileset = root.getElementsByTagName("Contents")
-                    for _file in fileset:
-                        self._file_num += 1
-                        _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
-                        _time = time.localtime(utc_to_local(_time))
-                        _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
-                        _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
-                        self._total_size += int(_size)
-                        if _human is True:
-                            _size = change_to_human(_size)
-                        _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
-                        table.add_row([_path, _size, _time])
+                        try:
+                            print(unicode(table))
+                        except Exception:
+                            print(table)
                         if self._file_num == _num:
                             break
-                    try:
-                        print(unicode(table))
-                    except Exception:
-                        print(table)
-                    if self._file_num == _num:
-                        break
+                    else:
+                        logger.warn(response_info(rt))
+                        return False
+                if _human:
+                    self._total_size = change_to_human(str(self._total_size))
                 else:
-                    logger.warn(response_info(rt))
-                    return False
-            if _human:
-                self._total_size = change_to_human(str(self._total_size))
-            else:
-                self._total_size = str(self._total_size)
-            if _recursive:
-                logger.info(u" Files num: {file_num}".format(file_num=str(self._file_num)))
-                logger.info(u" Files size: {file_size}".format(file_size=self._total_size))
-            if _all is False and self._file_num == _num:
-                logger.info(u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
-            return True
+                    self._total_size = str(self._total_size)
+                if _recursive:
+                    logger.info(u" Files num: {file_num}".format(file_num=str(self._file_num)))
+                    logger.info(u" Files size: {file_size}".format(file_size=self._total_size))
+                if _all is False and self._file_num == _num:
+                    logger.info(u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
+                return True
+        except Exception as e:
+            print(e)
 
     def info_object(self, cos_path, _human=False):
         table = PrettyTable([cos_path, ""])
@@ -1225,10 +1260,11 @@ class Interface(object):
         cos_path = cos_path.lstrip('/')
         NextMarker = ""
         IsTruncated = "true"
-        _file_num = 0
         _success_num = 0
         _fail_num = 0
         cos_path = to_unicode(cos_path)
+        multidownload_filelist = []
+        self._inner_threadpool = SimpleThreadPool(self._conf._max_thread)
         while IsTruncated == "true":
             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
                                  .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker))))
@@ -1240,93 +1276,110 @@ class Interface(object):
                     NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
                 fileset = root.getElementsByTagName("Contents")
                 for _file in fileset:
-                    _cos_path = _file.getElementsByTagName("Key")[0].childNodes[0].data
-                    _local_path = local_path + _cos_path[len(cos_path):]
-                    _cos_path = to_unicode(_cos_path)
-                    _local_path = to_unicode(_local_path)
-                    if _cos_path.endswith('/'):
-                        continue
-                    rt = self.download_file(_cos_path, _local_path, **kwargs)
-                    if rt:
-                        _success_num += 1
-                    else:
-                        _fail_num += 1
-                    _file_num += 1
+                    try:
+                        _cos_path = _file.getElementsByTagName("Key")[0].childNodes[0].data
+                        _size = int(_file.getElementsByTagName("Size")[0].childNodes[0].data)
+                        _local_path = local_path + _cos_path[len(cos_path):]
+                        _cos_path = to_unicode(_cos_path)
+                        _local_path = to_unicode(_local_path)
+                        if _cos_path.endswith('/'):
+                            continue
+                        if _size <= self._multidownload_threshold:
+                            self._inner_threadpool.add_task(self.single_download, _cos_path, _local_path, **kwargs)
+                        else:
+                            multidownload_filelist.append([_cos_path, _local_path])
+                    except Exception as e:
+                        logger.warn(e)
+                        logger.warn("Parse xml error")
             else:
                 logger.warn(response_info(rt))
                 return False
-        if _file_num == 0:
-            logger.info(u"The directory does not exist")
-            return False
+        self._inner_threadpool.wait_completion()
+        result = self._inner_threadpool.get_result()
+        for worker in result['detail']:
+            for rt in worker[2]:
+                if rt:
+                    _success_num += 1
+                else:
+                    _fail_num += 1
+        for _cos_path, _local_path in multidownload_filelist:
+            try:
+                rt = self.multipart_download(_cos_path, _local_path, **kwargs)
+                if rt:
+                    _success_num += 1
+                else:
+                    _fail_num += 1
+            except Exception as e:
+                print(e)
         logger.info(u"{files} files successful, {fail_files} files failed"
                     .format(files=_success_num, fail_files=_fail_num))
-        if _file_num == _success_num:
+        if _fail_num == 0:
             return True
         else:
             return False
 
-    def download_file(self, cos_path, local_path, **kwargs):
+    # 简单下载
+    def single_download(self, cos_path, local_path, **kwargs):
+        cos_path = cos_path.lstrip('/')
+        logger.info(u"Download cos://{bucket}/{cos_path}   =>   {local_path}".format(
+                                                            bucket=self._conf._bucket,
+                                                            local_path=local_path,
+                                                            cos_path=cos_path))
+        for rule in kwargs['ignore']:
+            if fnmatch.fnmatch(local_path, rule) is True:
+                logger.info(u"This file matches the ignore rule, skip download")
+                return True
 
-        def check_file_md5(_local_path, _cos_path):
-            url = self._conf.uri(path=_cos_path)
-            try:
-                rt = self._session.head(url=url, auth=CosS3Auth(self._conf), stream=True)
-                if rt.status_code != 200:
+        if kwargs['force'] is False:
+            if os.path.isfile(local_path) is True:
+                if kwargs['sync'] is True:
+                    _md5 = get_file_md5(local_path)
+                    if self.check_file_md5(local_path, cos_path, _md5):
+                        logger.info(u"The file on cos is the same as the local file, skip download")
+                        return True
+                else:
+                    logger.warn(u"The file {file} already exists, please use -f to overwrite the file".format(file=cos_path))
                     return False
-            except Exception as e:
-                logger.warn(e)
-                return False
-            tmp = os.stat(_local_path)
-            if tmp.st_size != int(rt.headers['Content-Length']):
-                return False
+        url = self._conf.uri(path=quote(to_printable_str(cos_path)))
+        try:
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf), stream=True)
+            logger.debug("get resp, status code: {code}, headers: {headers}".format(
+                 code=rt.status_code,
+                 headers=rt.headers))
+            if 'Content-Length' in rt.headers:
+                content_len = int(rt.headers['Content-Length'])
             else:
-                if 'x-cos-meta-md5' not in rt.headers or get_file_md5(_local_path) != rt.headers['x-cos-meta-md5']:
-                    return False
-                else:
-                    return True
+                raise IOError(u"Download failed without Content-Length header")
+            if rt.status_code == 200:
+                file_len = 0
+                dir_path = os.path.dirname(local_path)
+                if os.path.isdir(dir_path) is False and dir_path != '':
+                    try:
+                        os.makedirs(dir_path, 0o755)
+                    except Exception:
+                        pass
+                try:
+                    with open(local_path, 'wb') as f:
+                        for chunk in rt.iter_content(chunk_size=1024):
+                            if chunk:
+                                file_len += len(chunk)
+                                f.write(chunk)
+                        f.flush()
+                except Exception as e:
+                    logger.warn(u"Fail to write to file")
+                    raise Exception(e)
+                if file_len != content_len:
+                    raise IOError(u"Download failed with incomplete file")
+            else:
+                raise Exception(response_info(rt))
+        except Exception as e:
+            logger.warn(str(e))
+            os.remove(local_path)
+            return False
+        return True
 
-        def single_download(cos_path, local_path):
-
-            # logger.info("download {file}".format(file=to_printable_str(cos_path)))
-            url = self._conf.uri(path=quote(to_printable_str(cos_path)))
-            try:
-                rt = self._session.get(url=url, auth=CosS3Auth(self._conf), stream=True)
-                logger.debug("get resp, status code: {code}, headers: {headers}".format(
-                     code=rt.status_code,
-                     headers=rt.headers))
-                if 'Content-Length' in rt.headers:
-                    content_len = int(rt.headers['Content-Length'])
-                else:
-                    raise IOError(u"Download failed without Content-Length header")
-                if rt.status_code == 200:
-                    with tqdm(total=content_len, unit='B', unit_scale=True) as self._pbar:
-                        file_len = 0
-                        dir_path = os.path.dirname(local_path)
-                        if os.path.isdir(dir_path) is False and dir_path != '':
-                            try:
-                                os.makedirs(dir_path, 0o755)
-                            except Exception:
-                                pass
-                        try:
-                            with open(local_path, 'wb') as f:
-                                for chunk in rt.iter_content(chunk_size=1024):
-                                    if chunk:
-                                        self._pbar.update(len(chunk))
-                                        file_len += len(chunk)
-                                        f.write(chunk)
-                                f.flush()
-                        except Exception as e:
-                            logger.warn(u"Fail to write to file")
-                            raise Exception(e)
-                        if file_len != content_len:
-                            raise IOError(u"Download failed with incomplete file")
-                else:
-                    raise Exception(response_info(rt))
-            except Exception as e:
-                logger.warn(str(e))
-                os.remove(local_path)
-                return False
-            return True
+    # 分块下载
+    def multipart_download(self, cos_path, local_path, **kwargs):
 
         def get_parts_data(local_path, offset, length, parts_size, idx):
             for j in range(self._retry):
@@ -1369,7 +1422,6 @@ class Interface(object):
                     logger.warn(str(e))
                     continue
             return False
-
         cos_path = cos_path.lstrip('/')
         logger.info(u"Download cos://{bucket}/{cos_path}   =>   {local_path}".format(
                                                             bucket=self._conf._bucket,
@@ -1383,13 +1435,13 @@ class Interface(object):
         if kwargs['force'] is False:
             if os.path.isfile(local_path) is True:
                 if kwargs['sync'] is True:
-                    if check_file_md5(local_path, cos_path):
+                    _md5 = get_file_md5(local_path)
+                    if self.check_file_md5(local_path, cos_path):
                         logger.info(u"The file on cos is the same as the local file, skip download")
                         return True
                 else:
                     logger.warn(u"The file {file} already exists, please use -f to overwrite the file".format(file=cos_path))
                     return False
-
         url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         try:
             rt = self._session.head(url=url, auth=CosS3Auth(self._conf))
@@ -1404,73 +1456,86 @@ class Interface(object):
         except Exception as e:
             logger.warn(str(e))
             return False
-        if file_size < self._conf._part_size * 1024 * 1024 + 1024:
-            # download
-            rt = single_download(cos_path, local_path)
-            return rt
-        else:
-            # mget
-            url = self._conf.uri(path=quote(to_printable_str(cos_path)))
-            logger.debug("mget with : " + url)
-            offset = 0
-            logger.debug("file size: " + str(file_size))
-
-            parts_num = kwargs['num']
-            chunk_size = file_size / parts_num
-            last_size = file_size - parts_num * chunk_size
-            self._have_finished = 0
-            if last_size != 0:
-                parts_num += 1
-            _max_thread = min(self._conf._max_thread, parts_num - self._have_finished)
-            pool = SimpleThreadPool(_max_thread)
-            logger.debug(u"chunk_size: " + str(chunk_size))
-            logger.debug(u'download file concurrently')
-            logger.info(u"Downloading {file}".format(file=local_path))
-            self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
-            for i in range(parts_num):
-                if i+1 == parts_num:
-                    pool.add_task(get_parts_data, local_path, offset, file_size-offset, parts_num, i+1)
-                else:
-                    pool.add_task(get_parts_data, local_path, offset, chunk_size, parts_num, i+1)
-                    offset += chunk_size
-            pool.wait_completion()
-            result = pool.get_result()
-            self._pbar.close()
-            # complete
-            logger.info(u"Completing mget")
-            if result['success_all'] is False:
-                return False
-            try:
-                with open(local_path, 'wb') as f:
-                    for i in range(parts_num):
-                        idx = i + 1
-                        file_name = local_path + "_" + str(idx)
-                        length = 1024*1024
-                        offset = 0
-                        with open(file_name, 'rb') as File:
-                            while (offset < file_size):
-                                File.seek(offset, 0)
-                                data = File.read(length)
-                                f.write(data)
-                                offset += length
-                        os.remove(file_name)
-                    f.flush()
-            except Exception as e:
-                try:
-                    os.remove(local_path)
-                except:
-                    pass
+        url = self._conf.uri(path=quote(to_printable_str(cos_path)))
+        offset = 0
+        parts_num = kwargs['num']
+        chunk_size = file_size / parts_num
+        last_size = file_size - parts_num * chunk_size
+        self._have_finished = 0
+        if last_size != 0:
+            parts_num += 1
+        _max_thread = min(self._conf._max_thread, parts_num - self._have_finished)
+        pool = SimpleThreadPool(_max_thread)
+        logger.debug(u"chunk_size: " + str(chunk_size))
+        logger.debug(u'download file concurrently')
+        logger.info(u"Downloading {file}".format(file=local_path))
+        self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
+        for i in range(parts_num):
+            if i+1 == parts_num:
+                pool.add_task(get_parts_data, local_path, offset, file_size-offset, parts_num, i+1)
+            else:
+                pool.add_task(get_parts_data, local_path, offset, chunk_size, parts_num, i+1)
+                offset += chunk_size
+        pool.wait_completion()
+        result = pool.get_result()
+        self._pbar.close()
+        logger.info(u"Completing mget")
+        if result['success_all'] is False:
+            return False
+        try:
+            with open(local_path, 'wb') as f:
                 for i in range(parts_num):
                     idx = i + 1
                     file_name = local_path + "_" + str(idx)
-                    try:
-                        os.remove(file_name)
-                    except:
-                        pass
-                logger.warn(e)
-                logger.warn("Mget file failure")
+                    length = 1024*1024
+                    offset = 0
+                    with open(file_name, 'rb') as File:
+                        while (offset < file_size):
+                            File.seek(offset, 0)
+                            data = File.read(length)
+                            f.write(data)
+                            offset += length
+                    os.remove(file_name)
+                f.flush()
+        except Exception as e:
+            try:
+                os.remove(local_path)
+            except:
+                pass
+            for i in range(parts_num):
+                idx = i + 1
+                file_name = local_path + "_" + str(idx)
+                try:
+                    os.remove(file_name)
+                except:
+                    pass
+            logger.warn(e)
+            logger.warn("Complete file failure")
+            return False
+        return True
+
+    def download_file(self, cos_path, local_path, **kwargs):
+        # head操作获取文件大小
+        url = self._conf.uri(path=quote(to_printable_str(cos_path)))
+        try:
+            rt = self._session.head(url=url, auth=CosS3Auth(self._conf))
+            logger.debug(u"download resp, status code: {code}, headers: {headers}".format(
+                 code=rt.status_code,
+                 headers=rt.headers))
+            if rt.status_code == 200:
+                file_size = int(rt.headers['Content-Length'])
+            else:
+                logger.warn(response_info(rt))
                 return False
-            return True
+        except Exception as e:
+            logger.warn(str(e))
+            return False
+        if file_size <= self._conf._part_size * 1024 * 1024 + 1024 or file_size <= self._multidownload_threshold:
+            rt = self.single_download(cos_path, local_path, **kwargs)
+            return rt
+        else:
+            rt = self.mutipart_download(cos_path, local_path, **kwargs)
+            return rt
 
     def restore_object(self, cos_path, _day, _tier):
         url = self._conf.uri(path=quote(to_printable_str(cos_path))+"?restore")

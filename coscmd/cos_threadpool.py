@@ -5,6 +5,7 @@ from logging import getLogger
 from six.moves.queue import Queue
 from threading import Lock
 import gc
+import time
 logger = getLogger(__name__)
 
 
@@ -54,13 +55,16 @@ class SimpleThreadPool:
             with self._lock:
                 if not self._active:
                     self._active = True
-
                     for i in range(self._num_threads):
                         w = WorkerThread(self._queue)
                         self._workers.append(w)
                         w.start()
 
         self._queue.put((func, args, kwargs))
+
+    def release(self):
+        while self._queue.empty() is False:
+            time.sleep(1)
 
     def wait_completion(self):
         self._queue.join()
