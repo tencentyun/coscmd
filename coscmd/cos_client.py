@@ -67,7 +67,7 @@ def query_yes_no(question, default="no"):
     while True:
         sys.stdout.write(question + prompt)
         sys.stdout.flush()
-        choice = raw_input().lower()
+        choice = input().lower()
         if default is not None and choice == '':
             return valid[default]
         elif choice in valid:
@@ -1044,159 +1044,160 @@ class Interface(object):
             return False
 
     def list_objects(self, cos_path, **kwargs):
-        _recursive = kwargs['recursive']
-        _all = kwargs['all']
-        _num = kwargs['num']
-        _human = kwargs['human']
-        _versions = kwargs['versions']
-        IsTruncated = "true"
-        Delimiter = "/"
-        if _recursive is True:
-            Delimiter = ""
-        if _all is True:
-            _num = -1
-        self._file_num = 0
-        self._total_size = 0
-        cos_path = to_printable_str(cos_path)
-        if _versions:
-            KeyMarker = ""
-            VersionIdMarker = ""
-            while IsTruncated == "true":
-                table = PrettyTable(["Path", "Size/Type", "Time", "VersionId"])
-                table.align = "l"
-                table.align['Size/Type'] = 'r'
-                table.padding_width = 3
-                table.header = False
-                table.border = False
-                params = "?versions&prefix={prefix}".format(prefix=cos_path)
-                if KeyMarker != "":
-                    params += "&key-marker={keymarker}".format(keymarker=KeyMarker)
-                if VersionIdMarker != "":
-                    params += "&version-id-marker={versionidmakrer}".format(versionidmakrer=VersionIdMarker)
-                if Delimiter != "":
-                    params += "&delimiter={delimiter}".format(delimiter=Delimiter)
-                url = self._conf.uri(path=params)
-                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-                if rt.status_code == 200:
-                    root = minidom.parseString(rt.content).documentElement
-                    IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                    if IsTruncated == 'true':
-                        KeyMarker = root.getElementsByTagName("NextKeyMarker")[0].childNodes[0].data
-                        VersionIdMarker = root.getElementsByTagName("NextVersionIdMarker")[0].childNodes[0].data
-                    logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                         code=rt.status_code,
-                         headers=rt.headers,
-                         text=rt.text))
-                    folderset = root.getElementsByTagName("CommonPrefixes")
-                    for _folder in folderset:
-                        _time = ""
-                        _type = "DIR"
-                        _path = _folder.getElementsByTagName("Prefix")[0].childNodes[0].data
-                        table.add_row([_path, _type, _time, ""])
-                    fileset = root.getElementsByTagName("DeleteMarker")
-                    for _file in fileset:
-                        _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
-                        _time = time.localtime(utc_to_local(_time))
-                        _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
-                        _versionid = _file.getElementsByTagName("VersionId")[0].childNodes[0].data
-                        _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
-                        table.add_row([_path, 0, _time, _versionid])
-                        self._file_num += 1
-                        if self._file_num == _num:
-                            break
-                    if self._file_num < _num:
-                        fileset = root.getElementsByTagName("Version")
+        try:
+            _recursive = kwargs['recursive']
+            _all = kwargs['all']
+            _num = kwargs['num']
+            _human = kwargs['human']
+            _versions = kwargs['versions']
+            IsTruncated = "true"
+            Delimiter = "/"
+            if _recursive is True:
+                Delimiter = ""
+            if _all is True:
+                _num = -1
+            self._file_num = 0
+            self._total_size = 0
+            if _versions:
+                KeyMarker = ""
+                VersionIdMarker = ""
+                while IsTruncated == "true":
+                    table = PrettyTable(["Path", "Size/Type", "Time", "VersionId"])
+                    table.align = "l"
+                    table.align['Size/Type'] = 'r'
+                    table.padding_width = 3
+                    table.header = False
+                    table.border = False
+                    params = "?versions&prefix={prefix}".format(prefix=cos_path)
+                    if KeyMarker != "":
+                        params += "&key-marker={keymarker}".format(keymarker=KeyMarker)
+                    if VersionIdMarker != "":
+                        params += "&version-id-marker={versionidmakrer}".format(versionidmakrer=VersionIdMarker)
+                    if Delimiter != "":
+                        params += "&delimiter={delimiter}".format(delimiter=Delimiter)
+                    url = self._conf.uri(path=params)
+                    rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
+                    if rt.status_code == 200:
+                        root = minidom.parseString(rt.content).documentElement
+                        IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                        if IsTruncated == 'true':
+                            KeyMarker = root.getElementsByTagName("NextKeyMarker")[0].childNodes[0].data
+                            VersionIdMarker = root.getElementsByTagName("NextVersionIdMarker")[0].childNodes[0].data
+                        logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                             code=rt.status_code,
+                             headers=rt.headers,
+                             text=rt.text))
+                        folderset = root.getElementsByTagName("CommonPrefixes")
+                        for _folder in folderset:
+                            _time = ""
+                            _type = "DIR"
+                            _path = _folder.getElementsByTagName("Prefix")[0].childNodes[0].data
+                            table.add_row([_path, _type, _time, ""])
+                        fileset = root.getElementsByTagName("DeleteMarker")
                         for _file in fileset:
                             _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
                             _time = time.localtime(utc_to_local(_time))
                             _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
-                            _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
                             _versionid = _file.getElementsByTagName("VersionId")[0].childNodes[0].data
+                            _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
+                            table.add_row([_path, 0, _time, _versionid])
+                            self._file_num += 1
+                            if self._file_num == _num:
+                                break
+                        if self._file_num < _num:
+                            fileset = root.getElementsByTagName("Version")
+                            for _file in fileset:
+                                _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
+                                _time = time.localtime(utc_to_local(_time))
+                                _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
+                                _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
+                                _versionid = _file.getElementsByTagName("VersionId")[0].childNodes[0].data
+                                self._total_size += int(_size)
+                                if _human is True:
+                                    _size = change_to_human(_size)
+                                _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
+                                table.add_row([_path, _size, _time, _versionid])
+                                self._file_num += 1
+                                if self._file_num == _num:
+                                    break
+                        try:
+                            print(unicode(table))
+                        except Exception:
+                            print(table)
+                        if self._file_num == _num:
+                            break
+                    else:
+                        logger.warn(response_info(rt))
+                        return False
+                if _all is False and self._file_num == _num:
+                    logger.info(u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
+                return True
+            else:
+                NextMarker = ""
+                while IsTruncated == "true":
+                    table = PrettyTable(["Path", "Size/Type", "Time"])
+                    table.align = "l"
+                    table.align['Size/Type'] = 'r'
+                    table.padding_width = 3
+                    table.header = False
+                    table.border = False
+                    params = "?prefix={prefix}".format(prefix=cos_path)
+                    if NextMarker != "":
+                        params += "&marker={marker}".format(marker=NextMarker)
+                    if Delimiter != "":
+                        params += "&delimiter={delimiter}".format(delimiter=Delimiter)
+                    url = self._conf.uri(path=params)
+                    rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
+                    if rt.status_code == 200:
+                        root = minidom.parseString(rt.content).documentElement
+                        IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                        if IsTruncated == 'true':
+                            NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+                        logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                             code=rt.status_code,
+                             headers=rt.headers,
+                             text=rt.text))
+                        folderset = root.getElementsByTagName("CommonPrefixes")
+                        for _folder in folderset:
+                            _time = ""
+                            _type = "DIR"
+                            _path = _folder.getElementsByTagName("Prefix")[0].childNodes[0].data
+                            table.add_row([_path, _type, _time])
+                        fileset = root.getElementsByTagName("Contents")
+                        for _file in fileset:
+                            self._file_num += 1
+                            _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
+                            _time = time.localtime(utc_to_local(_time))
+                            _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
+                            _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
                             self._total_size += int(_size)
                             if _human is True:
                                 _size = change_to_human(_size)
                             _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
-                            table.add_row([_path, _size, _time, _versionid])
-                            self._file_num += 1
+                            table.add_row([_path, _size, _time])
                             if self._file_num == _num:
                                 break
-                    try:
-                        print(unicode(table))
-                    except Exception:
-                        print(table)
-                    if self._file_num == _num:
-                        break
-                else:
-                    logger.warn(response_info(rt))
-                    return False
-            if _all is False and self._file_num == _num:
-                logger.info(u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
-            return True
-        else:
-            NextMarker = ""
-            while IsTruncated == "true":
-                table = PrettyTable(["Path", "Size/Type", "Time"])
-                table.align = "l"
-                table.align['Size/Type'] = 'r'
-                table.padding_width = 3
-                table.header = False
-                table.border = False
-                params = "?prefix={prefix}".format(prefix=cos_path)
-                if NextMarker != "":
-                    params += "&marker={marker}".format(marker=NextMarker)
-                if Delimiter != "":
-                    params += "&delimiter={delimiter}".format(delimiter=Delimiter)
-                url = self._conf.uri(path=params)
-                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-                if rt.status_code == 200:
-                    root = minidom.parseString(rt.content).documentElement
-                    IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                    if IsTruncated == 'true':
-                        NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
-
-                    logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                         code=rt.status_code,
-                         headers=rt.headers,
-                         text=rt.text))
-                    folderset = root.getElementsByTagName("CommonPrefixes")
-                    for _folder in folderset:
-                        _time = ""
-                        _type = "DIR"
-                        _path = _folder.getElementsByTagName("Prefix")[0].childNodes[0].data
-                        table.add_row([_path, _type, _time])
-                    fileset = root.getElementsByTagName("Contents")
-                    for _file in fileset:
-                        self._file_num += 1
-                        _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
-                        _time = time.localtime(utc_to_local(_time))
-                        _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
-                        _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
-                        self._total_size += int(_size)
-                        if _human is True:
-                            _size = change_to_human(_size)
-                        _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
-                        table.add_row([_path, _size, _time])
+                        try:
+                            print(unicode(table))
+                        except Exception:
+                            print(table)
                         if self._file_num == _num:
                             break
-                    try:
-                        print(unicode(table))
-                    except Exception:
-                        print(table)
-                    if self._file_num == _num:
-                        break
+                    else:
+                        logger.warn(response_info(rt))
+                        return False
+                if _human:
+                    self._total_size = change_to_human(str(self._total_size))
                 else:
-                    logger.warn(response_info(rt))
-                    return False
-            if _human:
-                self._total_size = change_to_human(str(self._total_size))
-            else:
-                self._total_size = str(self._total_size)
-            if _recursive:
-                logger.info(u" Files num: {file_num}".format(file_num=str(self._file_num)))
-                logger.info(u" Files size: {file_size}".format(file_size=self._total_size))
-            if _all is False and self._file_num == _num:
-                logger.info(u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
-            return True
+                    self._total_size = str(self._total_size)
+                if _recursive:
+                    logger.info(u" Files num: {file_num}".format(file_num=str(self._file_num)))
+                    logger.info(u" Files size: {file_size}".format(file_size=self._total_size))
+                if _all is False and self._file_num == _num:
+                    logger.info(u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
+                return True
+        except Exception as e:
+            print(e)
 
     def info_object(self, cos_path, _human=False):
         table = PrettyTable([cos_path, ""])

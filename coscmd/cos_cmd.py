@@ -329,7 +329,6 @@ class Op(object):
         client = CosS3Client(conf)
         while args.cos_path.startswith('/'):
             args.cos_path = args.cos_path[1:]
-
         if not isinstance(args. cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
         Interface = client.op_int()
