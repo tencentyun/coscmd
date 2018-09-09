@@ -1309,7 +1309,7 @@ class Interface(object):
                 else:
                     _fail_num += 1
             except Exception as e:
-                print e
+                print(e)
         logger.info(u"{files} files successful, {fail_files} files failed"
                     .format(files=_success_num, fail_files=_fail_num))
         if _fail_num == 0:
