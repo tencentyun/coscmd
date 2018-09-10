@@ -1530,12 +1530,15 @@ class Interface(object):
         except Exception as e:
             logger.warn(str(e))
             return False
-        if file_size <= self._conf._part_size * 1024 * 1024 + 1024 or file_size <= self._multidownload_threshold:
-            rt = self.single_download(cos_path, local_path, **kwargs)
-            return rt
-        else:
-            rt = self.mutipart_download(cos_path, local_path, **kwargs)
-            return rt
+        try:
+            if file_size <= self._conf._part_size * 1024 * 1024 + 1024 or file_size <= self._multidownload_threshold:
+                rt = self.single_download(cos_path, local_path, **kwargs)
+                return rt
+            else:
+                rt = self.multipart_download(cos_path, local_path, **kwargs)
+                return rt
+        except Exception as e:
+            logger.warn(e)
 
     def restore_object(self, cos_path, _day, _tier):
         url = self._conf.uri(path=quote(to_printable_str(cos_path))+"?restore")
