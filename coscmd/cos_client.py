@@ -831,7 +831,7 @@ class Interface(object):
             KeyMarker = ""
             VersionIdMarker = ""
             while IsTruncated == "true":
-                params = '?versions&prefix={prefix}&max-keys=1'.format(prefix=cos_path)
+                params = '?versions&prefix={prefix}'.format(prefix=cos_path)
                 if KeyMarker != "":
                     params += "&key-marker={keymarker}".format(keymarker=KeyMarker)
                 if VersionIdMarker != "":
