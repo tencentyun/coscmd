@@ -831,7 +831,7 @@ class Interface(object):
             KeyMarker = ""
             VersionIdMarker = ""
             while IsTruncated == "true":
-                params = '?versions&prefix={prefix}'.format(prefix=cos_path)
+                params = '?versions&prefix={prefix}&max-keys=1'.format(prefix=cos_path)
                 if KeyMarker != "":
                     params += "&key-marker={keymarker}".format(keymarker=KeyMarker)
                 if VersionIdMarker != "":
@@ -994,6 +994,46 @@ class Interface(object):
             return False
         return False
 
+    def list_multipart(self, cos_path):
+        NextMarker = ""
+        IsTruncated = "true"
+        _success_num = 0
+        _fail_num = 0
+        cos_path = to_printable_str(cos_path)
+        try:
+            while IsTruncated == "true":
+                table = PrettyTable(["Path", "Size/Type", "Time"])
+                table.align = "l"
+                table.align['Size/Type'] = 'r'
+                table.padding_width = 3
+                table.header = False
+                table.border = False
+                url = self._conf.uri(path='?uploads&prefix={prefix}&marker={nextmarker}'
+                                     .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker))))
+                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
+                if rt.status_code == 200:
+                    root = minidom.parseString(rt.content).documentElement
+                    IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
+                    if IsTruncated == 'true':
+                        NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+                    logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
+                         code=rt.status_code,
+                         headers=rt.headers,
+                         text=rt.text))
+                    fileset = root.getElementsByTagName("Upload")
+                    for _file in fileset:
+                        self._file_num += 1
+                        _key = _file.getElementsByTagName("Key")[0].childNodes[0].data
+                        _uploadid = _file.getElementsByTagName("UploadId")[0].childNodes[0].data
+                        logger.info(u"Key:{key}, UploadId:{uploadid}".format(key=_key, uploadid=_uploadid))
+                else:
+                    logger.warn(response_info(rt))
+                    return False
+            return True
+        except Exception as e:
+            logger.warn(e)
+            return False
+
     def abort_parts(self, cos_path):
         NextMarker = ""
         IsTruncated = "true"
@@ -1107,7 +1147,7 @@ class Interface(object):
                             self._file_num += 1
                             if self._file_num == _num:
                                 break
-                        if self._file_num < _num:
+                        if self._file_num < _num or _num == -1:
                             fileset = root.getElementsByTagName("Version")
                             for _file in fileset:
                                 _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data

@@ -348,6 +348,20 @@ class Op(object):
             return -1
 
     @staticmethod
+    def list_parts(args):
+        conf = load_conf()
+        client = CosS3Client(conf)
+        Interface = client.op_int()
+        try:
+            if Interface.list_multipart(cos_path=args.cos_path):
+                return 0
+            else:
+                return -1
+        except Exception as e:
+            logger.warn(e)
+            return -1
+
+    @staticmethod
     def abort(args):
         conf = load_conf()
         client = CosS3Client(conf)
@@ -404,10 +418,10 @@ class Op(object):
             Interface = client.op_int()
             rt = Interface.sign_url(args.cos_path, args.timeout)
             logger.info(rt)
-            return True
+            return 0
         except Exception:
             logger.warn('Geturl fail')
-            return False
+            return -1
 
     @staticmethod
     def put_object_acl(args):
@@ -515,6 +529,11 @@ class Op(object):
             return -1
 
 
+def get_version():
+    logger.info(Version)
+    return 0
+
+
 def version_check():
     try:
         ret = requests.get("https://pypi.org/pypi/coscmd/json").content
@@ -608,6 +627,10 @@ def command_thread():
     parser_list.add_argument('-v', '--versions', help='List object with versions', action="store_true", default=False)
     parser_list.add_argument('--human', help='Humanized display', action="store_true", default=False)
     parser_list.set_defaults(func=Op.list)
+
+    parser_list_parts = sub_parser.add_parser("listparts", help="List upload parts")
+    parser_list_parts.add_argument("cos_path", nargs='?', help="Cos_path as a/b.txt", type=str, default='')
+    parser_list_parts.set_defaults(func=Op.list_parts)
 
     parser_info = sub_parser.add_parser("info", help="Get the information of file on COS")
     parser_info.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
