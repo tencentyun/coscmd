@@ -4,7 +4,7 @@ from os import path
 from contextlib import closing
 from xml.dom import minidom
 from six import text_type
-from six.moves.urllib.parse import quote
+from six.moves.urllib.parse import quote, unquote
 from hashlib import md5, sha1
 import time
 import requests
@@ -18,6 +18,7 @@ import yaml
 import fnmatch
 from tqdm import tqdm
 from wsgiref.handlers import format_date_time
+import qcloud_cos
 
 if sys.version > '3':
     from coscmd.cos_auth import CosS3Auth
@@ -30,7 +31,8 @@ else:
 
 logger = logging.getLogger(__name__)
 
-
+logger2 = logging.getLogger('qcloud.cos_python_sdk_v5')
+logger2.setLevel(logging.WARN)
 def to_printable_str(s):
     if isinstance(s, text_type):
         return s.encode('utf-8')
@@ -125,7 +127,7 @@ def change_to_human(_size):
     return res
 
 
-class CosConfig(object):
+class CoscmdConfig(object):
 
     def __init__(self, appid, region, endpoint, bucket, secret_id, secret_key, part_size=1, max_thread=5, schema='https', anonymous='False', verify='md5', *args, **kwargs):
         self._appid = appid
@@ -204,6 +206,8 @@ class Interface(object):
         self._inner_threadpool = SimpleThreadPool(1)
         self._multiupload_threshold = 5 * 1024 * 1024 + 1024
         self._multidownload_threshold = 5 * 1024 * 1024 + 1024
+        sdk_config = qcloud_cos.CosConfig(Region=conf._region, SecretId=conf._secret_id, SecretKey=conf._secret_key)    
+        self._client = qcloud_cos.CosS3Client(sdk_config)
         if session is None:
             self._session = requests.session()
         else:
@@ -1184,51 +1188,51 @@ class Interface(object):
                     table.padding_width = 3
                     table.header = False
                     table.border = False
-                    params = "?prefix={prefix}".format(prefix=cos_path)
-                    if NextMarker != "":
-                        params += "&marker={marker}".format(marker=NextMarker)
-                    if Delimiter != "":
-                        params += "&delimiter={delimiter}".format(delimiter=Delimiter)
-                    url = self._conf.uri(path=params)
-                    rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-                    if rt.status_code == 200:
-                        root = minidom.parseString(rt.content).documentElement
-                        IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                        if IsTruncated == 'true':
-                            NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
-                        logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                             code=rt.status_code,
-                             headers=rt.headers,
-                             text=rt.text))
-                        folderset = root.getElementsByTagName("CommonPrefixes")
-                        for _folder in folderset:
+                    for i in range(self._retry):
+                        try:
+                            rt = self._client.list_objects(
+                                self._conf._bucket + "-" + self._conf._appid,
+                                Delimiter=Delimiter,
+                                Marker=NextMarker,
+                                MaxKeys=1000,
+                                Prefix=cos_path,
+                                EncodingType='url'
+                            )
+                            break
+                        except Exception as e:
+                            time.sleep(1<<i)
+                            logger.warn(e)
+                        if i + 1 == self._retry:
+                            return False;
+                    if 'IsTruncated' in rt:
+                        IsTruncated = rt['IsTruncated']
+                    if 'NextMarker' in rt:
+                        NextMarker = rt['NextMarker']
+                    if 'CommonPrefixes' in rt:
+                        for _folder in rt['CommonPrefixes']:
                             _time = ""
                             _type = "DIR"
-                            _path = _folder.getElementsByTagName("Prefix")[0].childNodes[0].data
+                            _path = unquote(_folder['Prefix'])
                             table.add_row([_path, _type, _time])
-                        fileset = root.getElementsByTagName("Contents")
-                        for _file in fileset:
+                    if 'Contents' in rt:
+                        for _file in rt['Contents']:
                             self._file_num += 1
-                            _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
+                            _time = _file['LastModified']
                             _time = time.localtime(utc_to_local(_time))
                             _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
-                            _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
+                            _size = _file['Size']
                             self._total_size += int(_size)
                             if _human is True:
                                 _size = change_to_human(_size)
-                            _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
+                            _path = unquote(_file['Key'])
                             table.add_row([_path, _size, _time])
                             if self._file_num == _num:
                                 break
-                        try:
-                            print(unicode(table))
-                        except Exception:
-                            print(table)
-                        if self._file_num == _num:
-                            break
-                    else:
-                        logger.warn(response_info(rt))
-                        return False
+                    try:
+                        print(unicode(table))
+                    except Exception:
+                        print(table)
+
                 if _human:
                     self._total_size = change_to_human(str(self._total_size))
                 else:
