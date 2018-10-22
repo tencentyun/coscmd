@@ -16,7 +16,7 @@ else:
     from cos_global import Version
     from cos_comm import to_bytes
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("coscmd")
 
 
 class CosS3Auth(AuthBase):

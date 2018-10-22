@@ -12,13 +12,13 @@ from threading import Thread
 from coscmd import cos_global
 
 if sys.version > '3':
-    from coscmd.cos_client import CosConfig, CosS3Client
+    from coscmd.cos_client import CoscmdConfig, CosS3Client
     from coscmd.cos_global import Version
 else:
-    from cos_client import CosConfig, CosS3Client
+    from cos_client import CoscmdConfig, CosS3Client
     from cos_global import Version
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("coscmd")
 
 fs_coding = sys.getfilesystemencoding()
 
@@ -149,7 +149,7 @@ def load_conf():
             bucket = pre_bucket
         if pre_region != "":
             region = pre_region
-        conf = CosConfig(
+        conf = CoscmdConfig(
             appid=appid,
             secret_id=secret_id,
             secret_key=cp.get('common', 'secret_key'),
@@ -691,7 +691,7 @@ def command_thread():
 
     args = parser.parse_args()
 
-    logger = logging.getLogger('')
+    logger = logging.getLogger('coscmd')
     logger.setLevel(logging.INFO)
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
@@ -701,7 +701,7 @@ def command_thread():
     handler = RotatingFileHandler(os.path.expanduser(args.log_path), maxBytes=20*1024*1024, backupCount=1)
     handler.setFormatter(logging.Formatter('%(asctime)s - [%(levelname)s]:  %(message)s'))
     logger.addHandler(handler)
-    logging.getLogger('').addHandler(console)
+    logging.getLogger('coscmd').addHandler(console)
     global pre_appid, pre_bucket, pre_region, config_path
     config_path = args.config_path
     pre_bucket = args.bucket
