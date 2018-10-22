@@ -1115,6 +1115,85 @@ class Interface(object):
                     table.padding_width = 3
                     table.header = False
                     table.border = False
+                    for i in range(self._retry):
+                        try:
+                            rt = self._client.list_objects_versions(
+                                self._conf._bucket + "-" + self._conf._appid,
+                                Delimiter=Delimiter,
+                                KeyMarker=KeyMarker,
+                                VersionIdMarker=VersionIdMarker,
+                                MaxKeys=1000,
+                                Prefix=cos_path,
+                            )
+                            break
+                        except Exception as e:
+                            time.sleep(1<<i)
+                            logger.warn(e)
+                        if i + 1 == self._retry:
+                            return False;
+                    if 'IsTruncated' in rt:
+                        IsTruncated = rt['IsTruncated']
+                    if 'NextKeyMarker' in rt:
+                        NextMarker = rt['NextKeyMarker']
+                    if 'NextKeyMarker' in rt:
+                        VersionIdMarker = rt['NextVersionIdMarker']
+                    if 'CommonPrefixes' in rt:
+                        for _folder in rt['CommonPrefixes']:
+                            _time = ""
+                            _type = "DIR"
+                            _path = _folder['Prefix']
+                            table.add_row([_path, _type, _time, ""])
+                    if 'DeleteMarker' in rt:
+                        for _file in rt['DeleteMarker']:
+                            self._file_num += 1
+                            _time = _file['LastModified']
+                            _time = time.localtime(utc_to_local(_time))
+                            _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
+                            _versionid = _file['VersionId']
+                            _path = _file['Key']
+                            table.add_row([_path, "", _time, _versionid])
+                            if self._file_num == _num:
+                                break
+                    if 'Version' in rt and (self._file_num < _num or _num == -1):
+                        for _file in rt['Version']:
+                            self._file_num += 1
+                            _time = _file['LastModified']
+                            _time = time.localtime(utc_to_local(_time))
+                            _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
+                            _versionid = _file['VersionId']
+                            _size = _file['Size']
+                            self._total_size += int(_size)
+                            if _human is True:
+                                _size = change_to_human(_size)
+                            _path = _file['Key']
+                            table.add_row([_path, _size, _time, _versionid])
+                            if self._file_num == _num:
+                                break
+                    try:
+                        print(unicode(table))
+                    except Exception:
+                        print(table)
+
+                if _human:
+                    self._total_size = change_to_human(str(self._total_size))
+                else:
+                    self._total_size = str(self._total_size)
+                if _recursive:
+                    logger.info(u" Files num: {file_num}".format(file_num=str(self._file_num)))
+                    logger.info(u" Files size: {file_size}".format(file_size=self._total_size))
+                if _all is False and self._file_num == _num:
+                    logger.info(u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
+                return True
+            
+            
+            
+                while IsTruncated == "true":
+                    table = PrettyTable(["Path", "Size/Type", "Time", "VersionId"])
+                    table.align = "l"
+                    table.align['Size/Type'] = 'r'
+                    table.padding_width = 3
+                    table.header = False
+                    table.border = False
                     params = "?versions&prefix={prefix}".format(prefix=cos_path)
                     if KeyMarker != "":
                         params += "&key-marker={keymarker}".format(keymarker=KeyMarker)
@@ -1195,8 +1274,7 @@ class Interface(object):
                                 Delimiter=Delimiter,
                                 Marker=NextMarker,
                                 MaxKeys=1000,
-                                Prefix=cos_path,
-                                EncodingType='url'
+                                Prefix=cos_path
                             )
                             break
                         except Exception as e:
@@ -1212,7 +1290,7 @@ class Interface(object):
                         for _folder in rt['CommonPrefixes']:
                             _time = ""
                             _type = "DIR"
-                            _path = unquote(_folder['Prefix'])
+                            _path = _folder['Prefix']
                             table.add_row([_path, _type, _time])
                     if 'Contents' in rt:
                         for _file in rt['Contents']:
@@ -1224,7 +1302,7 @@ class Interface(object):
                             self._total_size += int(_size)
                             if _human is True:
                                 _size = change_to_human(_size)
-                            _path = unquote(_file['Key'])
+                            _path =_file['Key']
                             table.add_row([_path, _size, _time])
                             if self._file_num == _num:
                                 break
