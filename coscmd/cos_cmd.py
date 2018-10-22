@@ -18,7 +18,7 @@ else:
     from cos_client import CoscmdConfig, CosS3Client
     from cos_global import Version
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("coscmd")
 
 fs_coding = sys.getfilesystemencoding()
 

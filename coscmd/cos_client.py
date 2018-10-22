@@ -17,6 +17,7 @@ import pytz
 import yaml
 import fnmatch
 from tqdm import tqdm
+from logging.handlers import RotatingFileHandler
 from wsgiref.handlers import format_date_time
 import qcloud_cos
 
@@ -29,10 +30,13 @@ else:
     from cos_threadpool import SimpleThreadPool
     from cos_comm import to_bytes, to_unicode, get_file_md5
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("coscmd")
+logger_sdk = logging.getLogger("qcloud_cos.cos_client")
+handle_sdk = logging.StreamHandler()
+handle_sdk.setLevel(logging.WARN)
+logger_sdk.addHandler(handle_sdk)
 
-logger2 = logging.getLogger('qcloud.cos_python_sdk_v5')
-logger2.setLevel(logging.WARN)
+
 def to_printable_str(s):
     if isinstance(s, text_type):
         return s.encode('utf-8')
@@ -206,7 +210,7 @@ class Interface(object):
         self._inner_threadpool = SimpleThreadPool(1)
         self._multiupload_threshold = 5 * 1024 * 1024 + 1024
         self._multidownload_threshold = 5 * 1024 * 1024 + 1024
-        sdk_config = qcloud_cos.CosConfig(Region=conf._region, SecretId=conf._secret_id, SecretKey=conf._secret_key)    
+        sdk_config = qcloud_cos.CosConfig(Region=conf._region, SecretId=conf._secret_id, SecretKey=conf._secret_key)
         self._client = qcloud_cos.CosS3Client(sdk_config)
         if session is None:
             self._session = requests.session()
@@ -1127,10 +1131,10 @@ class Interface(object):
                             )
                             break
                         except Exception as e:
-                            time.sleep(1<<i)
+                            time.sleep(1 << i)
                             logger.warn(e)
                         if i + 1 == self._retry:
-                            return False;
+                            return False
                     if 'IsTruncated' in rt:
                         IsTruncated = rt['IsTruncated']
                     if 'NextKeyMarker' in rt:
@@ -1173,6 +1177,8 @@ class Interface(object):
                         print(unicode(table))
                     except Exception:
                         print(table)
+                    if self._file_num == _num:
+                        break
 
                 if _human:
                     self._total_size = change_to_human(str(self._total_size))
@@ -1181,80 +1187,6 @@ class Interface(object):
                 if _recursive:
                     logger.info(u" Files num: {file_num}".format(file_num=str(self._file_num)))
                     logger.info(u" Files size: {file_size}".format(file_size=self._total_size))
-                if _all is False and self._file_num == _num:
-                    logger.info(u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
-                return True
-            
-            
-            
-                while IsTruncated == "true":
-                    table = PrettyTable(["Path", "Size/Type", "Time", "VersionId"])
-                    table.align = "l"
-                    table.align['Size/Type'] = 'r'
-                    table.padding_width = 3
-                    table.header = False
-                    table.border = False
-                    params = "?versions&prefix={prefix}".format(prefix=cos_path)
-                    if KeyMarker != "":
-                        params += "&key-marker={keymarker}".format(keymarker=KeyMarker)
-                    if VersionIdMarker != "":
-                        params += "&version-id-marker={versionidmakrer}".format(versionidmakrer=VersionIdMarker)
-                    if Delimiter != "":
-                        params += "&delimiter={delimiter}".format(delimiter=Delimiter)
-                    url = self._conf.uri(path=params)
-                    rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-                    if rt.status_code == 200:
-                        root = minidom.parseString(rt.content).documentElement
-                        IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                        if IsTruncated == 'true':
-                            KeyMarker = root.getElementsByTagName("NextKeyMarker")[0].childNodes[0].data
-                            VersionIdMarker = root.getElementsByTagName("NextVersionIdMarker")[0].childNodes[0].data
-                        logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                             code=rt.status_code,
-                             headers=rt.headers,
-                             text=rt.text))
-                        folderset = root.getElementsByTagName("CommonPrefixes")
-                        for _folder in folderset:
-                            _time = ""
-                            _type = "DIR"
-                            _path = _folder.getElementsByTagName("Prefix")[0].childNodes[0].data
-                            table.add_row([_path, _type, _time, ""])
-                        fileset = root.getElementsByTagName("DeleteMarker")
-                        for _file in fileset:
-                            _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
-                            _time = time.localtime(utc_to_local(_time))
-                            _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
-                            _versionid = _file.getElementsByTagName("VersionId")[0].childNodes[0].data
-                            _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
-                            table.add_row([_path, 0, _time, _versionid])
-                            self._file_num += 1
-                            if self._file_num == _num:
-                                break
-                        if self._file_num < _num or _num == -1:
-                            fileset = root.getElementsByTagName("Version")
-                            for _file in fileset:
-                                _time = _file.getElementsByTagName("LastModified")[0].childNodes[0].data
-                                _time = time.localtime(utc_to_local(_time))
-                                _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
-                                _size = _file.getElementsByTagName("Size")[0].childNodes[0].data
-                                _versionid = _file.getElementsByTagName("VersionId")[0].childNodes[0].data
-                                self._total_size += int(_size)
-                                if _human is True:
-                                    _size = change_to_human(_size)
-                                _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
-                                table.add_row([_path, _size, _time, _versionid])
-                                self._file_num += 1
-                                if self._file_num == _num:
-                                    break
-                        try:
-                            print(unicode(table))
-                        except Exception:
-                            print(table)
-                        if self._file_num == _num:
-                            break
-                    else:
-                        logger.warn(response_info(rt))
-                        return False
                 if _all is False and self._file_num == _num:
                     logger.info(u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
                 return True
@@ -1278,10 +1210,10 @@ class Interface(object):
                             )
                             break
                         except Exception as e:
-                            time.sleep(1<<i)
+                            time.sleep(1 << i)
                             logger.warn(e)
                         if i + 1 == self._retry:
-                            return False;
+                            return False
                     if 'IsTruncated' in rt:
                         IsTruncated = rt['IsTruncated']
                     if 'NextMarker' in rt:
@@ -1302,7 +1234,7 @@ class Interface(object):
                             self._total_size += int(_size)
                             if _human is True:
                                 _size = change_to_human(_size)
-                            _path =_file['Key']
+                            _path = _file['Key']
                             table.add_row([_path, _size, _time])
                             if self._file_num == _num:
                                 break
@@ -1310,7 +1242,8 @@ class Interface(object):
                         print(unicode(table))
                     except Exception:
                         print(table)
-
+                    if self._file_num == _num:
+                        break
                 if _human:
                     self._total_size = change_to_human(str(self._total_size))
                 else:
