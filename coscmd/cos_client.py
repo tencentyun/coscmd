@@ -145,6 +145,7 @@ class CoscmdConfig(object):
         self._schema = schema
         self._anonymous = anonymous
         self._verify = verify
+        self._endpoint = endpoint
         logger.debug("config parameter-> appid: {appid}, region: {region}, endpoint: {endpoint}, bucket: {bucket}, part_size: {part_size}, max_thread: {max_thread}".format(
                  appid=appid,
                  region=region,
@@ -210,7 +211,17 @@ class Interface(object):
         self._inner_threadpool = SimpleThreadPool(1)
         self._multiupload_threshold = 5 * 1024 * 1024 + 1024
         self._multidownload_threshold = 5 * 1024 * 1024 + 1024
-        sdk_config = qcloud_cos.CosConfig(Region=conf._region, SecretId=conf._secret_id, SecretKey=conf._secret_key)
+        if conf._endpoint == "":
+            sdk_config = qcloud_cos.CosConfig(Region=conf._region,
+                                              SecretId=conf._secret_id,
+                                              SecretKey=conf._secret_key,
+                                              Scheme=conf._schema)
+        else:
+            sdk_config = qcloud_cos.CosConfig(Endpoint=conf._endpoint,
+                                              Region=conf._region,
+                                              SecretId=conf._secret_id,
+                                              SecretKey=conf._secret_key,
+                                              Scheme=conf._schema)
         self._client = qcloud_cos.CosS3Client(sdk_config)
         if session is None:
             self._session = requests.session()
@@ -838,99 +849,100 @@ class Interface(object):
             NextVersionMarker = "/"
             KeyMarker = ""
             VersionIdMarker = ""
+            deleteList = {}
+            deleteList['Object'] = []
             while IsTruncated == "true":
-                params = '?versions&prefix={prefix}'.format(prefix=cos_path)
-                if KeyMarker != "":
-                    params += "&key-marker={keymarker}".format(keymarker=KeyMarker)
-                if VersionIdMarker != "":
-                    params += "&version-id-marker={versionidmakrer}".format(versionidmakrer=VersionIdMarker)
-                url = self._conf.uri(path=params)
-                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-                if rt.status_code == 200:
-                    root = minidom.parseString(rt.content).documentElement
-                    IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                    if IsTruncated == 'true':
-                        KeyMarker = root.getElementsByTagName("NextKeyMarker")[0].childNodes[0].data
-                        VersionIdMarker = root.getElementsByTagName("NextVersionIdMarker")[0].childNodes[0].data
-
-                    logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                         code=rt.status_code,
-                         headers=rt.headers,
-                         text=rt.text))
-                    fileset = root.getElementsByTagName("Version")
-                    for _file in fileset:
-                        self._file_num += 1
-                        _versionid = _file.getElementsByTagName("VersionId")[0].childNodes[0].data
-                        _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
-                        kwargs["versionId"] = _versionid
-                        if self.delete_file(_path, **kwargs):
-                            self._have_finished += 1
-                        else:
-                            self._fail_num += 1
-                    fileset = root.getElementsByTagName("DeleteMarker")
-                    for _file in fileset:
-                        self._file_num += 1
-                        _versionid = _file.getElementsByTagName("VersionId")[0].childNodes[0].data
-                        _path = _file.getElementsByTagName("Key")[0].childNodes[0].data
-                        kwargs["versionId"] = _versionid
-                        if self.delete_file(_path, **kwargs):
-                            self._have_finished += 1
-                        else:
-                            self._fail_num += 1
-                else:
-                    logger.warn(response_info(rt))
-                    return False
-        else:
-            while IsTruncated == "true":
-                data_xml = ""
-                file_list = []
-                url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
-                                     .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker))))
-                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-                if rt.status_code == 200:
+                for i in range(self._retry):
                     try:
-                        root = minidom.parseString(rt.content).documentElement
-                        IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                        if IsTruncated == 'true':
-                            NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
+                        rt = self._client.list_objects_versions(
+                            Bucket=self._conf._bucket + "-" + self._conf._appid,
+                            KeyMarker=KeyMarker,
+                            VersionIdMarker=VersionIdMarker,
+                            MaxKeys=1000,
+                            Prefix=cos_path,
+                        )
+                        break
                     except Exception as e:
-                        logger.warn(str(e))
-                    logger.debug(u"Init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                         code=rt.status_code,
-                         headers=rt.headers,
-                         text=rt.text))
-                    contentset = root.getElementsByTagName("Key")
-                    for content in contentset:
-                        self._file_num += 1
-                        file_name = to_unicode(content.childNodes[0].data)
-                        file_list.append(file_name)
-                        data_xml = data_xml + '''
-        <Object>
-            <Key>{Key}</Key>
-        </Object>'''.format(Key=quote(to_printable_str(file_name)))
-                    data_xml = '''
-    <Delete>
-        <Quiet>true</Quiet>'''+data_xml+'''
-    </Delete>'''
-                    http_header = dict()
-                    md5_ETag = md5()
-                    md5_ETag.update(to_bytes(data_xml))
-                    md5_ETag = md5_ETag.digest()
-                    http_header['Content-MD5'] = base64.b64encode(md5_ETag)
-                    url_file = self._conf.uri(path="?delete")
-                    rt = self._session.post(url=url_file, auth=CosS3Auth(self._conf), data=data_xml, headers=http_header)
-                    if rt.status_code == 204 or rt.status_code == 200:
-                        for file_name in file_list:
-                            logger.info(u"Delete {file}".format(file=file_name))
-                        self._have_finished += len(file_list)
-                    else:
-                        for file_name in file_list:
-                            logger.info(u"Delete {file} fail".format(file=file_name))
-                        self._fail_num += len(file_list)
-                else:
-                    logger.warn(response_info(rt))
-                    logger.debug("get folder error")
-                    return False
+                        time.sleep(1 << i)
+                        logger.warn(e)
+                    if i + 1 == self._retry:
+                        return False
+                if 'IsTruncated' in rt:
+                    IsTruncated = rt['IsTruncated']
+                if 'NextKeyMarker' in rt:
+                    NextMarker = rt['NextKeyMarker']
+                if 'NextKeyMarker' in rt:
+                    VersionIdMarker = rt['NextVersionIdMarker']
+                if 'DeleteMarker' in rt:
+                    for _file in rt['DeleteMarker']:
+                        _versionid = _file['VersionId']
+                        _path = _file['Key']
+                        deleteList['Object'].append({'Key': _path, 
+                                                    'VersionId': _versionid})
+                if 'Version' in rt:
+                    for _file in rt['Version']:
+                        _versionid = _file['VersionId']
+                        _path = _file['Key']
+                        deleteList['Object'].append({'Key': _path, 
+                                                    'VersionId': _versionid})
+                if len(deleteList['Object']) > 0:
+                    rt = self._client.delete_objects(Bucket=self._conf._bucket + "-" + self._conf._appid,
+                                                     Delete=deleteList)
+                if 'Deleted' in rt:
+                    self._have_finished += len(rt['Deleted'])
+                    for file in rt['Deleted']:
+                        logger.info(u"Delete {file}, versionId: {versionId}".format(file=file['Key'],
+                                                                                versionId=file['VersionId']))
+                if 'Error' in rt:
+                    self._fail_num += len(rt['Error'])
+                    for file in rt['Error']:
+                        logger.info(u"Delete {file}, versionId: {versionId} fail, code: {code}, msg: {msg}"
+                                    .format(file=file['Key'],
+                                            versionId=file['VersionId'],
+                                            code=file['Code'],
+                                            msg=file['Message']))
+                
+        else:
+            NextMarker = "/"
+            deleteList = {}
+            deleteList['Object'] = []
+            while IsTruncated == "true":
+                for i in range(self._retry):
+                    try:
+                        rt = self._client.list_objects(
+                            Bucket=self._conf._bucket + "-" + self._conf._appid,
+                            Marker=NextMarker,
+                            MaxKeys=1000,
+                            Prefix=cos_path,
+                        )
+                        break
+                    except Exception as e:
+                        time.sleep(1 << i)
+                        logger.warn(e)
+                    if i + 1 == self._retry:
+                        return False
+                if 'IsTruncated' in rt:
+                    IsTruncated = rt['IsTruncated']
+                if 'NextMarker' in rt:
+                    NextMarker = rt['NextMarker']
+                if 'Contents' in rt:
+                    for _file in rt['Contents']:
+                        _path = _file['Key']
+                        deleteList['Object'].append({'Key': _path})
+                if len(deleteList['Object']) > 0:
+                    rt = self._client.delete_objects(Bucket=self._conf._bucket + "-" + self._conf._appid,
+                                                     Delete=deleteList)
+                if 'Deleted' in rt:
+                    self._have_finished += len(rt['Deleted'])
+                    for file in rt['Deleted']:
+                        logger.info(u"Delete {file}".format(file=file['Key']))
+                if 'Error' in rt:
+                    self._fail_num += len(rt['Error'])
+                    for file in rt['Error']:
+                        logger.info(u"Delete {file} fail, code: {code}, msg: {msg}"
+                                    .format(file=file['Key'],
+                                            code=file['Code'],
+                                            msg=file['Message']))
             # Clipping
             logger.info(u"Delete the remaining files again")
             IsTruncated = "true"
@@ -955,12 +967,17 @@ class Interface(object):
                     contentset = root.getElementsByTagName("Key")
                     for content in contentset:
                         file_name = to_unicode(content.childNodes[0].data)
+                        try:
+                            _versionid = content.getElementsByTagName("VersionId")[0].childNodes[0].data
+                            kwargs["versionId"] = _versionid
+                        except Exception as e:
+                            kwargs["versionId"] = ""
                         self.delete_file(file_name, **kwargs)
                 else:
                     logger.warn(response_info(rt))
                     logger.debug(u"get folder error")
                     return False
-        if self._file_num == 0:
+        if self._have_finished + self._fail_num == 0:
             logger.info(u"The directory does not exist")
             return False
 
@@ -1761,9 +1778,9 @@ class Interface(object):
             if _force:
                 logger.info("Clearing files and upload parts in the bucket")
                 self.abort_parts("")
-                kwargs['versions'] = False
-                self.delete_folder("", **kwargs)
                 kwargs['versions'] = True
+                self.delete_folder("", **kwargs)
+                kwargs['versions'] = False
                 self.delete_folder("", **kwargs)
             rt = self._session.delete(url=url, auth=CosS3Auth(self._conf))
             logger.debug(u"delete resp, status code: {code}, headers: {headers}, text: {text}".format(

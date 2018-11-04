@@ -55,10 +55,8 @@ def config(args):
         cp.set('common', 'secret_id', args.secret_id)
         cp.set('common', 'secret_key', args.secret_key)
         cp.set('common', 'bucket', args.bucket)
-        if args.region:
-            cp.set('common', 'region', args.region)
-        else:
-            cp.set('common', 'endpoint', args.endpoint)
+        cp.set('common', 'region', args.region)
+        cp.set('common', 'endpoint', args.endpoint)
         cp.set('common', 'max_thread', str(args.max_thread))
         cp.set('common', 'part_size', str(args.part_size))
         if args.appid != "":
