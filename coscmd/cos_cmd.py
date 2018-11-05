@@ -696,7 +696,7 @@ def command_thread():
     if args.debug:
         logger.setLevel(logging.DEBUG)
         console.setLevel(logging.DEBUG)
-    handler = RotatingFileHandler(os.path.expanduser(args.log_path), maxBytes=20*1024*1024, backupCount=1)
+    handler = RotatingFileHandler(os.path.expanduser(args.log_path), maxBytes=128*1024*1024, backupCount=1)
     handler.setFormatter(logging.Formatter('%(asctime)s - [%(levelname)s]:  %(message)s'))
     logger.addHandler(handler)
     logging.getLogger('coscmd').addHandler(console)

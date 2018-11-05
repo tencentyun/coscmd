@@ -357,11 +357,15 @@ class Interface(object):
             if self.check_file_md5(local_path, cos_path, _md5):
                 logger.info(u"The file on cos is the same as the local file, skip upload")
                 return True
-        if len(local_path) == 0:
-            data = ""
-        else:
-            with open(local_path, 'rb') as File:
-                data = File.read()
+        try:
+            if len(local_path) == 0:
+                data = ""
+            else:
+                with open(local_path, 'rb') as File:
+                    data = File.read()
+        except Exception as e:
+            logger.warn(e)
+            return False
         url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         for j in range(self._retry):
             try:
@@ -422,9 +426,13 @@ class Interface(object):
         def multiupload_parts():
 
             def multiupload_parts_data(local_path, offset, length, parts_size, idx):
-                with open(local_path, 'rb') as File:
-                    File.seek(offset, 0)
-                    data = File.read(length)
+                try:
+                    with open(local_path, 'rb') as File:
+                        File.seek(offset, 0)
+                        data = File.read(length)
+                except Exception as e:
+                    logger.warn(e)
+                    return False
                 url = self._conf.uri(path=quote(to_printable_str(cos_path)))+"?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=self._upload_id)
                 for j in range(self._retry):
                     http_header = _http_header
@@ -841,7 +849,6 @@ class Interface(object):
         kwargs['force'] = True
         self._have_finished = 0
         self._fail_num = 0
-        self._file_num = 0
         NextMarker = ""
         IsTruncated = "true"
         if _versions:
@@ -873,35 +880,36 @@ class Interface(object):
                     NextMarker = rt['NextKeyMarker']
                 if 'NextKeyMarker' in rt:
                     VersionIdMarker = rt['NextVersionIdMarker']
-                if 'DeleteMarker' in rt:
-                    for _file in rt['DeleteMarker']:
-                        _versionid = _file['VersionId']
-                        _path = _file['Key']
-                        deleteList['Object'].append({'Key': _path, 
-                                                    'VersionId': _versionid})
+#                 if 'DeleteMarker' in rt:
+#                     for _file in rt['DeleteMarker']:
+#                         _versionid = _file['VersionId']
+#                         _path = _file['Key']
+#                         deleteList['Object'].append({'Key': _path,
+#                                                     'VersionId': _versionid})
                 if 'Version' in rt:
                     for _file in rt['Version']:
                         _versionid = _file['VersionId']
                         _path = _file['Key']
-                        deleteList['Object'].append({'Key': _path, 
+                        deleteList['Object'].append({'Key': _path,
                                                     'VersionId': _versionid})
                 if len(deleteList['Object']) > 0:
                     rt = self._client.delete_objects(Bucket=self._conf._bucket + "-" + self._conf._appid,
                                                      Delete=deleteList)
                 if 'Deleted' in rt:
                     self._have_finished += len(rt['Deleted'])
+                    self._file_num += len(rt['Deleted'])
                     for file in rt['Deleted']:
-                        logger.info(u"Delete {file}, versionId: {versionId}".format(file=file['Key'],
-                                                                                versionId=file['VersionId']))
+                        logger.info(u"Delete {file}, versionId: {versionId}".format(
+                            file=file['Key'],
+                            versionId=file['VersionId']))
                 if 'Error' in rt:
-                    self._fail_num += len(rt['Error'])
+                    self._file_num += len(rt['Error'])
                     for file in rt['Error']:
                         logger.info(u"Delete {file}, versionId: {versionId} fail, code: {code}, msg: {msg}"
                                     .format(file=file['Key'],
                                             versionId=file['VersionId'],
                                             code=file['Code'],
                                             msg=file['Message']))
-                
         else:
             NextMarker = "/"
             deleteList = {}
@@ -934,59 +942,134 @@ class Interface(object):
                                                      Delete=deleteList)
                 if 'Deleted' in rt:
                     self._have_finished += len(rt['Deleted'])
+                    self._file_num += len(rt['Deleted'])
                     for file in rt['Deleted']:
                         logger.info(u"Delete {file}".format(file=file['Key']))
                 if 'Error' in rt:
-                    self._fail_num += len(rt['Error'])
+                    self._file_num += len(rt['Error'])
                     for file in rt['Error']:
                         logger.info(u"Delete {file} fail, code: {code}, msg: {msg}"
                                     .format(file=file['Key'],
                                             code=file['Code'],
                                             msg=file['Message']))
-            # Clipping
-            logger.info(u"Delete the remaining files again")
-            IsTruncated = "true"
-            while IsTruncated == "true":
-                data_xml = ""
-                file_list = []
-                url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
-                                     .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker))))
-                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-                if rt.status_code == 200:
-                    try:
-                        root = minidom.parseString(rt.content).documentElement
-                        IsTruncated = root.getElementsByTagName("IsTruncated")[0].childNodes[0].data
-                        if IsTruncated == 'true':
-                            NextMarker = root.getElementsByTagName("NextMarker")[0].childNodes[0].data
-                    except Exception as e:
-                        logger.warn(str(e))
-                    logger.debug(u"Init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                         code=rt.status_code,
-                         headers=rt.headers,
-                         text=rt.text))
-                    contentset = root.getElementsByTagName("Key")
-                    for content in contentset:
-                        file_name = to_unicode(content.childNodes[0].data)
-                        try:
-                            _versionid = content.getElementsByTagName("VersionId")[0].childNodes[0].data
-                            kwargs["versionId"] = _versionid
-                        except Exception as e:
-                            kwargs["versionId"] = ""
-                        self.delete_file(file_name, **kwargs)
-                else:
-                    logger.warn(response_info(rt))
-                    logger.debug(u"get folder error")
-                    return False
-        if self._have_finished + self._fail_num == 0:
+        # Clipping
+        logger.info(u"Delete the remaining files again")
+        if self._file_num == 0:
             logger.info(u"The directory does not exist")
             return False
-
+        self.delete_folder_redo(cos_path, **kwargs)
+        self._fail_num = self._file_num - self._have_finished
         logger.info(u"{files} files successful, {fail_files} files failed"
                     .format(files=self._have_finished, fail_files=self._fail_num))
         if self._file_num == self._have_finished:
             return True
         else:
             return False
+
+    def delete_folder_redo(self, cos_path, **kwargs):
+        _force = kwargs['force']
+        _versions = kwargs['versions']
+        cos_path = to_unicode(cos_path)
+        if cos_path == "/":
+            cos_path = ""
+        NextMarker = ""
+        IsTruncated = "true"
+        if _versions:
+            NextMarker = "/"
+            NextVersionMarker = "/"
+            KeyMarker = ""
+            VersionIdMarker = ""
+            while IsTruncated == "true":
+                deleteList = []
+                for i in range(self._retry):
+                    try:
+                        rt = self._client.list_objects_versions(
+                            Bucket=self._conf._bucket + "-" + self._conf._appid,
+                            KeyMarker=KeyMarker,
+                            VersionIdMarker=VersionIdMarker,
+                            MaxKeys=1000,
+                            Prefix=cos_path,
+                        )
+                        break
+                    except Exception as e:
+                        time.sleep(1 << i)
+                        logger.warn(e)
+                    if i + 1 == self._retry:
+                        return False
+                if 'IsTruncated' in rt:
+                    IsTruncated = rt['IsTruncated']
+                if 'NextKeyMarker' in rt:
+                    NextMarker = rt['NextKeyMarker']
+                if 'NextKeyMarker' in rt:
+                    VersionIdMarker = rt['NextVersionIdMarker']
+                if 'DeleteMarker' in rt:
+                    for _file in rt['DeleteMarker']:
+                        _versionid = _file['VersionId']
+                        _path = _file['Key']
+                        deleteList.append({'Key': _path,
+                                           'VersionId': _versionid})
+                if 'Version' in rt:
+                    for _file in rt['Version']:
+                        _versionid = _file['VersionId']
+                        _path = _file['Key']
+                        deleteList.append({'Key': _path,
+                                           'VersionId': _versionid})
+                if len(deleteList) > 0:
+                    for file in deleteList:
+                        try:
+                            self._client.delete_object(
+                                Bucket=self._conf._bucket + "-" + self._conf._appid,
+                                Key=file['Key'],
+                                VersionId=file['VersionId'])
+                            self._have_finished += 1
+                            logger.info(u"Delete {file}, versionId: {versionId}".format(
+                                file=file['Key'],
+                                versionId=file['VersionId']))
+                        except Exception:
+                            logger.info(u"Delete {file}, versionId: {versionId} fail".format(
+                                file=file['Key'],
+                                versionId=file['VersionId']))
+        else:
+            NextMarker = "/"
+            deleteList = []
+            while IsTruncated == "true":
+                for i in range(self._retry):
+                    try:
+                        rt = self._client.list_objects(
+                            Bucket=self._conf._bucket + "-" + self._conf._appid,
+                            Marker=NextMarker,
+                            MaxKeys=1000,
+                            Prefix=cos_path,
+                        )
+                        break
+                    except Exception as e:
+                        time.sleep(1 << i)
+                        logger.warn(e)
+                    if i + 1 == self._retry:
+                        return False
+                if 'IsTruncated' in rt:
+                    IsTruncated = rt['IsTruncated']
+                if 'NextMarker' in rt:
+                    NextMarker = rt['NextMarker']
+                if 'Contents' in rt:
+                    for _file in rt['Contents']:
+                        _path = _file['Key']
+                        deleteList.append({'Key': _path})
+                if len(deleteList) > 0:
+                    for file in deleteList:
+                        try:
+                            self._client.delete_object(
+                                Bucket=self._conf._bucket + "-" + self._conf._appid,
+                                Key=file['Key'],
+                                VersionId=file['VersionId'])
+                            self._have_finished += 1
+                            logger.info(u"Delete {file}, versionId: {versionId}".format(
+                                file=file['Key'],
+                                versionId=file['VersionId']))
+                        except Exception:
+                            logger.info(u"Delete {file}, versionId: {versionId} fail".format(
+                                file=file['Key'],
+                                versionId=file['VersionId']))
 
     def delete_file(self, cos_path, **kwargs):
         if kwargs['force'] is False:
