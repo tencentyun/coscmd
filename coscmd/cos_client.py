@@ -856,10 +856,12 @@ class Interface(object):
             NextVersionMarker = "/"
             KeyMarker = ""
             VersionIdMarker = ""
-            deleteList = {}
-            deleteList['Object'] = []
             while IsTruncated == "true":
+                deleteList = {}
+                deleteList['Object'] = []
                 for i in range(self._retry):
+                    if VersionIdMarker == "null":
+                        VersionIdMarker = ""
                     try:
                         rt = self._client.list_objects_versions(
                             Bucket=self._conf._bucket + "-" + self._conf._appid,
@@ -878,7 +880,7 @@ class Interface(object):
                     IsTruncated = rt['IsTruncated']
                 if 'NextKeyMarker' in rt:
                     NextMarker = rt['NextKeyMarker']
-                if 'NextKeyMarker' in rt:
+                if 'NextVersionIdMarker' in rt:
                     VersionIdMarker = rt['NextVersionIdMarker']
 #                 if 'DeleteMarker' in rt:
 #                     for _file in rt['DeleteMarker']:
@@ -912,9 +914,9 @@ class Interface(object):
                                             msg=file['Message']))
         else:
             NextMarker = "/"
-            deleteList = {}
-            deleteList['Object'] = []
             while IsTruncated == "true":
+                deleteList = {}
+                deleteList['Object'] = []
                 for i in range(self._retry):
                     try:
                         rt = self._client.list_objects(
@@ -1031,8 +1033,8 @@ class Interface(object):
                                 versionId=file['VersionId']))
         else:
             NextMarker = "/"
-            deleteList = []
             while IsTruncated == "true":
+                deleteList = []
                 for i in range(self._retry):
                     try:
                         rt = self._client.list_objects(
