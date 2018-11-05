@@ -130,10 +130,12 @@ def test_download_file_02():
     assert rt == 0
     rt = os.path.exists("testfolder/tmp")
     assert rt is True
-    os.remove("tmp")
-    os.remove("testfolder/tmp")
-    os.removedirs("testfolder/")
-
+    try:
+        os.remove("tmp")
+        os.remove("testfolder/tmp")
+        os.removedirs("testfolder/")
+    except:
+        pass
 
 # def test_download_file_03():
 #     """test download file_tmp_/home/testfolder/"""

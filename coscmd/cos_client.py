@@ -383,7 +383,7 @@ class Interface(object):
                     return False
             except Exception as e:
                 logger.warn(e)
-                logger.warn(u"Upload file failed")
+                logger.warn("Upload file failed")
         return False
 
     def multipart_upload(self, local_path, cos_path, _http_headers='{}', **kwargs):
