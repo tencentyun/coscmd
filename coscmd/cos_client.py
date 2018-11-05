@@ -310,7 +310,7 @@ class Interface(object):
                             multiupload_filelist.append([filepath, _cos_path+filename])
                 except Exception as e:
                     logger.warn(e)
-                    logger.warn(u"upload file {filename} error".format(filename=filename))
+                    logger.warn(u"upload file error")
 
         _success_num = 0
         _fail_num = 0
@@ -383,7 +383,7 @@ class Interface(object):
                     return False
             except Exception as e:
                 logger.warn(e)
-                logger.warn("Upload file failed")
+                logger.warn(u"Upload file failed")
         return False
 
     def multipart_upload(self, local_path, cos_path, _http_headers='{}', **kwargs):
