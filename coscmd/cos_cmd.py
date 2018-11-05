@@ -55,7 +55,7 @@ def config(args):
         cp.set('common', 'secret_id', args.secret_id)
         cp.set('common', 'secret_key', args.secret_key)
         cp.set('common', 'bucket', args.bucket)
-        if args.region != "":
+        if args.region:
             cp.set('common', 'region', args.region)
         else:
             cp.set('common', 'endpoint', args.endpoint)
