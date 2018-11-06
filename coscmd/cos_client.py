@@ -998,7 +998,7 @@ class Interface(object):
                     IsTruncated = rt['IsTruncated']
                 if 'NextKeyMarker' in rt:
                     NextMarker = rt['NextKeyMarker']
-                if 'NextKeyMarker' in rt:
+                if 'NextVersionIdMarker' in rt:
                     VersionIdMarker = rt['NextVersionIdMarker']
                 if 'DeleteMarker' in rt:
                     for _file in rt['DeleteMarker']:
@@ -1239,7 +1239,7 @@ class Interface(object):
                         IsTruncated = rt['IsTruncated']
                     if 'NextKeyMarker' in rt:
                         KeyMarker = rt['NextKeyMarker']
-                    if 'NextKeyMarker' in rt:
+                    if 'NextVersionIdMarker' in rt:
                         VersionIdMarker = rt['NextVersionIdMarker']
                     if 'CommonPrefixes' in rt:
                         for _folder in rt['CommonPrefixes']:
