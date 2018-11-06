@@ -881,15 +881,9 @@ class Interface(object):
                 if 'IsTruncated' in rt:
                     IsTruncated = rt['IsTruncated']
                 if 'NextKeyMarker' in rt:
-                    NextMarker = rt['NextKeyMarker']
+                    KeyMarker = rt['NextKeyMarker']
                 if 'NextVersionIdMarker' in rt:
                     VersionIdMarker = rt['NextVersionIdMarker']
-#                 if 'DeleteMarker' in rt:
-#                     for _file in rt['DeleteMarker']:
-#                         _versionid = _file['VersionId']
-#                         _path = _file['Key']
-#                         deleteList['Object'].append({'Key': _path,
-#                                                     'VersionId': _versionid})
                 if 'Version' in rt:
                     for _file in rt['Version']:
                         _versionid = _file['VersionId']
@@ -956,7 +950,7 @@ class Interface(object):
                                     .format(file=file['Key'],
                                             code=file['Code'],
                                             msg=file['Message']))
-        # Clipping
+        # delete the remaining files
         logger.info(u"Delete the remaining files again")
         if self._file_num == 0:
             logger.info(u"The directory does not exist")
@@ -1225,6 +1219,8 @@ class Interface(object):
                     table.border = False
                     for i in range(self._retry):
                         try:
+                            if VersionIdMarker == "null":
+                                VersionIdMarker = ""
                             rt = self._client.list_objects_versions(
                                 self._conf._bucket + "-" + self._conf._appid,
                                 Delimiter=Delimiter,
@@ -1242,7 +1238,7 @@ class Interface(object):
                     if 'IsTruncated' in rt:
                         IsTruncated = rt['IsTruncated']
                     if 'NextKeyMarker' in rt:
-                        NextMarker = rt['NextKeyMarker']
+                        KeyMarker = rt['NextKeyMarker']
                     if 'NextKeyMarker' in rt:
                         VersionIdMarker = rt['NextVersionIdMarker']
                     if 'CommonPrefixes' in rt:
@@ -1279,7 +1275,7 @@ class Interface(object):
                                 break
                     try:
                         print(unicode(table))
-                    except Exception:
+                    except Exception as e:
                         print(table)
                     if self._file_num == _num:
                         break
