@@ -309,8 +309,9 @@ class Interface(object):
                         else:
                             multiupload_filelist.append([filepath, _cos_path+filename])
                 except Exception as e:
+                    _fail_num += 1
                     logger.warn(e)
-                    logger.warn(u"upload file error")
+                    logger.warn("Upload {file} error".format(file=to_printable_str(filename)))
 
         _success_num = 0
         _fail_num = 0
