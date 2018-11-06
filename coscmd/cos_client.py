@@ -309,17 +309,18 @@ class Interface(object):
                         else:
                             multiupload_filelist.append([filepath, _cos_path+filename])
                 except Exception as e:
-                    _fail_num += 1
+                    self._fail_num += 1
                     logger.warn(e)
                     logger.warn("Upload {file} error".format(file=to_printable_str(filename)))
 
-        _success_num = 0
-        _fail_num = 0
+        self._fail_num = 0
         multiupload_filelist = []
         self._inner_threadpool = SimpleThreadPool(self._conf._max_thread)
         recursive_upload_folder(local_path, cos_path)
         self._inner_threadpool.wait_completion()
         result = self._inner_threadpool.get_result()
+        _success_num = 0
+        _fail_num = self._fail_num
         for worker in result['detail']:
             _success_num += worker[0]
             _fail_num += worker[1]
