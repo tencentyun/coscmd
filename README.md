@@ -104,8 +104,8 @@ coscmd  config [-h] -a <SECRET_ID> -s <SECRET_KEY> -b <BUCKET>
 | SECRET_KEY| 必选参数，APPID 对应的密钥 Key 可从 COS 控制台左侧栏【密钥管理】或 [云 API 密钥控制台]( https://console.cloud.tencent.com/cam/capi) 获取| 字符串  |
 | BUCKET| 必选参数，指定的存储桶名称，bucket的命名规则为{name}-{appid} ，参考 [创建存储桶](https://cloud.tencent.com/doc/product/436/6232) | 字符串  |
 | REGION| 必选参数，存储桶所在地域，参考 [可用地域](https://cloud.tencent.com/doc/product/436/6224) | 字符串  |
-| MAX_THREAD| 可选参数，多线程上传时的最大线程数（默认为 5），有效值：1~10         | 数字   |
-| PART_SIZE| 可选参数，分块上传的单块大小（单位为 MB，默认为 1MB），有效值：1~10     | 数字   |
+| MAX_THREAD| 可选参数，多线程上传时的最大线程数（默认为 5）     | 数字   |
+| PART_SIZE| 可选参数，分块上传的单块大小（单位为 MB，默认为 1MB）   | 数字   |
 
 > **注意：** 
 1. 可以直接编辑`~/.cos.conf`文件 （在 Windows 环境下，该文件是位于`我的文档`下的一个隐藏文件），该文件初始时不存在，是通过`coscmd config`命令生成，用户也可以手动创建
@@ -336,7 +336,7 @@ coscmd putobjectacl  --grant-read 12345678,12345678/11111 --grant-write anyone -
 ```
 
 #### ACL 设置指南
-> *  --grant-read 代表读的权限
+*  --grant-read 代表读的权限
 * --grant-write 代表写的权限
 * --grant-full-control 代表读写的权限
 * GRANT_READ / GRANT_WRITE / GRANT_FILL_CONTORL 代表被赋权的帐号
