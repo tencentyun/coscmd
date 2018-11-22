@@ -198,15 +198,10 @@ class Op(object):
         if args.recursive:
             if os.path.isfile(args.local_path) is True:
                 rt = Interface.upload_file(args.local_path, args.cos_path, args.headers, **kwargs)
-                return 0
+                return rt
             elif os.path.isdir(args.local_path):
                 rt = Interface.upload_folder(args.local_path, args.cos_path, args.headers, **kwargs)
-                if rt:
-                    logger.debug("upload all files under \"{file}\" directory successfully".format(file=to_printable_str(args.local_path)))
-                    return 0
-                else:
-                    logger.debug("upload all files under \"{file}\" directory failed".format(file=to_printable_str(args.local_path)))
-                    return -1
+                return rt
         else:
             if os.path.isdir(args.local_path):
                 logger.warn("\"{path}\" is a directory, use \'-r\' option to upload it please".format(path=to_printable_str(args.local_path)))
@@ -214,10 +209,8 @@ class Op(object):
             if os.path.isfile(args.local_path) is False:
                 logger.warn("cannot stat '%s': No such file or directory" % to_printable_str(args.local_path))
                 return -1
-            if Interface.upload_file(args.local_path, args.cos_path, args.headers, **kwargs) is True:
-                return 0
-            else:
-                return -1
+            rt = Interface.upload_file(args.local_path, args.cos_path, args.headers, **kwargs)
+            return rt
         return -1
 
     @staticmethod
@@ -239,17 +232,10 @@ class Op(object):
         kwargs['ignore'] = args.ignore.split(',')
         if args.recursive:
             rt = Interface.download_folder(args.cos_path, args.local_path, **kwargs)
-            if rt:
-                logger.debug("download all files under \"{file}\" directory successfully".format(file=to_printable_str(args.cos_path)))
-                return 0
-            else:
-                logger.debug("download all files under \"{file}\" directory failed".format(file=to_printable_str(args.cos_path)))
-                return -1
+            return rt
         else:
-            if Interface.download_file(args.cos_path, args.local_path, **kwargs) is True:
-                return 0
-            else:
-                return -1
+            rt = Interface.download_file(args.cos_path, args.local_path, **kwargs)
+            return rt
         return -1
 
     @staticmethod
@@ -417,8 +403,10 @@ class Op(object):
         try:
             Interface = client.op_int()
             rt = Interface.sign_url(args.cos_path, args.timeout)
-            logger.info(rt)
-            return 0
+            if rt:
+                return 0
+            else:
+                return -1
         except Exception:
             logger.warn('Geturl fail')
             return -1
