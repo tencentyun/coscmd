@@ -182,7 +182,11 @@ def test_folder():
     gen_file("testfolder/tmp3", 1.1)
     rt = os.system("python coscmd/cos_cmd.py upload -r testfolder testfolder")
     assert rt == 0
+    rt = os.system("python coscmd/cos_cmd.py upload -rs testfolder testfolder")
+    assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py download -rf testfolder testfolder")
+    assert rt == 0
+    rt = os.system("python coscmd/cos_cmd.py download -rsf testfolder testfolder")
     assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py copy -r %s.cos.ap-beijing-1.myqcloud.com/testfolder testfolder2" % bucket_name)
     assert rt == 0
