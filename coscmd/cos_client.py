@@ -254,7 +254,7 @@ class Interface(object):
         signature = CosS3Auth(self._conf, timeout).__call__(
             prepped).headers['Authorization']
 
-        print (to_printable_str(url + '?sign=' + quote(signature)))
+        print(to_printable_str(url + '?sign=' + quote(signature)))
         return True
 
     def list_part(self, cos_path):
