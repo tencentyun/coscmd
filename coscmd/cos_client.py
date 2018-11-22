@@ -253,7 +253,6 @@ class Interface(object):
         prepped = s.prepare_request(req)
         signature = CosS3Auth(self._conf, timeout).__call__(
             prepped).headers['Authorization']
-
         print(to_printable_str(url + '?sign=' + quote(signature)))
         return True
 
