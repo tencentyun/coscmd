@@ -231,7 +231,7 @@ class Interface(object):
             self._session = session
 
     def check_file_md5(self, _local_path, _cos_path, _md5):
-        url = self._conf.uri(path=_cos_path)
+        url = self._conf.uri(path=quote(to_printable_str(_cos_path)))
         rt = self._session.head(
             url=url, auth=CosS3Auth(self._conf), stream=True)
         if rt.status_code != 200:
@@ -1428,7 +1428,7 @@ class Interface(object):
         table = PrettyTable([cos_path, ""])
         table.align = "l"
         table.padding_width = 3
-        url = self._conf.uri(path=cos_path)
+        url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         logger.info("Info with : " + url)
         try:
             rt = self._session.head(url=url, auth=CosS3Auth(self._conf))
