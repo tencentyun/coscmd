@@ -20,6 +20,7 @@ from tqdm import tqdm
 from logging.handlers import RotatingFileHandler
 from wsgiref.handlers import format_date_time
 import qcloud_cos
+from coscmd.cos_client import to_printable_str
 
 if sys.version > '3':
     from coscmd.cos_auth import CosS3Auth
