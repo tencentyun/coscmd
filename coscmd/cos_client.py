@@ -931,6 +931,12 @@ class Interface(object):
                     KeyMarker = rt['NextKeyMarker']
                 if 'NextVersionIdMarker' in rt:
                     VersionIdMarker = rt['NextVersionIdMarker']
+                if 'DeleteMarker' in rt:
+                    for _file in rt['DeleteMarker']:
+                        _versionid = _file['VersionId']
+                        _path = _file['Key']
+                        deleteList['Object'].append({'Key': _path,
+                                                     'VersionId': _versionid})
                 if 'Version' in rt:
                     for _file in rt['Version']:
                         _versionid = _file['VersionId']
