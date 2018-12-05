@@ -135,8 +135,12 @@ def load_conf():
             verify = 'md5'
         try:
             anonymous = cp.get('common', 'anonymous')
+            if anonymous == 'True' or anonymous == 'true':
+                anonymous = True
+            else:
+                anonymous = False
         except:
-            anonymous = 'False'
+            anonymous = False
         region, endpoint = None, None
         if cp.has_option('common', 'region'):
             region = cp.get('common', 'region')

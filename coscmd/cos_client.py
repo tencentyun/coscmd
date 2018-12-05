@@ -135,7 +135,7 @@ def change_to_human(_size):
 
 class CoscmdConfig(object):
 
-    def __init__(self, appid, region, endpoint, bucket, secret_id, secret_key, part_size=1, max_thread=5, schema='https', anonymous='False', verify='md5', *args, **kwargs):
+    def __init__(self, appid, region, endpoint, bucket, secret_id, secret_key, part_size=1, max_thread=5, schema='https', anonymous=False, verify='md5', *args, **kwargs):
         self._appid = appid
         self._region = region
         self._endpoint = endpoint
@@ -217,13 +217,15 @@ class Interface(object):
             sdk_config = qcloud_cos.CosConfig(Region=conf._region,
                                               SecretId=conf._secret_id,
                                               SecretKey=conf._secret_key,
-                                              Scheme=conf._schema)
+                                              Scheme=conf._schema,
+                                              Anonymous=conf._anonymous)
         else:
             sdk_config = qcloud_cos.CosConfig(Endpoint=conf._endpoint,
                                               Region=conf._region,
                                               SecretId=conf._secret_id,
                                               SecretKey=conf._secret_key,
-                                              Scheme=conf._schema)
+                                              Scheme=conf._schema,
+                                              Anonymous=conf._anonymous)
         self._client = qcloud_cos.CosS3Client(sdk_config)
         if session is None:
             self._session = requests.session()

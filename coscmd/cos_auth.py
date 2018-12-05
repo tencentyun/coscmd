@@ -75,7 +75,7 @@ class CosS3Auth(AuthBase):
             headers=';'.join(sorted(headers.keys())),
             sign=sign
         )
-        if self._anonymous == "True" or self._anonymous == "true":
+        if self._anonymous:
             r.headers['Authorization'] = ""
         r.headers['User-agent'] = 'coscmd-v' + Version
         logger.debug("sign_key" + str(sign_key))
