@@ -26,7 +26,7 @@ pip install coscmd -U
 > **注意：** 
 当pip版本大于等于10.0.0时，升级或安装依赖库时可能会出现失败，建议使用pip版本9.x（pip install pip==9.0.0）
 
-- **源码安装(不推荐)**
+- **源码安装**
 下载链接：[GitHub 链接](https://github.com/tencentyun/coscmd.git)
 ```
 git clone https://github.com/tencentyun/coscmd.git
@@ -35,6 +35,23 @@ python setup.py install
 ```
 > **注意：** 
 python版本为2.6时，pip安装依赖库时容易失败，推荐使用该方法安装
+
+- **离线安装**
+```
+# 在有外网的机器下运行如下命令
+mkdir coscmd-packages
+pip download coscmd -d coscmd-packages
+tar -czvf coscmd-packages.tar.gz coscmd-packages
+```
+
+> **注意：** 
+请确保两台机器的 python 版本保持一致，否则会出现安装失败的情况
+```
+# 将安装包拷贝到没有外网的机器后运行如下命令
+tar -xzvf coscmd-packages.tar.gz
+pip install coscmd --no-index -f coscmd-packages
+```
+
 ## 使用方法
 ### 查看 help
 用户可通过`-h`或`--help`命令来查看工具的 help 信息
