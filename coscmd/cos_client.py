@@ -1291,7 +1291,7 @@ class Interface(object):
                             if VersionIdMarker == "null":
                                 VersionIdMarker = ""
                             rt = self._client.list_objects_versions(
-                                self._conf._bucket + "-" + self._conf._appid,
+                                Bucket=self._conf._bucket + "-" + self._conf._appid,
                                 Delimiter=Delimiter,
                                 KeyMarker=KeyMarker,
                                 VersionIdMarker=VersionIdMarker,
@@ -1374,7 +1374,7 @@ class Interface(object):
                     for i in range(self._retry):
                         try:
                             rt = self._client.list_objects(
-                                self._conf._bucket + "-" + self._conf._appid,
+                                Bucket=self._conf._bucket + "-" + self._conf._appid,
                                 Delimiter=Delimiter,
                                 Marker=NextMarker,
                                 MaxKeys=1000,
@@ -1436,54 +1436,23 @@ class Interface(object):
         table = PrettyTable([cos_path, ""])
         table.align = "l"
         table.padding_width = 3
-        url = self._conf.uri(path=quote(to_printable_str(cos_path)))
-        logger.info("Info with : " + url)
+        table.header = False
+        table.border = False
+        table.add_row(['Key', cos_path])
         try:
-            rt = self._session.head(url=url, auth=CosS3Auth(self._conf))
-            logger.debug(u"info resp, status code: {code}, headers: {headers}".format(
-                code=rt.status_code,
-                headers=rt.headers))
-            if rt.status_code == 200:
-                _size = rt.headers['Content-Length']
-                if _human is True:
-                    _size = change_to_human(_size)
-                _time = time.localtime(utc_to_local(
-                    rt.headers['Last-Modified'], '%a, %d %b %Y %H:%M:%S GMT'))
-                _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
-                table.add_row(['File size', _size])
-                table.add_row(['Last mod', _time])
-                url = self._conf.uri(cos_path + "?acl")
-                try:
-                    rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-                    logger.debug(u"get resp, status code: {code}, headers: {headers}".format(
-                        code=rt.status_code,
-                        headers=rt.headers))
-                    if rt.status_code == 200:
-                        root = minidom.parseString(rt.content).documentElement
-                        grants = root.getElementsByTagName("Grant")
-                        for grant in grants:
-                            try:
-                                table.add_row(['ACL', ("%s: %s" % (grant.getElementsByTagName("ID")[0].childNodes[0].data,
-                                                                   grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
-                            except Exception:
-                                table.add_row(['ACL', ("%s: %s" % (
-                                    'anyone', grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
-                    else:
-                        logger.warn(response_info(rt))
-                except Exception as e:
-                    logger.warn(str(e))
-                    return False
-                try:
-                    print(unicode(table))
-                except Exception as e:
-                    print(table)
-                return True
-            else:
-                logger.warn(response_info(rt))
-                return False
+            rt = self._client.head_object(
+                        Bucket = self._conf._bucket + "-" + self._conf._appid,
+                        Key=cos_path
+                        )
+            for i in rt:
+                table.add_row([i, rt[i]])
+            try:
+                print(unicode(table))
+            except Exception as e:
+                print(table)
+            return True
         except Exception as e:
             logger.warn(str(e))
-            return False
         return False
 
     def download_folder(self, cos_path, local_path, **kwargs):
