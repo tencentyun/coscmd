@@ -124,7 +124,9 @@ def load_conf():
                 bucket = bucket.rstrip(appid)
                 bucket = bucket[:-1]
             except Exception:
-                logger.error("The configuration file is wrong. Please reconfirm")
+                # check if user use -b bucket
+                if (pre_bucket == ""):
+                    logger.error("The configuration file is wrong. Please reconfirm")
         try:
             schema = cp.get('common', 'schema')
         except:
@@ -144,7 +146,7 @@ def load_conf():
         region, endpoint = None, None
         if cp.has_option('common', 'region'):
             region = cp.get('common', 'region')
-        else:
+        elif pre_region != "" and cp.has_option('common', 'endpoint'):
             endpoint = cp.get('common', 'endpoint')
 
         if pre_appid != "":
