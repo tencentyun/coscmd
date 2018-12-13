@@ -1365,7 +1365,7 @@ class Interface(object):
             else:
                 NextMarker = ""
                 while IsTruncated == "true":
-                    table = PrettyTable(["Path", "Size/Type", "Time"])
+                    table = PrettyTable(["Path", "Size/Type", "Class", "Time"])
                     table.align = "l"
                     table.align['Size/Type'] = 'r'
                     table.padding_width = 3
@@ -1395,7 +1395,8 @@ class Interface(object):
                             _time = ""
                             _type = "DIR"
                             _path = _folder['Prefix']
-                            table.add_row([_path, _type, _time])
+                            _class = ""
+                            table.add_row([_path, _type, _class, _time])
                     if 'Contents' in rt:
                         for _file in rt['Contents']:
                             self._file_num += 1
@@ -1403,11 +1404,12 @@ class Interface(object):
                             _time = time.localtime(utc_to_local(_time))
                             _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
                             _size = _file['Size']
+                            _class = _file['StorageClass']
                             self._total_size += int(_size)
                             if _human is True:
                                 _size = change_to_human(_size)
                             _path = _file['Key']
-                            table.add_row([_path, _size, _time])
+                            table.add_row([_path, _size, _class, _time])
                             if self._file_num == _num:
                                 break
                     try:
