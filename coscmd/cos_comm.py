@@ -3,7 +3,7 @@ from six import text_type, binary_type
 from hashlib import md5
 
 maplist = {
-            'x-cos-copy-source-If-Modified-Since': 'CopySourceIfModifiedSince', 
+            'x-cos-copy-source-If-Modified-Since': 'CopySourceIfModifiedSince',
             'Content-Length': 'ContentLength',
             'x-cos-server-side-encryption-cos-kms-key-id': 'SSEKMSKeyId',
             'x-cos-server-side-encryption-customer-algorithm': 'SSECustomerAlgorithm',
@@ -41,6 +41,7 @@ maplist = {
             'Content-Type': 'ContentType'
         }
 
+
 def mapped(headers):
     """coscmd到pythonsdk参数的一个映射"""
     _headers = dict()
@@ -54,6 +55,7 @@ def mapped(headers):
             raise Exception('No Parameter Named ' + i + ' Please Check It')
     _headers['Metadata'] = _meta
     return _headers
+
 
 def to_bytes(s):
     """将字符串转为bytes"""

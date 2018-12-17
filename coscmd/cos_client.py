@@ -682,7 +682,7 @@ class Interface(object):
             return -1
 
     def copy_file(self, source_path, cos_path, _http_headers='{}', **kwargs):
-        
+
         _directive = kwargs['directive']
         _sync = kwargs['sync']
         if kwargs['sync'] is True:
