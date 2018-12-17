@@ -693,7 +693,6 @@ class Interface(object):
                 url = self._conf.uri(path=quote(to_printable_str(cos_path)))
                 rt = self._session.head(url,  auth=CosS3Auth(self._conf))
                 dst_md5 = rt.headers['x-cos-meta-md5']
-                print dst_md5, src_md5
                 if dst_md5 == src_md5:
                     logger.info(
                             u"The file on cos is the same as the local file, skip copy")
