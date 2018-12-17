@@ -24,11 +24,11 @@ import qcloud_cos
 if sys.version > '3':
     from coscmd.cos_auth import CosS3Auth
     from coscmd.cos_threadpool import SimpleThreadPool
-    from coscmd.cos_comm import to_bytes, to_unicode, get_file_md5
+    from coscmd.cos_comm import to_bytes, to_unicode, get_file_md5, mapped
 else:
     from cos_auth import CosS3Auth
     from cos_threadpool import SimpleThreadPool
-    from cos_comm import to_bytes, to_unicode, get_file_md5
+    from cos_comm import to_bytes, to_unicode, get_file_md5, mapped
 
 logger = logging.getLogger("coscmd")
 logger_sdk = logging.getLogger("qcloud_cos.cos_client")
@@ -139,7 +139,7 @@ class CoscmdConfig(object):
         self._appid = appid
         self._region = region
         self._endpoint = endpoint
-        self._bucket = bucket
+        self._bucket = bucket + "-" + appid
         self._secret_id = secret_id
         self._secret_key = secret_key
         self._part_size = part_size
@@ -159,34 +159,30 @@ class CoscmdConfig(object):
     def uri(self, path=None):
         if path:
             if self._region is not None:
-                url = u"{schema}://{bucket}-{uid}.cos.{region}.myqcloud.com/{path}".format(
+                url = u"{schema}://{bucket}.cos.{region}.myqcloud.com/{path}".format(
                     schema=self._schema,
                     bucket=self._bucket,
-                    uid=self._appid,
                     region=self._region,
                     path=to_unicode(path)
                 )
             else:
-                url = u"{schema}://{bucket}-{uid}.{endpoint}/{path}".format(
+                url = u"{schema}://{bucket}.{endpoint}/{path}".format(
                     schema=self._schema,
                     bucket=self._bucket,
-                    uid=self._appid,
                     endpoint=self._endpoint,
                     path=to_unicode(path)
                 )
         else:
             if self._region is not None:
-                url = u"{schema}://{bucket}-{uid}.cos.{region}.myqcloud.com/".format(
+                url = u"{schema}://{bucket}.cos.{region}.myqcloud.com/".format(
                     schema=self._schema,
                     bucket=self._bucket,
-                    uid=self._appid,
                     region=self._region
                 )
             else:
-                url = u"{schema}://{bucket}-{uid}.{endpoint}/".format(
+                url = u"{schema}://{bucket}.{endpoint}/".format(
                     schema=self._schema,
                     bucket=self._bucket,
-                    uid=self._appid,
                     endpoint=self._endpoint
                 )
 
@@ -629,262 +625,104 @@ class Interface(object):
         else:
             return self.multipart_upload(local_path, cos_path, _http_headers, **kwargs)
 
-    def copy_folder(self, source_path, cos_path):
-
+    def copy_folder(self, source_path, cos_path, _http_headers='{}', **kwargs):
+        _success_num = 0
+        _skip_num = 0
+        _fail_num = 0
+        self._inner_threadpool = SimpleThreadPool(self._conf._max_thread)
+        NextMarker = "/"
+        IsTruncated = "true"
         source_schema = source_path.split('/')[0] + '/'
         source_path = source_path[len(source_schema):]
-        NextMarker = ""
-        IsTruncated = "true"
-        _file_num = 0
-        _success_num = 0
-        _fail_num = 0
         while IsTruncated == "true":
-            tmp_url = '?prefix={prefix}&marker={nextmarker}'.format(
-                prefix=quote(to_printable_str(source_path)),
-                nextmarker=quote(to_printable_str(NextMarker)))
-            url = self._conf._schema + "://" + source_schema + tmp_url
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-            if rt.status_code == 200:
-                root = minidom.parseString(rt.content).documentElement
-                IsTruncated = root.getElementsByTagName(
-                    "IsTruncated")[0].childNodes[0].data
-                if IsTruncated == 'true':
-                    NextMarker = root.getElementsByTagName(
-                        "NextMarker")[0].childNodes[0].data
-                fileset = root.getElementsByTagName("Contents")
-                for _file in fileset:
-                    _tmp = _file.getElementsByTagName(
-                        "Key")[0].childNodes[0].data
-                    _source_path = source_schema + _tmp
-                    if source_path.endswith('/') is False and len(source_path) != 0:
-                        _cos_path = cos_path + _tmp[len(source_path) + 1:]
-                    else:
-                        _cos_path = cos_path + _tmp[len(source_path):]
-                    _cos_path = to_unicode(_cos_path)
-                    _source_path = to_unicode(_source_path)
-                    if _cos_path.endswith('/'):
-                        continue
-                    _file_num += 1
-                    if self.copy_file(_source_path, _cos_path):
-                        _success_num += 1
-                    else:
-                        _fail_num += 1
-            else:
-                logger.warn(response_info(rt))
-                return False
-        if _file_num == 0:
-            logger.info(u"The directory does not exist")
-            return False
-        logger.info(u"Copy {success_files} files successful, {fail_files} files failed"
-                    .format(success_files=_success_num, fail_files=_fail_num))
-        if _file_num == _success_num:
-            return True
-        else:
-            return False
-
-    def copy_file(self, source_path, cos_path):
-
-        def single_copy():
-            url = self._conf.uri(path=quote(to_printable_str(cos_path)))
-            for j in range(self._retry):
+            for i in range(self._retry):
                 try:
-                    http_header = dict()
-                    http_header['x-cos-copy-source'] = source_path
-                    rt = self._session.put(url=url,
-                                           auth=CosS3Auth(self._conf), headers=http_header)
-                    if rt.status_code == 200:
-                        logger.info(u"Copy {source_path}   =>   cos://{bucket}/{cos_path}  [100%]".format(
-                            bucket=self._conf._bucket,
-                            source_path=source_path,
-                            cos_path=cos_path))
-                        return True
-                    else:
-                        time.sleep(2**j)
-                        logger.warn(response_info(rt))
-                        continue
-                    if j + 1 == self._retry:
-                        return False
+                    rt = self._client.list_objects(
+                        Bucket=self._conf._bucket,
+                        Marker=NextMarker,
+                        MaxKeys=1000,
+                        Delimiter="",
+                        Prefix=source_path,
+                    )
+                    if 'IsTruncated' in rt:
+                        IsTruncated = rt['IsTruncated']
+                    if 'NextMarker' in rt:
+                        NextMarker = rt['NextMarker']
+                    if 'Contents' in rt:
+                        for _file in rt['Contents']:
+                            _path = _file['Key']
+                            _source_path = source_schema + _path
+                            if source_path.endswith('/') is False and len(source_path) != 0:
+                                _cos_path = cos_path + _path[len(source_path) + 1:]
+                            else:
+                                _cos_path = cos_path + _path[len(source_path):]
+                            self._inner_threadpool.add_task(
+                                self.copy_file, _source_path, _cos_path, _http_headers, **kwargs)
+                    break
                 except Exception as e:
+                    time.sleep(1 << i)
                     logger.warn(e)
-                    logger.warn(u"Copy file failed")
-            return False
-
-        def init_multiupload():
-            url = self._conf.uri(path=quote(to_printable_str(cos_path)))
-            self._md5 = {}
-            self._have_finished = 0
-            self._upload_id = None
-            http_header = dict()
-            rt = self._session.post(
-                url=url + "?uploads", auth=CosS3Auth(self._conf), headers=http_header)
-            logger.debug(u"Init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                code=rt.status_code,
-                headers=rt.headers,
-                text=rt.text))
-
-            if rt.status_code == 200:
-                root = minidom.parseString(rt.content).documentElement
-                self._upload_id = root.getElementsByTagName(
-                    "UploadId")[0].childNodes[0].data
-                return True
-            else:
-                logger.warn(response_info(rt))
-                return False
-            return True
-
-        def copy_parts(file_size):
-
-            def source_path_parser():
-                # <Bucketname>-<APPID>.cos.<Region>.myqcloud.com/filepath
-                try:
-                    tmp = source_path.split('.')
-                    source_bucket = tmp[0]
-                    source_appid = source_bucket.split('-')[1]
-                    source_bucket = source_bucket.split('-')[0]
-                    source_region = tmp[2]
-                    source_cospath = tmp[-1]
-                except Exception:
-                    logger.warn(u"Source path format error")
-                return source_bucket, source_appid, source_region, source_cospath
-
-            def copy_parts_data(source_path, offset, length, parts_size, idx):
-                url = self._conf.uri(path=quote(to_printable_str(
-                    cos_path))) + "?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=self._upload_id)
-                http_header = dict()
-                http_header['x-cos-copy-source'] = source_path
-                http_header['x-cos-copy-source-range'] = "bytes=" + \
-                    str(offset) + "-" + str(offset + length - 1)
-                for j in range(self._retry):
-                    rt = self._session.put(url=url,
-                                           auth=CosS3Auth(self._conf),
-                                           headers=http_header)
-                    logger.debug(u"Copy part result: part{part}, round{round}, code: {code}, headers: {headers}, text: {text}".format(
-                        part=idx,
-                        round=j + 1,
-                        code=rt.status_code,
-                        headers=rt.headers,
-                        text=rt.text))
-                    root = minidom.parseString(rt.content).documentElement
-                    self._md5[idx] = root.getElementsByTagName(
-                        "ETag")[0].childNodes[0].data
-                    if rt.status_code == 200:
-                        self._have_finished += 1
-                        self._pbar.update(length)
-                        break
-                    else:
-                        logger.warn(response_info(rt))
-                        time.sleep(2**j)
-                        continue
-                    if j + 1 == self._retry:
-                        logger.warn(u"Upload part failed: part{part}, round{round}, code: {code}".format(
-                            part=idx, round=j + 1, code=rt.status_code))
-                        return False
-                return True
-
-            offset = 0
-            logger.debug("file size: " + str(file_size))
-            chunk_size = 1024 * 1024 * self._conf._part_size
-            while file_size / chunk_size > 8000:
-                chunk_size = chunk_size * 10
-            parts_num = file_size / chunk_size
-            last_size = file_size - parts_num * chunk_size
-            if last_size != 0:
-                parts_num += 1
-            _max_thread = min(self._conf._max_thread, parts_num)
-            pool = SimpleThreadPool(_max_thread)
-
-            logger.debug(u"chunk_size: " + str(chunk_size))
-            logger.debug(u'copy file concurrently')
-            logger.info(u"Copy {source_path}   =>   cos://{bucket}/{cos_path}".format(
-                bucket=self._conf._bucket,
-                source_path=source_path,
-                cos_path=cos_path))
-            self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
-            for i in range(parts_num):
-                if i + 1 == parts_num:
-                    pool.add_task(copy_parts_data, source_path,
-                                  offset, file_size - offset, parts_num, i + 1)
+                if i + 1 == self._retry:
+                    return False
+        self._inner_threadpool.wait_completion()
+        result = self._inner_threadpool.get_result()
+        for worker in result['detail']:
+            for status in worker[2]:
+                if 0 == status:
+                    _success_num += 1
+                elif -2 == status:
+                    _skip_num += 1
                 else:
-                    pool.add_task(copy_parts_data, source_path,
-                                  offset, chunk_size, parts_num, i + 1)
-                    offset += chunk_size
+                    _fail_num += 1
+        logger.info(u"{success_files} files successful, {skip_files} files skipped, {fail_files} files failed"
+                    .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
+        if _fail_num == 0:
+            return 0
+        else:
+            return -1
 
-            pool.wait_completion()
-            result = pool.get_result()
-            self._pbar.close()
-            if result['success_all']:
-                return True
-            else:
-                return False
-
-        def complete_multiupload():
-            logger.info(u"Completing multicopy, please wait")
-            doc = minidom.Document()
-            root = doc.createElement("CompleteMultipartUpload")
-            list_md5 = sorted(self._md5.items(), key=lambda d: d[0])
-            for i, v in list_md5:
-                t = doc.createElement("Part")
-                t1 = doc.createElement("PartNumber")
-                t1.appendChild(doc.createTextNode(str(i)))
-                t2 = doc.createElement("ETag")
-                t2.appendChild(doc.createTextNode('{v}'.format(v=v)))
-                t.appendChild(t1)
-                t.appendChild(t2)
-                root.appendChild(t)
-                data = root.toxml()
-                url = self._conf.uri(path=quote(to_printable_str(
-                    cos_path))) + "?uploadId={uploadid}".format(uploadid=self._upload_id)
-                logger.debug(u"Complete url: " + url)
-                logger.debug(u"Complete data: " + data)
+    def copy_file(self, source_path, cos_path, _http_headers='{}', **kwargs):
+        
+        _directive = kwargs['directive']
+        _sync = kwargs['sync']
+        if kwargs['sync'] is True:
             try:
-                with closing(self._session.post(url, auth=CosS3Auth(self._conf), data=data, stream=True)) as rt:
-                    logger.debug(u"Complete status code: {code}".format(
-                        code=rt.status_code))
-                    logger.debug(u"Complete headers: {headers}".format(
-                        headers=rt.headers))
-                if rt.status_code == 200:
-                    return True
-                else:
-                    logger.warn(response_info(rt))
-                    return False
-            except Exception:
-                return False
-            return True
+                rt = self._session.head(
+                    url=self._conf._schema + "://" + source_path, auth=CosS3Auth(self._conf))
+                src_md5 = rt.headers['x-cos-meta-md5']
+                url = self._conf.uri(path=quote(to_printable_str(cos_path)))
+                rt = self._session.head(url,  auth=CosS3Auth(self._conf))
+                dst_md5 = rt.headers['x-cos-meta-md5']
+                print dst_md5, src_md5
+                if dst_md5 == src_md5:
+                    logger.info(
+                            u"The file on cos is the same as the local file, skip copy")
+                    return -2
+            except Exception as e:
+                pass
+        copy_source = {}
+        source_path = source_path.split(".")
+        copy_source['Bucket'] = source_path[0]
+        copy_source['Region'] = source_path[2]
+        copy_source['Key'] = '.'.join(source_path[4:])[len("com/"):]
         try:
-            source_path = quote(to_printable_str(source_path))
-            rt = self._session.head(
-                url="http://" + source_path, auth=CosS3Auth(self._conf))
-            if rt.status_code != 200:
-                logger.warn(u"Copy sources do not exist")
-                return False
-            file_size = int(rt.headers['Content-Length'])
-            if file_size < self._conf._part_size * 1024 * 1024 + 1024:
-                for _ in range(self._retry):
-                    if single_copy() is True:
-                        return True
-                return False
-            else:
-                for _ in range(self._retry):
-                    rt = init_multiupload()
-                    if rt:
-                        break
-                else:
-                    return False
-                logger.debug(u"Init multipart copy ok")
-                rt = copy_parts(file_size=file_size)
-                if rt is False:
-                    return False
-                logger.debug(u"Multipart copy ok")
-                for _ in range(self._retry):
-                    rt = complete_multiupload()
-                    if rt:
-                        logger.debug(u"Complete multipart copy ok")
-                        return True
-                logger.warn(u"Complete multipart copy failed")
-                return False
+            logger.info(u"Copy cos://{src_bucket}/{src_path}   =>   cos://{dst_bucket}/{dst_path}".format(
+                src_bucket=copy_source['Bucket'],
+                src_path=copy_source['Key'],
+                dst_bucket=self._conf._bucket,
+                dst_path=cos_path))
+            _http_headers = yaml.safe_load(_http_headers)
+            kwargs = mapped(_http_headers)
+            rt = self._client.copy(Bucket=self._conf._bucket,
+                                   Key=cos_path,
+                                   CopySource=copy_source,
+                                   CopyStatus=_directive,
+                                   PartSize=self._conf._part_size,
+                                   MAXThread=self._conf._max_thread, **kwargs)
+            return 0
         except Exception as e:
             logger.warn(e)
-            return False
+            return -1
 
     def delete_folder(self, cos_path, **kwargs):
 
@@ -915,7 +753,7 @@ class Interface(object):
                         VersionIdMarker = ""
                     try:
                         rt = self._client.list_objects_versions(
-                            Bucket=self._conf._bucket + "-" + self._conf._appid,
+                            Bucket=self._conf._bucket,
                             KeyMarker=KeyMarker,
                             VersionIdMarker=VersionIdMarker,
                             MaxKeys=1000,
@@ -946,7 +784,7 @@ class Interface(object):
                         deleteList['Object'].append({'Key': _path,
                                                      'VersionId': _versionid})
                 if len(deleteList['Object']) > 0:
-                    rt = self._client.delete_objects(Bucket=self._conf._bucket + "-" + self._conf._appid,
+                    rt = self._client.delete_objects(Bucket=self._conf._bucket,
                                                      Delete=deleteList)
                 if 'Deleted' in rt:
                     self._have_finished += len(rt['Deleted'])
@@ -971,7 +809,7 @@ class Interface(object):
                 for i in range(self._retry):
                     try:
                         rt = self._client.list_objects(
-                            Bucket=self._conf._bucket + "-" + self._conf._appid,
+                            Bucket=self._conf._bucket,
                             Marker=NextMarker,
                             MaxKeys=1000,
                             Prefix=cos_path,
@@ -991,7 +829,7 @@ class Interface(object):
                         _path = _file['Key']
                         deleteList['Object'].append({'Key': _path})
                 if len(deleteList['Object']) > 0:
-                    rt = self._client.delete_objects(Bucket=self._conf._bucket + "-" + self._conf._appid,
+                    rt = self._client.delete_objects(Bucket=self._conf._bucket,
                                                      Delete=deleteList)
                 if 'Deleted' in rt:
                     self._have_finished += len(rt['Deleted'])
@@ -1037,7 +875,7 @@ class Interface(object):
                 for i in range(self._retry):
                     try:
                         rt = self._client.list_objects_versions(
-                            Bucket=self._conf._bucket + "-" + self._conf._appid,
+                            Bucket=self._conf._bucket,
                             KeyMarker=KeyMarker,
                             VersionIdMarker=VersionIdMarker,
                             MaxKeys=1000,
@@ -1071,7 +909,7 @@ class Interface(object):
                     for file in deleteList:
                         try:
                             self._client.delete_object(
-                                Bucket=self._conf._bucket + "-" + self._conf._appid,
+                                Bucket=self._conf._bucket,
                                 Key=file['Key'],
                                 VersionId=file['VersionId'])
                             self._have_finished += 1
@@ -1089,7 +927,7 @@ class Interface(object):
                 for i in range(self._retry):
                     try:
                         rt = self._client.list_objects(
-                            Bucket=self._conf._bucket + "-" + self._conf._appid,
+                            Bucket=self._conf._bucket,
                             Marker=NextMarker,
                             MaxKeys=1000,
                             Prefix=cos_path,
@@ -1112,7 +950,7 @@ class Interface(object):
                     for file in deleteList:
                         try:
                             self._client.delete_object(
-                                Bucket=self._conf._bucket + "-" + self._conf._appid,
+                                Bucket=self._conf._bucket,
                                 Key=file['Key'],
                                 VersionId=file['VersionId'])
                             self._have_finished += 1
@@ -1291,7 +1129,7 @@ class Interface(object):
                             if VersionIdMarker == "null":
                                 VersionIdMarker = ""
                             rt = self._client.list_objects_versions(
-                                Bucket=self._conf._bucket + "-" + self._conf._appid,
+                                Bucket=self._conf._bucket,
                                 Delimiter=Delimiter,
                                 KeyMarker=KeyMarker,
                                 VersionIdMarker=VersionIdMarker,
@@ -1374,7 +1212,7 @@ class Interface(object):
                     for i in range(self._retry):
                         try:
                             rt = self._client.list_objects(
-                                Bucket=self._conf._bucket + "-" + self._conf._appid,
+                                Bucket=self._conf._bucket,
                                 Delimiter=Delimiter,
                                 Marker=NextMarker,
                                 MaxKeys=1000,
@@ -1443,9 +1281,9 @@ class Interface(object):
         table.add_row(['Key', cos_path])
         try:
             rt = self._client.head_object(
-                        Bucket = self._conf._bucket + "-" + self._conf._appid,
-                        Key=cos_path
-                        )
+                Bucket=self._conf._bucket,
+                Key=cos_path
+            )
             for i in rt:
                 table.add_row([i, rt[i]])
             try:

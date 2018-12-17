@@ -299,18 +299,22 @@ class Op(object):
             args.source_path = args.source_path.decode(fs_coding)
         if not isinstance(args.cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
+            
+        kwargs = {}
+        kwargs['sync'] = args.sync
+        kwargs['directive'] = args.directive
         if args.recursive:
             _, args.cos_path = concat_path(args.source_path, args.cos_path)
             if args.cos_path.endswith('/') is False:
                 args.cos_path += '/'
             if args.cos_path.startswith('/'):
                 args.cos_path = args.cos_path[1:]
-            if Interface.copy_folder(args.source_path, args.cos_path) is True:
+            if not Interface.copy_folder(args.source_path, args.cos_path, args.headers, **kwargs):
                 return 0
             else:
                 return 1
         else:
-            if Interface.copy_file(args.source_path, args.cos_path) is True:
+            if not Interface.copy_file(args.source_path, args.cos_path, args.headers, **kwargs):
                 return 0
             else:
                 return -1
@@ -609,8 +613,10 @@ def command_thread():
     parser_copy = sub_parser.add_parser("copy", help="Copy file from COS to COS")
     parser_copy.add_argument('source_path', help="Source file path as 'bucket-appid.cos.ap-guangzhou.myqcloud.com/a.txt'", type=str)
     parser_copy.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
+    parser_copy.add_argument('-H', '--headers', help="Specify HTTP headers", type=str, default='{}')
+    parser_copy.add_argument('-d', '--directive', help="if Overwrite headers", type=str, choices=['Copy', 'Replaced'], default="Copy")
+    parser_copy.add_argument('-s', '--sync', help="Copy and skip the same file", action="store_true", default=False)
     parser_copy.add_argument('-r', '--recursive', help="Copy files recursively", action="store_true", default=False)
-    parser_copy.add_argument('-t', '--type', help='Specify x-cos-storage-class of files to upload', type=str, choices=['STANDARD', 'STANDARD_IA', 'NEARLINE'], default='STANDARD')
     parser_copy.set_defaults(func=Op.copy)
 
     parser_list = sub_parser.add_parser("list", help='List files on COS')
