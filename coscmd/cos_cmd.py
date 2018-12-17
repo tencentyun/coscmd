@@ -299,7 +299,7 @@ class Op(object):
             args.source_path = args.source_path.decode(fs_coding)
         if not isinstance(args.cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
-            
+
         kwargs = {}
         kwargs['sync'] = args.sync
         kwargs['directive'] = args.directive

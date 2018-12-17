@@ -159,18 +159,6 @@ def test_bucketacl():
     assert rt == 0
 
 
-def test_objectacl():
-    """test objectacl"""
-    gen_file("tmp", 1.1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
-    assert rt == 0
-    os.remove("tmp")
-    rt = os.system("python coscmd/cos_cmd.py putobjectacl tmp --grant-read anyone --grant-write anyone --grant-full-control anyone")
-    assert rt == 0
-    rt = os.system("python coscmd/cos_cmd.py getobjectacl tmp")
-    assert rt == 0
-
-
 def test_folder():
     """test objectacl"""
     try:
