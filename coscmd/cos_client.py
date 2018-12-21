@@ -727,7 +727,7 @@ class Interface(object):
                 logger.warn("Http_haeder parse error.")
                 logger.warn(e)
                 return -1
-            kwargs = mapped(_http_headers)
+            kwargs = mapped(_http_header)
             rt = self._client.copy(Bucket=self._conf._bucket,
                                    Key=cos_path,
                                    CopySource=copy_source,
@@ -863,7 +863,7 @@ class Interface(object):
         self._fail_num = self._file_num - self._have_finished
         if not _versions:
             logger.info(u"{files} files successful, {fail_files} files failed"
-                    .format(files=self._have_finished, fail_files=self._fail_num))
+                        .format(files=self._have_finished, fail_files=self._fail_num))
         if self._file_num == self._have_finished:
             return True
         else:
