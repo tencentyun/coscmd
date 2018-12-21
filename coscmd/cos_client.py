@@ -361,7 +361,12 @@ class Interface(object):
             local_path=local_path,
             cos_path=cos_path))
         _md5 = ""
-        _http_header = yaml.safe_load(_http_headers)
+        try:
+            _http_header = yaml.safe_load(_http_headers)
+        except Exception as e:
+            logger.warn("Http_haeder parse error.")
+            logger.warn(e)
+            return -1
         for rule in kwargs['ignore']:
             if fnmatch.fnmatch(local_path, rule) is True:
                 logger.info(u"This file matches the ignore rule, skip upload")
@@ -579,7 +584,13 @@ class Interface(object):
             local_path=local_path,
             cos_path=cos_path))
         _md5 = ""
-        _http_header = yaml.safe_load(_http_headers)
+        try:
+            _http_header = yaml.safe_load(_http_headers)
+        except Exception as e:
+            logger.warn("Http_haeder parse error.")
+            logger.warn(e)
+            return -1
+
         for rule in kwargs['ignore']:
             if fnmatch.fnmatch(local_path, rule) is True:
                 logger.info(u"This file matches the ignore rule, skip upload")
@@ -710,8 +721,13 @@ class Interface(object):
                 src_path=copy_source['Key'],
                 dst_bucket=self._conf._bucket,
                 dst_path=cos_path))
-            _http_headers = yaml.safe_load(_http_headers)
-            kwargs = mapped(_http_headers)
+            try:
+                _http_header = yaml.safe_load(_http_headers)
+            except Exception as e:
+                logger.warn("Http_haeder parse error.")
+                logger.warn(e)
+                return -1
+            kwargs = mapped(_http_header)
             rt = self._client.copy(Bucket=self._conf._bucket,
                                    Key=cos_path,
                                    CopySource=copy_source,
@@ -730,10 +746,6 @@ class Interface(object):
         cos_path = to_unicode(cos_path)
         if cos_path == "/":
             cos_path = ""
-        # make sure
-        if _force is False:
-            if query_yes_no(u"WARN: you are deleting all files under cos_path '{cos_path}', please make sure".format(cos_path=cos_path)) is False:
-                return False
         kwargs['force'] = True
         self._have_finished = 0
         self._fail_num = 0
@@ -849,8 +861,9 @@ class Interface(object):
             return False
         self.delete_folder_redo(cos_path, **kwargs)
         self._fail_num = self._file_num - self._have_finished
-        logger.info(u"{files} files successful, {fail_files} files failed"
-                    .format(files=self._have_finished, fail_files=self._fail_num))
+        if not _versions:
+            logger.info(u"{files} files successful, {fail_files} files failed"
+                        .format(files=self._have_finished, fail_files=self._fail_num))
         if self._file_num == self._have_finished:
             return True
         else:
