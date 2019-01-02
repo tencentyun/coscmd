@@ -740,7 +740,9 @@ class Interface(object):
             return -1
 
     def delete_folder(self, cos_path, **kwargs):
-
+        if kwargs['force'] is False:
+            if query_yes_no(u"WARN: you are deleting the file in the '{cos_path}' cos_path, please make sure".format(cos_path=cos_path)) is False:
+                return False
         _force = kwargs['force']
         _versions = kwargs['versions']
         cos_path = to_unicode(cos_path)
@@ -1788,8 +1790,6 @@ class Interface(object):
         _force = kwargs["force"]
         try:
             if _force:
-                if query_yes_no(u"!!!WARN: you are deleting bucket including all objects under this bucket', please make sure!!!") is False:
-                    return False
                 logger.info("Clearing files and upload parts in the bucket")
                 self.abort_parts("")
                 kwargs['versions'] = True
