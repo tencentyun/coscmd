@@ -146,7 +146,7 @@ def load_conf():
         region, endpoint = None, None
         if cp.has_option('common', 'region'):
             region = cp.get('common', 'region')
-        elif pre_region == "" and cp.has_option('common', 'endpoint') is False:
+        elif pre_region == "" and cp.has_option('common', 'endpoint'):
             endpoint = cp.get('common', 'endpoint')
 
         if pre_appid != "":
