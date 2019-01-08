@@ -95,80 +95,84 @@ def load_conf():
     else:
         logger.debug('{conf} is found'.format(conf=to_printable_str(conf_path)))
 
-    with open(conf_path, 'r') as f:
-        cp = SafeConfigParser()
-        cp.readfp(fp=f)
-        if cp.has_option('common', 'part_size'):
-            part_size = cp.getint('common', 'part_size')
-        else:
-            part_size = 1
-
-        if cp.has_option('common', 'max_thread'):
-            max_thread = cp.getint('common', 'max_thread')
-        else:
-            max_thread = 5
-        try:
-            secret_id = cp.get('common', 'secret_id')
-        except Exception:
-            secret_id = cp.get('common', 'access_id')
-        try:
-            appid = cp.get('common', 'appid')
-            bucket = cp.get('common', 'bucket')
-            if bucket.endswith("-"+str(appid)):
-                bucket = bucket.rstrip(appid)
-                bucket = bucket[:-1]
-        except Exception:
-            try:
-                bucket = cp.get('common', 'bucket')
-                appid = bucket.split('-')[-1]
-                bucket = bucket.rstrip(appid)
-                bucket = bucket[:-1]
-            except Exception:
-                # check if user use -b bucket
-                if (pre_bucket == ""):
-                    logger.error("The configuration file is wrong. Please reconfirm")
-        try:
-            schema = cp.get('common', 'schema')
-        except:
-            schema = 'https'
-        try:
-            verify = cp.get('common', 'verify')
-        except:
-            verify = 'md5'
-        try:
-            anonymous = cp.get('common', 'anonymous')
-            if anonymous == 'True' or anonymous == 'true':
-                anonymous = True
+    try:
+        with open(conf_path, 'r') as f:
+            cp = SafeConfigParser()
+            cp.readfp(fp=f)
+            if not cp.has_section('common'):
+                raise Exception("[common] section could't be found, please check your config file.")
+            if cp.has_option('common', 'part_size'):
+                part_size = cp.getint('common', 'part_size')
             else:
+                part_size = 1
+            if cp.has_option('common', 'max_thread'):
+                max_thread = cp.getint('common', 'max_thread')
+            else:
+                max_thread = 5
+            try:
+                secret_id = cp.get('common', 'secret_id')
+            except Exception:
+                secret_id = cp.get('common', 'access_id')
+            try:
+                appid = cp.get('common', 'appid')
+                bucket = cp.get('common', 'bucket')
+                if bucket.endswith("-"+str(appid)):
+                    bucket = bucket.rstrip(appid)
+                    bucket = bucket[:-1]
+            except Exception:
+                try:
+                    bucket = cp.get('common', 'bucket')
+                    appid = bucket.split('-')[-1]
+                    bucket = bucket.rstrip(appid)
+                    bucket = bucket[:-1]
+                except Exception:
+                    # check if user use -b bucket
+                    if (pre_bucket == ""):
+                        logger.error("The configuration file is wrong. Please reconfirm")
+            try:
+                schema = cp.get('common', 'schema')
+            except:
+                schema = 'https'
+            try:
+                verify = cp.get('common', 'verify')
+            except:
+                verify = 'md5'
+            try:
+                anonymous = cp.get('common', 'anonymous')
+                if anonymous == 'True' or anonymous == 'true':
+                    anonymous = True
+                else:
+                    anonymous = False
+            except:
                 anonymous = False
-        except:
-            anonymous = False
-        region, endpoint = None, None
-        if cp.has_option('common', 'region'):
-            region = cp.get('common', 'region')
-        elif pre_region == "" and cp.has_option('common', 'endpoint'):
-            endpoint = cp.get('common', 'endpoint')
-
-        if pre_appid != "":
-            appid = pre_appid
-        if pre_bucket != "":
-            bucket = pre_bucket
-        if pre_region != "":
-            region = pre_region
-        conf = CoscmdConfig(
-            appid=appid,
-            secret_id=secret_id,
-            secret_key=cp.get('common', 'secret_key'),
-            region=compatible(region),
-            endpoint=endpoint,
-            bucket=bucket,
-            part_size=part_size,
-            max_thread=max_thread,
-            schema=schema,
-            anonymous=anonymous,
-            verify=verify
-        )
-        return conf
+            region, endpoint = None, None
+            if cp.has_option('common', 'region'):
+                region = cp.get('common', 'region')
+            elif pre_region == "" and cp.has_option('common', 'endpoint'):
+                endpoint = cp.get('common', 'endpoint')
+            if pre_appid != "":
+                appid = pre_appid
+            if pre_bucket != "":
+                bucket = pre_bucket
+            if pre_region != "":
+                region = pre_region
+            conf = CoscmdConfig(
+                appid=appid,
+                secret_id=secret_id,
+                secret_key=cp.get('common', 'secret_key'),
+                region=compatible(region),
+                endpoint=endpoint,
+                bucket=bucket,
+                part_size=part_size,
+                max_thread=max_thread,
+                schema=schema,
+                anonymous=anonymous,
+                verify=verify
+            )
+            return conf
+    except Exception as e:
+        logger.warn(e)
+        return None
 
 
 class Op(object):
