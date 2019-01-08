@@ -33,7 +33,7 @@ else:
 logger = logging.getLogger("coscmd")
 # logger_sdk = logging.getLogger("qcloud_cos.cos_client")
 # handle_sdk = logging.StreamHandler()
-# handle_sdk.setLevel(logging.ERROR)
+# handle_sdk.setLevel(logging.WARN)
 # logger_sdk.addHandler(handle_sdk)
 
 
@@ -672,7 +672,7 @@ class Interface(object):
                     break
                 except Exception as e:
                     time.sleep(1 << i)
-                    logger.warn(e)
+                    logger.warn(e.get_origin_msg())
                 if i + 1 == self._retry:
                     return -1
         self._inner_threadpool.wait_completion()
@@ -715,19 +715,20 @@ class Interface(object):
         copy_source['Bucket'] = source_path[0]
         copy_source['Region'] = source_path[2]
         copy_source['Key'] = '.'.join(source_path[4:])[len("com/"):]
+
+        logger.info(u"Copy cos://{src_bucket}/{src_path}   =>   cos://{dst_bucket}/{dst_path}".format(
+            src_bucket=copy_source['Bucket'],
+            src_path=copy_source['Key'],
+            dst_bucket=self._conf._bucket,
+            dst_path=cos_path))
         try:
-            logger.info(u"Copy cos://{src_bucket}/{src_path}   =>   cos://{dst_bucket}/{dst_path}".format(
-                src_bucket=copy_source['Bucket'],
-                src_path=copy_source['Key'],
-                dst_bucket=self._conf._bucket,
-                dst_path=cos_path))
-            try:
-                _http_header = yaml.safe_load(_http_headers)
-            except Exception as e:
-                logger.warn("Http_haeder parse error.")
-                logger.warn(e)
-                return -1
+            _http_header = yaml.safe_load(_http_headers)
             kwargs = mapped(_http_header)
+        except Exception as e:
+            logger.warn("Http_haeder parse error.")
+            logger.warn(e)
+            return -1
+        try:
             rt = self._client.copy(Bucket=self._conf._bucket,
                                    Key=cos_path,
                                    CopySource=copy_source,
@@ -736,7 +737,7 @@ class Interface(object):
                                    MAXThread=self._conf._max_thread, **kwargs)
             return 0
         except Exception as e:
-            logger.warn(e)
+            logger.warn(e.get_origin_msg())
             return -1
 
     def delete_folder(self, cos_path, **kwargs):
@@ -775,7 +776,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warn(e)
+                        logger.warn(e.get_origin_msg())
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -831,7 +832,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warn(e)
+                        logger.warn(e.get_origin_msg())
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -899,7 +900,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warn(e)
+                        logger.warn(e.get_origin_msg())
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -950,7 +951,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warn(e)
+                        logger.warn(e.get_origin_msg())
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -1155,7 +1156,7 @@ class Interface(object):
                             break
                         except Exception as e:
                             time.sleep(1 << i)
-                            logger.warn(e)
+                            logger.warn(e.get_origin_msg())
                         if i + 1 == self._retry:
                             return -1
                     if 'IsTruncated' in rt:
@@ -1237,7 +1238,7 @@ class Interface(object):
                             break
                         except Exception as e:
                             time.sleep(1 << i)
-                            logger.warn(e)
+                            logger.warn(e.get_origin_msg())
                         if i + 1 == self._retry:
                             return -1
                     if 'IsTruncated' in rt:
@@ -1308,6 +1309,7 @@ class Interface(object):
                 print(table)
             return 0
         except Exception as e:
+            # head请求没有xml body
             logger.warn(str(e))
         return -1
 
@@ -1645,7 +1647,7 @@ class Interface(object):
                     break
                 except Exception as e:
                     time.sleep(1 << i)
-                    logger.warn(e)
+                    logger.warn(e.get_origin_msg())
                 if i + 1 == self._retry:
                     return -1
             if 'IsTruncated' in rt:
@@ -1692,12 +1694,12 @@ class Interface(object):
             return 0
         except Exception as e:
             if e.get_status_code() == 409 and e.get_error_code() == 'RestoreAlreadyInProgress':
-                logger.warn("cos://{bucket}/{path} already in pogress".format(
+                logger.warn(u"cos://{bucket}/{path} already in pogress".format(
                         bucket=self._conf._bucket,
                         path=cos_path
                 ))
                 return -2
-            logger.warn(e)
+            logger.warn(e.get_origin_msg())
             return -1
 
     def put_object_acl(self, grant_read, grant_write, grant_full_control, cos_path):
