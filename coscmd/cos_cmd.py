@@ -270,14 +270,14 @@ class Op(object):
                     args.cos_path += '/'
                 if args.cos_path == '/':
                     args.cos_path = ''
-                if Interface.delete_folder(args.cos_path, **kwargs):
+                if not Interface.delete_folder(args.cos_path, **kwargs):
                     logger.debug("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)))
                     return 0
                 else:
                     logger.debug("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)))
                     return -1
             else:
-                if Interface.delete_file(args.cos_path, **kwargs):
+                if not Interface.delete_file(args.cos_path, **kwargs):
                     logger.debug("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)))
                     return 0
                 else:
@@ -335,7 +335,7 @@ class Op(object):
         kwargs['human'] = args.human
         kwargs['versions'] = args.versions
         try:
-            if Interface.list_objects(cos_path=args.cos_path, **kwargs):
+            if not Interface.list_objects(cos_path=args.cos_path, **kwargs):
                 return 0
             else:
                 return -1
@@ -382,7 +382,7 @@ class Op(object):
         if not isinstance(args. cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
         Interface = client.op_int()
-        if Interface.info_object(args.cos_path, _human=args.human):
+        if not Interface.info_object(args.cos_path, _human=args.human):
             return 0
         else:
             return -1
@@ -397,10 +397,19 @@ class Op(object):
         if not isinstance(args. cos_path, text_type):
             args.cos_path = args.cos_path.decode(fs_coding)
         Interface = client.op_int()
-        if Interface.restore_object(cos_path=args.cos_path, _day=args.day, _tier=args.tier):
-            return 0
+        kwargs = {}
+        kwargs['day'] = args.day
+        kwargs['tier'] = args.tier
+        if args.recursive:
+            if not Interface.restore_folder(cos_path=args.cos_path, **kwargs):
+                return 0
+            else:
+                return -1
         else:
-            return -1
+            if not Interface.restore_file(cos_path=args.cos_path, **kwargs):
+                return 0
+            else:
+                return -1
 
     @staticmethod
     def signurl(args):
@@ -644,6 +653,7 @@ def command_thread():
 
     parser_restore = sub_parser.add_parser("restore", help="Restore")
     parser_restore.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
+    parser_restore.add_argument('-r', '--recursive', help="Restore files recursively, WARN: all files with the prefix will be deleted!", action="store_true", default=False)
     parser_restore.add_argument('-d', '--day', help='Specify lifetime of the restored (active) copy', type=int, default=7)
     parser_restore.add_argument('-t', '--tier', help='Specify the data access tier', type=str, choices=['Expedited', 'Standard', 'Bulk'], default='Standard')
     parser_restore.set_defaults(func=Op.restore)

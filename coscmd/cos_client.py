@@ -31,10 +31,10 @@ else:
     from cos_comm import to_bytes, to_unicode, get_file_md5, mapped
 
 logger = logging.getLogger("coscmd")
-logger_sdk = logging.getLogger("qcloud_cos.cos_client")
-handle_sdk = logging.StreamHandler()
-handle_sdk.setLevel(logging.WARN)
-logger_sdk.addHandler(handle_sdk)
+# logger_sdk = logging.getLogger("qcloud_cos.cos_client")
+# handle_sdk = logging.StreamHandler()
+# handle_sdk.setLevel(logging.ERROR)
+# logger_sdk.addHandler(handle_sdk)
 
 
 def to_printable_str(s):
@@ -674,7 +674,7 @@ class Interface(object):
                     time.sleep(1 << i)
                     logger.warn(e)
                 if i + 1 == self._retry:
-                    return False
+                    return -1
         self._inner_threadpool.wait_completion()
         result = self._inner_threadpool.get_result()
         for worker in result['detail']:
@@ -777,7 +777,7 @@ class Interface(object):
                         time.sleep(1 << i)
                         logger.warn(e)
                     if i + 1 == self._retry:
-                        return False
+                        return -1
                 if 'IsTruncated' in rt:
                     IsTruncated = rt['IsTruncated']
                 if 'NextKeyMarker' in rt:
@@ -816,6 +816,7 @@ class Interface(object):
                                             msg=file['Message']))
         else:
             NextMarker = "/"
+            IsTruncated = "true"
             while IsTruncated == "true":
                 deleteList = {}
                 deleteList['Object'] = []
@@ -832,7 +833,7 @@ class Interface(object):
                         time.sleep(1 << i)
                         logger.warn(e)
                     if i + 1 == self._retry:
-                        return False
+                        return -1
                 if 'IsTruncated' in rt:
                     IsTruncated = rt['IsTruncated']
                 if 'NextMarker' in rt:
@@ -860,16 +861,16 @@ class Interface(object):
         logger.info(u"Delete the remaining files again")
         if self._file_num == 0:
             logger.info(u"The directory does not exist")
-            return False
+            return -1
         self.delete_folder_redo(cos_path, **kwargs)
         self._fail_num = self._file_num - self._have_finished
         if not _versions:
             logger.info(u"{files} files successful, {fail_files} files failed"
                         .format(files=self._have_finished, fail_files=self._fail_num))
         if self._file_num == self._have_finished:
-            return True
+            return 0
         else:
-            return False
+            return -1
 
     def delete_folder_redo(self, cos_path, **kwargs):
         _force = kwargs['force']
@@ -900,7 +901,7 @@ class Interface(object):
                         time.sleep(1 << i)
                         logger.warn(e)
                     if i + 1 == self._retry:
-                        return False
+                        return -1
                 if 'IsTruncated' in rt:
                     IsTruncated = rt['IsTruncated']
                 if 'NextKeyMarker' in rt:
@@ -951,7 +952,7 @@ class Interface(object):
                         time.sleep(1 << i)
                         logger.warn(e)
                     if i + 1 == self._retry:
-                        return False
+                        return -1
                 if 'IsTruncated' in rt:
                     IsTruncated = rt['IsTruncated']
                 if 'NextMarker' in rt:
@@ -975,11 +976,12 @@ class Interface(object):
                             logger.info(u"Delete {file}, versionId: {versionId} fail".format(
                                 file=file['Key'],
                                 versionId=file['VersionId']))
+        return 0
 
     def delete_file(self, cos_path, **kwargs):
         if kwargs['force'] is False:
             if query_yes_no(u"WARN: you are deleting the file in the '{cos_path}' cos_path, please make sure".format(cos_path=cos_path)) is False:
-                return False
+                return -1
         _versionId = kwargs["versionId"]
         url = self._conf.uri(path="{path}?versionId={versionId}"
                              .format(path=quote(to_printable_str(cos_path)), versionId=_versionId))
@@ -998,14 +1000,14 @@ class Interface(object):
                         bucket=self._conf._bucket,
                         cos_path=cos_path,
                         versionId=_versionId))
-                return True
+                return 0
             else:
                 logger.warn(response_info(rt))
-                return False
+                return -1
         except Exception as e:
             logger.warn(str(e))
-            return False
-        return False
+            return -1
+        return -1
 
     def list_multipart(self, cos_path):
         NextMarker = ""
@@ -1155,7 +1157,7 @@ class Interface(object):
                             time.sleep(1 << i)
                             logger.warn(e)
                         if i + 1 == self._retry:
-                            return False
+                            return -1
                     if 'IsTruncated' in rt:
                         IsTruncated = rt['IsTruncated']
                     if 'NextKeyMarker' in rt:
@@ -1213,7 +1215,7 @@ class Interface(object):
                 if _all is False and self._file_num == _num:
                     logger.info(
                         u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
-                return True
+                return 0
             else:
                 NextMarker = ""
                 while IsTruncated == "true":
@@ -1237,7 +1239,7 @@ class Interface(object):
                             time.sleep(1 << i)
                             logger.warn(e)
                         if i + 1 == self._retry:
-                            return False
+                            return -1
                     if 'IsTruncated' in rt:
                         IsTruncated = rt['IsTruncated']
                     if 'NextMarker' in rt:
@@ -1282,7 +1284,7 @@ class Interface(object):
                 if _all is False and self._file_num == _num:
                     logger.info(
                         u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
-                return True
+                return 0
         except Exception as e:
             print(e)
 
@@ -1304,10 +1306,10 @@ class Interface(object):
                 print(unicode(table))
             except Exception as e:
                 print(table)
-            return True
+            return 0
         except Exception as e:
             logger.warn(str(e))
-        return False
+        return -1
 
     def download_folder(self, cos_path, local_path, **kwargs):
 
@@ -1623,34 +1625,80 @@ class Interface(object):
         except Exception as e:
             logger.warn(e)
 
-    def restore_object(self, cos_path, _day, _tier):
-        url = self._conf.uri(path=quote(
-            to_printable_str(cos_path)) + "?restore")
-        data_xml = '''<RestoreRequest>
-   <Days>{day}</Days>
-   <CASJobParameters>
-     <Tier>{tier}</Tier>
-   </CASJobParameters>
-</RestoreRequest>'''.format(day=_day, tier=_tier)
-        http_header = dict()
-        now = datetime.datetime.now()
-        stamp = time.mktime(now.timetuple())
-        http_header['Date'] = format_date_time(stamp)
+    def restore_folder(self, cos_path, **kwargs):
+        self._inner_threadpool = SimpleThreadPool(self._conf._max_thread)
+        _success_num = 0
+        _progress_num = 0
+        _fail_num = 0
+        NextMarker = "/"
+        IsTruncated = "true"
+        while IsTruncated == "true":
+            restoreList = []
+            for i in range(self._retry):
+                try:
+                    rt = self._client.list_objects(
+                        Bucket=self._conf._bucket,
+                        Marker=NextMarker,
+                        MaxKeys=1000,
+                        Prefix=cos_path,
+                    )
+                    break
+                except Exception as e:
+                    time.sleep(1 << i)
+                    logger.warn(e)
+                if i + 1 == self._retry:
+                    return -1
+            if 'IsTruncated' in rt:
+                IsTruncated = rt['IsTruncated']
+            if 'NextMarker' in rt:
+                NextMarker = rt['NextMarker']
+            if 'Contents' in rt:
+                for _file in rt['Contents']:
+                    _path = _file['Key']
+                    self._inner_threadpool.add_task(self.restore_file, _path, **kwargs)
+
+        self._inner_threadpool.wait_completion()
+        result = self._inner_threadpool.get_result()
+        for worker in result['detail']:
+            for status in worker[2]:
+                if 0 == status:
+                    _success_num += 1
+                elif -2 == status:
+                    _progress_num += 1
+                else:
+                    _fail_num += 1
+        logger.info(u"{success_files} files successful, {progress_files} files have in progress, {fail_files} files failed"
+                    .format(success_files=_success_num, progress_files=_progress_num, fail_files=_fail_num))
+        if _fail_num == 0:
+            return 0
+        else:
+            return -1
+
+    def restore_file(self, cos_path, **kwargs):
+        _tier = kwargs['tier']
+        _day = kwargs['day']
+        restore_request = {}
+        restore_request['Days'] = _day
+        restore_request['CASJobParameters'] = {'Tier': _tier}
         try:
-            rt = self._session.post(url=url, auth=CosS3Auth(
-                self._conf), data=data_xml, headers=http_header)
-            logger.debug(u"init resp, status code: {code}, headers: {headers}".format(
-                code=rt.status_code,
-                headers=rt.headers))
-            if rt.status_code == 202 or rt.status_code == 200:
-                return True
-            else:
-                logger.warn(response_info(rt))
-                return False
+            logger.info(u"Restore cos://{bucket}/{path}".format(
+                bucket=self._conf._bucket,
+                path=cos_path
+                ))
+            rt = self._client.restore_object(
+                              Bucket=self._conf._bucket,
+                              Key=cos_path,
+                              RestoreRequest=restore_request)
+            return 0
         except Exception as e:
-            logger.warn(str(e))
-            return False
-        return False
+            if e.get_status_code() == 409 and e.get_error_code() == 'RestoreAlreadyInProgress':
+                logger.warn("cos://{bucket}/{path} already in pogress".format(
+                        bucket=self._conf._bucket,
+                        path=cos_path
+                ))
+                return -2
+            logger.warn(e)
+            return -1
 
     def put_object_acl(self, grant_read, grant_write, grant_full_control, cos_path):
         acl = []
