@@ -641,7 +641,7 @@ class Interface(object):
         _skip_num = 0
         _fail_num = 0
         self._inner_threadpool = SimpleThreadPool(self._conf._max_thread)
-        NextMarker = "/"
+        NextMarker = ""
         IsTruncated = "true"
         source_schema = source_path.split('/')[0] + '/'
         source_path = source_path[len(source_schema):]
@@ -755,8 +755,8 @@ class Interface(object):
         NextMarker = ""
         IsTruncated = "true"
         if _versions:
-            NextMarker = "/"
-            NextVersionMarker = "/"
+            NextMarker = ""
+            NextVersionMarker = ""
             KeyMarker = ""
             VersionIdMarker = ""
             while IsTruncated == "true":
@@ -816,7 +816,7 @@ class Interface(object):
                                             code=file['Code'],
                                             msg=file['Message']))
         else:
-            NextMarker = "/"
+            NextMarker = ""
             IsTruncated = "true"
             while IsTruncated == "true":
                 deleteList = {}
@@ -843,26 +843,28 @@ class Interface(object):
                     for _file in rt['Contents']:
                         _path = _file['Key']
                         deleteList['Object'].append({'Key': _path})
-                if len(deleteList['Object']) > 0:
-                    rt = self._client.delete_objects(Bucket=self._conf._bucket,
-                                                     Delete=deleteList)
-                if 'Deleted' in rt:
-                    self._have_finished += len(rt['Deleted'])
-                    self._file_num += len(rt['Deleted'])
-                    for file in rt['Deleted']:
-                        logger.info(u"Delete {file}".format(file=file['Key']))
-                if 'Error' in rt:
-                    self._file_num += len(rt['Error'])
-                    for file in rt['Error']:
-                        logger.info(u"Delete {file} fail, code: {code}, msg: {msg}"
-                                    .format(file=file['Key'],
-                                            code=file['Code'],
-                                            msg=file['Message']))
+                self._file_num += len(deleteList['Object'])
+                try:
+                    if len(deleteList['Object']) > 0:
+                        rt = self._client.delete_objects(Bucket=self._conf._bucket,
+                                                         Delete=deleteList)
+                    if 'Deleted' in rt:
+                        self._have_finished += len(rt['Deleted'])
+                        for file in rt['Deleted']:
+                            logger.info(u"Delete {file}".format(file=file['Key']))
+                    if 'Error' in rt:
+                        for file in rt['Error']:
+                            logger.info(u"Delete {file} fail, code: {code}, msg: {msg}"
+                                        .format(file=file['Key'],
+                                                code=file['Code'],
+                                                msg=file['Message']))
+                except Exception as e:
+                    pass
         # delete the remaining files
-        logger.info(u"Delete the remaining files again")
         if self._file_num == 0:
             logger.info(u"The directory does not exist")
             return -1
+        logger.info(u"Delete the remaining files again")
         self.delete_folder_redo(cos_path, **kwargs)
         self._fail_num = self._file_num - self._have_finished
         if not _versions:
@@ -882,8 +884,8 @@ class Interface(object):
         NextMarker = ""
         IsTruncated = "true"
         if _versions:
-            NextMarker = "/"
-            NextVersionMarker = "/"
+            NextMarker = ""
+            NextVersionMarker = ""
             KeyMarker = ""
             VersionIdMarker = ""
             while IsTruncated == "true":
@@ -937,7 +939,7 @@ class Interface(object):
                                 file=file['Key'],
                                 versionId=file['VersionId']))
         else:
-            NextMarker = "/"
+            NextMarker = ""
             while IsTruncated == "true":
                 deleteList = []
                 for i in range(self._retry):
@@ -967,16 +969,13 @@ class Interface(object):
                         try:
                             self._client.delete_object(
                                 Bucket=self._conf._bucket,
-                                Key=file['Key'],
-                                VersionId=file['VersionId'])
+                                Key=file['Key'])
                             self._have_finished += 1
-                            logger.info(u"Delete {file}, versionId: {versionId}".format(
-                                file=file['Key'],
-                                versionId=file['VersionId']))
+                            logger.info(u"Delete {file}".format(
+                                file=file['Key']))
                         except Exception:
-                            logger.info(u"Delete {file}, versionId: {versionId} fail".format(
-                                file=file['Key'],
-                                versionId=file['VersionId']))
+                            logger.info(u"Delete {file} fail".format(
+                                file=file['Key']))
         return 0
 
     def delete_file(self, cos_path, **kwargs):
@@ -1632,7 +1631,7 @@ class Interface(object):
         _success_num = 0
         _progress_num = 0
         _fail_num = 0
-        NextMarker = "/"
+        NextMarker = ""
         IsTruncated = "true"
         while IsTruncated == "true":
             restoreList = []
