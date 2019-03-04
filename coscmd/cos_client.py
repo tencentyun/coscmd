@@ -636,6 +636,28 @@ class Interface(object):
         else:
             return self.multipart_upload(local_path, cos_path, _http_headers, **kwargs)
 
+    def check_copy_source_format(self, path):
+        try:
+            path_list = path.split('.')
+            if len(path_list) < 5:
+                return -1
+            if path_list[0].find("-") == -1:
+                logger.debug("Do not find -")
+                return -1
+            if path_list[1] != "cos":
+                logger.debug("Do not find .cos.")
+                return -1
+            if path_list[3] != "myqcloud":
+                logger.debug("Do not find myqcloud")
+                return -1
+            if not path_list[4].startswith("com/"):
+                logger.debug("Do not find .com/")
+                return -1
+        except Exception as e:
+            logger.warn(e)
+            return -1
+        return 0
+
     def copy_folder(self, source_path, cos_path, _http_headers='{}', **kwargs):
         _success_num = 0
         _skip_num = 0
@@ -643,13 +665,27 @@ class Interface(object):
         self._inner_threadpool = SimpleThreadPool(self._conf._max_thread)
         NextMarker = ""
         IsTruncated = "true"
+        if self.check_copy_source_format(source_path) != 0:
+            logger.warn(u"Source_path {source_path} format is invalid, please check again".format(source_path=source_path))
+            return -1
         source_schema = source_path.split('/')[0] + '/'
+        source_bucket = source_path.split('.')[0]
+        source_region = source_path.split('.')[2]
         source_path = source_path[len(source_schema):]
+        try:
+            sdk_config_source = qcloud_cos.CosConfig(Region=source_region,
+                                                     SecretId=self._conf._secret_id,
+                                                     SecretKey=self._conf._secret_key,
+                                                     Scheme=self._conf._schema,
+                                                     Anonymous=self._conf._anonymous)
+            self._client_source = qcloud_cos.CosS3Client(sdk_config_source)
+        except Exception as e:
+            pass
         while IsTruncated == "true":
             for i in range(self._retry):
                 try:
-                    rt = self._client.list_objects(
-                        Bucket=self._conf._bucket,
+                    rt = self._client_source.list_objects(
+                        Bucket=source_bucket,
                         Marker=NextMarker,
                         MaxKeys=1000,
                         Delimiter="",
@@ -673,8 +709,8 @@ class Interface(object):
                 except Exception as e:
                     time.sleep(1 << i)
                     logger.warn(e.get_origin_msg())
-                if i + 1 == self._retry:
-                    return -1
+            if i + 1 == self._retry:
+                break
         self._inner_threadpool.wait_completion()
         result = self._inner_threadpool.get_result()
         for worker in result['detail']:
@@ -693,7 +729,6 @@ class Interface(object):
             return -1
 
     def copy_file(self, source_path, cos_path, _http_headers='{}', **kwargs):
-
         _directive = kwargs['directive']
         _sync = kwargs['sync']
         if kwargs['sync'] is True:
@@ -715,7 +750,6 @@ class Interface(object):
         copy_source['Bucket'] = source_path[0]
         copy_source['Region'] = source_path[2]
         copy_source['Key'] = '.'.join(source_path[4:])[len("com/"):]
-
         logger.info(u"Copy cos://{src_bucket}/{src_path}   =>   cos://{dst_bucket}/{dst_path}".format(
             src_bucket=copy_source['Bucket'],
             src_path=copy_source['Key'],
