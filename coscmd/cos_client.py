@@ -680,7 +680,8 @@ class Interface(object):
                                                      Anonymous=self._conf._anonymous)
             self._client_source = qcloud_cos.CosS3Client(sdk_config_source)
         except Exception as e:
-            pass
+            logger.warn(e)
+            return -1
         while IsTruncated == "true":
             for i in range(self._retry):
                 try:
@@ -708,7 +709,7 @@ class Interface(object):
                     break
                 except Exception as e:
                     time.sleep(1 << i)
-                    logger.warn(e.get_origin_msg())
+                    logger.warn(e)
             if i + 1 == self._retry:
                 break
         self._inner_threadpool.wait_completion()
@@ -771,7 +772,7 @@ class Interface(object):
                                    MAXThread=self._conf._max_thread, **kwargs)
             return 0
         except Exception as e:
-            logger.warn(e.get_origin_msg())
+            logger.warn(e)
             return -1
 
     def delete_folder(self, cos_path, **kwargs):
@@ -810,7 +811,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warn(e.get_origin_msg())
+                        logger.warn(e)
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -866,7 +867,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warn(e.get_origin_msg())
+                        logger.warn(e)
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -936,7 +937,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warn(e.get_origin_msg())
+                        logger.warn(e)
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -987,7 +988,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warn(e.get_origin_msg())
+                        logger.warn(e)
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -1189,7 +1190,7 @@ class Interface(object):
                             break
                         except Exception as e:
                             time.sleep(1 << i)
-                            logger.warn(e.get_origin_msg())
+                            logger.warn(e)
                         if i + 1 == self._retry:
                             return -1
                     if 'IsTruncated' in rt:
@@ -1271,7 +1272,7 @@ class Interface(object):
                             break
                         except Exception as e:
                             time.sleep(1 << i)
-                            logger.warn(e.get_origin_msg())
+                            logger.warn(e)
                         if i + 1 == self._retry:
                             return -1
                     if 'IsTruncated' in rt:
@@ -1680,7 +1681,7 @@ class Interface(object):
                     break
                 except Exception as e:
                     time.sleep(1 << i)
-                    logger.warn(e.get_origin_msg())
+                    logger.warn(e)
                 if i + 1 == self._retry:
                     return -1
             if 'IsTruncated' in rt:
@@ -1732,7 +1733,7 @@ class Interface(object):
                         path=cos_path
                 ))
                 return -2
-            logger.warn(e.get_origin_msg())
+            logger.warn(e)
             return -1
 
     def put_object_acl(self, grant_read, grant_write, grant_full_control, cos_path):
