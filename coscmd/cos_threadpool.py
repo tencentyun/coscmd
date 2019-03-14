@@ -44,7 +44,7 @@ class SimpleThreadPool:
 
     def __init__(self, num_threads=5):
         self._num_threads = num_threads
-        self._queue = Queue()
+        self._queue = Queue(2000)
         self._lock = Lock()
         self._active = False
         self._workers = list()

@@ -4,6 +4,7 @@ from os import path
 from contextlib import closing
 from xml.dom import minidom
 from six import text_type
+from six.moves.queue import Queue
 from six.moves.urllib.parse import quote, unquote
 from hashlib import md5, sha1
 import time
@@ -16,6 +17,7 @@ import datetime
 import pytz
 import yaml
 import fnmatch
+from Queue import Queue
 from tqdm import tqdm
 from logging.handlers import RotatingFileHandler
 from wsgiref.handlers import format_date_time
@@ -135,7 +137,9 @@ def change_to_human(_size):
 
 class CoscmdConfig(object):
 
-    def __init__(self, appid, region, endpoint, bucket, secret_id, secret_key, part_size=1, max_thread=5, schema='https', anonymous=False, verify='md5', *args, **kwargs):
+    def __init__(self, appid, region, endpoint, bucket, secret_id, secret_key,
+                 part_size=1, max_thread=5, schema='https', anonymous=False, verify='md5', retry=2,
+                 *args, **kwargs):
         self._appid = appid
         self._region = region
         self._endpoint = endpoint
@@ -148,6 +152,7 @@ class CoscmdConfig(object):
         self._anonymous = anonymous
         self._verify = verify
         self._endpoint = endpoint
+        self._retry = retry
         logger.debug("config parameter-> appid: {appid}, region: {region}, endpoint: {endpoint}, bucket: {bucket}, part_size: {part_size}, max_thread: {max_thread}".format(
             appid=appid,
             region=region,
@@ -198,7 +203,7 @@ class Interface(object):
         self._md5 = {}
         self._have_finished = 0
         self._err_tips = ''
-        self._retry = 2
+        self._retry = conf._retry
         self._file_num = 0
         self._folder_num = 0
         self._fail_num = 0
@@ -294,60 +299,87 @@ class Interface(object):
 
     def upload_folder(self, local_path, cos_path, _http_headers='', **kwargs):
 
-        def recursive_upload_folder(_local_path, _cos_path):
-            _local_path = to_unicode(_local_path)
-            _cos_path = to_unicode(_cos_path)
-            filelist = os.listdir(_local_path)
-            if _cos_path.endswith('/') is False:
-                _cos_path += "/"
-            if _local_path.endswith('/') is False:
-                _local_path += '/'
-            _cos_path = _cos_path.lstrip('/')
-            for filename in filelist:
+        def upload_file_list(upload_filelist):
+            _success_num = 0
+            _skip_num = 0
+            _fail_num = 0
+            self._inner_threadpool = SimpleThreadPool(self._conf._max_thread)
+            multiupload_filelist = []
+            for _path in upload_filelist:
+                _local_path = _path[0]
+                _cos_path = _path[1]
                 try:
-                    filepath = os.path.join(_local_path, filename)
-                    if os.path.isdir(filepath):
-                        recursive_upload_folder(filepath, _cos_path + filename)
+                    file_size = os.path.getsize(_local_path)
+                    if file_size <= self._multiupload_threshold:
+                        self._inner_threadpool.add_task(
+                                self.single_upload,
+                                _local_path,
+                                _cos_path,
+                                _http_headers,
+                                **kwargs)
                     else:
-                        file_size = os.path.getsize(filepath)
-                        if file_size <= self._multiupload_threshold:
-                            self._inner_threadpool.add_task(
-                                self.single_upload, filepath, _cos_path + filename, _http_headers, **kwargs)
-                        else:
-                            multiupload_filelist.append(
-                                [filepath, _cos_path + filename])
+                        multiupload_filelist.append([_local_path, _cos_path])
                 except Exception as e:
-                    self._fail_num += 1
+                    _fail_num += 1
                     logger.warn(e)
-                    logger.warn("Upload {file} error".format(
-                        file=to_printable_str(filename)))
-
-        self._fail_num = 0
-        multiupload_filelist = []
-        self._inner_threadpool = SimpleThreadPool(self._conf._max_thread)
-        recursive_upload_folder(local_path, cos_path)
-        self._inner_threadpool.wait_completion()
-        result = self._inner_threadpool.get_result()
-        _success_num = 0
-        _skip_num = 0
-        _fail_num = self._fail_num
-        for worker in result['detail']:
-            for status in worker[2]:
-                if 0 == status:
+            self._inner_threadpool.wait_completion()
+            result = self._inner_threadpool.get_result()
+            for worker in result['detail']:
+                for status in worker[2]:
+                    if 0 == status:
+                        _success_num += 1
+                    elif -2 == status:
+                        _skip_num += 1
+                    else:
+                        _fail_num += 1
+            for _local_path, _cos_path in multiupload_filelist:
+                rt = self.multipart_upload(
+                    _local_path, _cos_path, _http_headers, **kwargs)
+                if 0 == rt:
                     _success_num += 1
-                elif -2 == status:
+                elif -2 == rt:
                     _skip_num += 1
                 else:
                     _fail_num += 1
-        for _local_path, _cos_path in multiupload_filelist:
-            rt = self.multipart_upload(
-                _local_path, _cos_path, _http_headers, **kwargs)
-            if 0 == rt:
-                _success_num += 1
-            elif -2 == rt:
-                _skip_num += 1
-            else:
-                _fail_num += 1
+            return _success_num, _skip_num, _fail_num
+
+        _success_num = 0
+        _skip_num = 0
+        _fail_num = 0
+        local_path = to_unicode(local_path)
+        cos_path = to_unicode(cos_path)
+        if cos_path.endswith('/') is False:
+            cos_path += "/"
+        if local_path.endswith('/') is False:
+            local_path += '/'
+        cos_path = cos_path.lstrip('/')
+        q = Queue()
+        q.put(local_path)
+        upload_filelist = []
+        try:
+            while(not q.empty()):
+                localpath = q.get()
+                dirlist = os.listdir(localpath)
+                for filename in dirlist:
+                    filepath = os.path.join(localpath, filename)
+                    if os.path.isdir(filepath):
+                        q.put(filepath)
+                    else:
+                        upload_filelist.append([filepath,  cos_path + filename])
+                        if len(upload_filelist) >= 1000:
+                            (_succ, _skip,  _fail) = upload_file_list(upload_filelist)
+                            _success_num += _succ
+                            _skip_num += _skip
+                            _fail_num += _fail
+                            upload_filelist = []
+            if len(upload_filelist) > 0:
+                (_succ, _skip, _fail) = upload_file_list(upload_filelist)
+                _success_num += _succ
+                _skip_num += _skip
+                _fail_num += _fail
+        except Exception as e:
+            logger.warn(e)
+            return -1
         logger.info(u"{success_files} files successful, {skip_files} files skipped, {fail_files} files failed"
                     .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
         if _fail_num == 0:
@@ -397,6 +429,11 @@ class Interface(object):
         url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         for j in range(self._retry):
             try:
+                if j > 0:
+                    logger.info(u"Retry to upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
+                        bucket=self._conf._bucket,
+                        local_path=local_path,
+                        cos_path=cos_path))
                 http_header = _http_header
                 http_header['x-cos-meta-md5'] = _md5
                 rt = self._session.put(url=url,
@@ -408,6 +445,7 @@ class Interface(object):
                     logger.warn(response_info(rt))
                     continue
                 if j + 1 == self._retry:
+                    logger.warn(u"upload file failed")
                     return -1
             except Exception as e:
                 logger.warn(e)
@@ -424,7 +462,7 @@ class Interface(object):
             self._upload_id = None
             self._path_md5 = get_md5_filename(local_path, cos_path)
             logger.debug("init with : " + url)
-            if os.path.isfile(self._path_md5):
+            if kwargs['force'] and os.path.isfile(self._path_md5):
                 with open(self._path_md5, 'rb') as f:
                     self._upload_id = f.read()
                 if self.list_part(cos_path) is True:
@@ -1360,9 +1398,9 @@ class Interface(object):
         _fail_num = 0
         _skip_num = 0
         cos_path = to_unicode(cos_path)
-        multidownload_filelist = []
-        self._inner_threadpool = SimpleThreadPool(self._conf._max_thread)
         while IsTruncated == "true":
+            multidownload_filelist = []
+            self._inner_threadpool = SimpleThreadPool(self._conf._max_thread)
             url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
                                  .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker))))
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
@@ -1397,27 +1435,27 @@ class Interface(object):
             else:
                 logger.warn(response_info(rt))
                 return -1
-        self._inner_threadpool.wait_completion()
-        result = self._inner_threadpool.get_result()
-        for worker in result['detail']:
-            for status in worker[2]:
-                if 0 == status:
-                    _success_num += 1
-                elif -2 == status:
-                    _skip_num += 1
-                else:
-                    _fail_num += 1
-        for _cos_path, _local_path in multidownload_filelist:
-            try:
-                rt = self.multipart_download(_cos_path, _local_path, **kwargs)
-                if 0 == rt:
-                    _success_num += 1
-                elif -2 == rt:
-                    _skip_num += 1
-                else:
-                    _fail_num += 1
-            except Exception as e:
-                print(e)
+            self._inner_threadpool.wait_completion()
+            result = self._inner_threadpool.get_result()
+            for worker in result['detail']:
+                for status in worker[2]:
+                    if 0 == status:
+                        _success_num += 1
+                    elif -2 == status:
+                        _skip_num += 1
+                    else:
+                        _fail_num += 1
+            for _cos_path, _local_path in multidownload_filelist:
+                try:
+                    rt = self.multipart_download(_cos_path, _local_path, **kwargs)
+                    if 0 == rt:
+                        _success_num += 1
+                    elif -2 == rt:
+                        _skip_num += 1
+                    else:
+                        _fail_num += 1
+                except Exception as e:
+                    print(e)
         logger.info(u"{success_files} files successful, {skip_files} files skipped, {fail_files} files failed"
                     .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
         if _fail_num == 0:
@@ -1467,7 +1505,7 @@ class Interface(object):
                 if os.path.isdir(dir_path) is False and dir_path != '':
                     try:
                         os.makedirs(dir_path, 0o755)
-                    except Exception:
+                    except Exception as e:
                         pass
                 try:
                     with open(local_path, 'wb') as f:

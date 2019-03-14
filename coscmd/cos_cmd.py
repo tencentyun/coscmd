@@ -145,6 +145,10 @@ def load_conf():
                     anonymous = False
             except:
                 anonymous = False
+            try:
+                retry = int(cp.get('common', 'retry'))
+            except:
+                retry = 2
             region, endpoint = None, None
             if cp.has_option('common', 'region'):
                 region = cp.get('common', 'region')
@@ -167,7 +171,8 @@ def load_conf():
                 max_thread=max_thread,
                 schema=schema,
                 anonymous=anonymous,
-                verify=verify
+                verify=verify,
+                retry=retry
             )
             return conf
     except Exception as e:
@@ -205,6 +210,7 @@ class Op(object):
         kwargs['sync'] = args.sync
         kwargs['skipmd5'] = args.skipmd5
         kwargs['ignore'] = args.ignore.split(',')
+        kwargs['force'] = args.force
         if args.recursive:
             if os.path.isfile(args.local_path) is True:
                 rt = Interface.upload_file(args.local_path, args.cos_path, args.headers, **kwargs)
@@ -597,6 +603,7 @@ def command_thread():
     parser_upload.add_argument('-r', '--recursive', help="Upload recursively when upload directory", action="store_true", default=False)
     parser_upload.add_argument('-H', '--headers', help="Specify HTTP headers", type=str, default='{}')
     parser_upload.add_argument('-s', '--sync', help="Upload and skip the same file", action="store_true", default=False)
+    parser_upload.add_argument('-f', '--force', help="upload without history breakpoint", action="store_true", default=False)
     parser_upload.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
     parser_upload.add_argument('--skipmd5', help='Upload without x-cos-meta-md5', action="store_true", default=False)
     parser_upload.set_defaults(func=Op.upload)
@@ -657,7 +664,7 @@ def command_thread():
 
     parser_restore = sub_parser.add_parser("restore", help="Restore")
     parser_restore.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
-    parser_restore.add_argument('-r', '--recursive', help="Restore files recursively, WARN: all files with the prefix will be deleted!", action="store_true", default=False)
+    parser_restore.add_argument('-r', '--recursive', help="Restore files recursively", action="store_true", default=False)
     parser_restore.add_argument('-d', '--day', help='Specify lifetime of the restored (active) copy', type=int, default=7)
     parser_restore.add_argument('-t', '--tier', help='Specify the data access tier', type=str, choices=['Expedited', 'Standard', 'Bulk'], default='Standard')
     parser_restore.set_defaults(func=Op.restore)
