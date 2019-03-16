@@ -345,30 +345,33 @@ class Interface(object):
         _success_num = 0
         _skip_num = 0
         _fail_num = 0
-        local_path = to_unicode(local_path)
-        cos_path = to_unicode(cos_path)
-        if cos_path.endswith('/') is False:
-            cos_path += "/"
-        if local_path.endswith('/') is False:
-            local_path += '/'
-        cos_path = cos_path.lstrip('/')
         q = Queue()
-        q.put(local_path)
+        q.put([local_path, cos_path])
+        # 上传文件列表
         upload_filelist = []
+        # BFS上传文件夹
         try:
             while(not q.empty()):
-                localpath = q.get()
-                dirlist = os.listdir(localpath)
+                [local_path, cos_path] = q.get()
+                local_path = to_unicode(local_path)
+                cos_path = to_unicode(cos_path)
+                if cos_path.endswith('/') is False:
+                    cos_path += "/"
+                if local_path.endswith('/') is False:
+                    local_path += '/'
+                cos_path = cos_path.lstrip('/')
+                    # 当前目录下的文件列表
+                dirlist = os.listdir(local_path)
                 for filename in dirlist:
-                    filepath = os.path.join(localpath, filename)
+                    filepath = os.path.join(local_path, filename)
                     if os.path.isdir(filepath):
-                        q.put(filepath)
+                        q.put([filepath, cos_path + filename])
                     else:
                         upload_filelist.append([filepath,  cos_path + filename])
                         if len(upload_filelist) >= 1000:
                             (_succ, _skip,  _fail) = upload_file_list(upload_filelist)
                             _success_num += _succ
-                            _skip_num += _skip
+                            _skip_num + _skip
                             _fail_num += _fail
                             upload_filelist = []
             if len(upload_filelist) > 0:
