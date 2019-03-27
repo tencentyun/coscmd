@@ -360,7 +360,7 @@ class Interface(object):
                 if local_path.endswith('/') is False:
                     local_path += '/'
                 cos_path = cos_path.lstrip('/')
-                    # 当前目录下的文件列表
+                # 当前目录下的文件列表
                 dirlist = os.listdir(local_path)
                 for filename in dirlist:
                     filepath = os.path.join(local_path, filename)
