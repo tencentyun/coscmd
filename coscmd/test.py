@@ -172,6 +172,7 @@ def test_folder():
     assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py upload -rs testfolder testfolder")
     assert rt == 0
+    time.sleep(5)
     rt = os.system("python coscmd/cos_cmd.py download -rf testfolder testfolder")
     assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py download -rsf testfolder testfolder")

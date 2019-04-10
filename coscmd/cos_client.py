@@ -296,7 +296,7 @@ class Interface(object):
             return False
         return True
 
-    def upload_folder(self, local_path, cos_path, _http_headers='', **kwargs):
+    def upload_folder(self, local_path, cos_path, _http_headers='{}', **kwargs):
 
         def upload_file_list(upload_filelist):
             _success_num = 0
@@ -787,10 +787,25 @@ class Interface(object):
             except Exception as e:
                 pass
         copy_source = {}
-        source_path = source_path.split(".")
-        copy_source['Bucket'] = source_path[0]
-        copy_source['Region'] = source_path[2]
-        copy_source['Key'] = '.'.join(source_path[4:])[len("com/"):]
+        try:
+            if self._conf._endpoint != None:
+                source_path = source_path.split("/") 
+                source_tmp_path = source_path[0].split('.')
+                source_key = '.'.join(source_path[1:])
+                copy_source['Bucket'] = source_tmp_path[0]
+                copy_source['Endpoint'] = '.'.join(source_tmp_path[1:])
+                copy_source['Key'] = source_key
+            else:
+                source_path = source_path.split(".")
+                copy_source['Bucket'] = source_path[0]
+                copy_source['Region'] = source_path[2]
+                copy_source['Key'] = '.'.join(source_path[4:])[len("com/"):]
+            logger.debug("CopySource:")
+            logger.debug(copy_source)
+        except Exception as e:
+            logger.warn(e)
+            logger.warn("CopySource format is invalid")
+            return -1
         logger.info(u"Copy cos://{src_bucket}/{src_path}   =>   cos://{dst_bucket}/{dst_path}".format(
             src_bucket=copy_source['Bucket'],
             src_path=copy_source['Key'],
@@ -1387,7 +1402,7 @@ class Interface(object):
             logger.warn(str(e))
         return -1
 
-    def download_folder(self, cos_path, local_path, **kwargs):
+    def download_folder(self, cos_path, local_path, _http_headers='{}', **kwargs):
 
         if cos_path.endswith('/') is False:
             cos_path += '/'
@@ -1427,7 +1442,7 @@ class Interface(object):
                             continue
                         if _size <= self._multidownload_threshold:
                             self._inner_threadpool.add_task(
-                                self.single_download, _cos_path, _local_path, **kwargs)
+                                self.single_download, _cos_path, _local_path, _http_headers, **kwargs)
                         else:
                             multidownload_filelist.append(
                                 [_cos_path, _local_path])
@@ -1449,7 +1464,7 @@ class Interface(object):
                         _fail_num += 1
             for _cos_path, _local_path in multidownload_filelist:
                 try:
-                    rt = self.multipart_download(_cos_path, _local_path, **kwargs)
+                    rt = self.multipart_download(_cos_path, _local_path, _http_headers, **kwargs)
                     if 0 == rt:
                         _success_num += 1
                     elif -2 == rt:
@@ -1466,7 +1481,13 @@ class Interface(object):
             return -1
 
     # 简单下载
-    def single_download(self, cos_path, local_path, **kwargs):
+    def single_download(self, cos_path, local_path, _http_headers='{}', **kwargs):
+        try:
+            _http_header = yaml.safe_load(_http_headers)
+        except Exception as e:
+            logger.warn("Http_haeder parse error.")
+            logger.warn(e)
+            return -1 
         cos_path = cos_path.lstrip('/')
         logger.info(u"Download cos://{bucket}/{cos_path}   =>   {local_path}".format(
             bucket=self._conf._bucket,
@@ -1493,7 +1514,7 @@ class Interface(object):
         url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         try:
             rt = self._session.get(
-                url=url, auth=CosS3Auth(self._conf), stream=True)
+                url=url, headers=_http_header, auth=CosS3Auth(self._conf), stream=True)
             logger.debug("get resp, status code: {code}, headers: {headers}".format(
                 code=rt.status_code,
                 headers=rt.headers))
@@ -1530,14 +1551,14 @@ class Interface(object):
         return 0
 
     # 分块下载
-    def multipart_download(self, cos_path, local_path, **kwargs):
+    def multipart_download(self, cos_path, local_path, _http_headers='{}', **kwargs):
 
         def get_parts_data(local_path, offset, length, parts_size, idx):
             local_path = local_path + "_" + str(idx)
             for j in range(self._retry):
                 try:
                     time.sleep(1 << j)
-                    http_header = {}
+                    http_header = _http_header
                     http_header['Range'] = 'bytes=' + \
                         str(offset) + "-" + str(offset + length - 1)
                     rt = self._session.get(url=url, auth=CosS3Auth(
@@ -1577,7 +1598,14 @@ class Interface(object):
                     logger.warn(str(e))
                     continue
             return -1
+        
         cos_path = cos_path.lstrip('/')
+        try:
+            _http_header = yaml.safe_load(_http_headers)
+        except Exception as e:
+            logger.warn("Http_haeder parse error.")
+            logger.warn(e)
+            return -1
         logger.info(u"Download cos://{bucket}/{cos_path}   =>   {local_path}".format(
             bucket=self._conf._bucket,
             local_path=local_path,
@@ -1675,7 +1703,7 @@ class Interface(object):
             return -1
         return 0
 
-    def download_file(self, cos_path, local_path, **kwargs):
+    def download_file(self, cos_path, local_path, _http_headers='{}', **kwargs):
         # head操作获取文件大小
         url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         try:
@@ -1693,10 +1721,10 @@ class Interface(object):
             return -1
         try:
             if file_size <= self._conf._part_size * 1024 * 1024 + 1024 or file_size <= self._multidownload_threshold:
-                rt = self.single_download(cos_path, local_path, **kwargs)
+                rt = self.single_download(cos_path, local_path, _http_headers, **kwargs)
                 return rt
             else:
-                rt = self.multipart_download(cos_path, local_path, **kwargs)
+                rt = self.multipart_download(cos_path, local_path, _http_headers, **kwargs)
                 return rt
         except Exception as e:
             logger.warn(e)
@@ -1916,9 +1944,9 @@ class Interface(object):
             if _force:
                 logger.info("Clearing files and upload parts in the bucket")
                 self.abort_parts("")
-                kwargs['versions'] = True
-                self.delete_folder("", **kwargs)
                 kwargs['versions'] = False
+                self.delete_folder("", **kwargs)
+                kwargs['versions'] = True
                 self.delete_folder("", **kwargs)
             rt = self._session.delete(url=url, auth=CosS3Auth(self._conf))
             logger.debug(u"delete resp, status code: {code}, headers: {headers}, text: {text}".format(

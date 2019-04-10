@@ -247,10 +247,10 @@ class Op(object):
         kwargs['num'] = 10
         kwargs['ignore'] = args.ignore.split(',')
         if args.recursive:
-            rt = Interface.download_folder(args.cos_path, args.local_path, **kwargs)
+            rt = Interface.download_folder(args.cos_path, args.local_path, args.headers, **kwargs)
             return rt
         else:
-            rt = Interface.download_file(args.cos_path, args.local_path, **kwargs)
+            rt = Interface.download_file(args.cos_path, args.local_path, args.headers, **kwargs)
             return rt
         return -1
 
@@ -614,6 +614,7 @@ def command_thread():
     parser_download.add_argument('-f', '--force', help="Overwrite the saved files", action="store_true", default=False)
     parser_download.add_argument('-r', '--recursive', help="Download recursively when upload directory", action="store_true", default=False)
     parser_download.add_argument('-s', '--sync', help="Download and skip the same file", action="store_true", default=False)
+    parser_download.add_argument('-H', '--headers', help="Specify HTTP headers", type=str, default='{}')
     parser_download.add_argument('--versionId', help='Specify versionId of object to list', type=str, default="")
     parser_download.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
     parser_download.set_defaults(func=Op.download)
