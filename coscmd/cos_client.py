@@ -785,7 +785,7 @@ class Interface(object):
                 pass
         copy_source = {}
         try:
-            if self._conf._endpoint not is None:
+            if self._conf._endpoint is not None:
                 source_path = source_path.split("/")
                 source_tmp_path = source_path[0].split('.')
                 source_key = '.'.join(source_path[1:])
