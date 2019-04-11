@@ -705,9 +705,6 @@ class Interface(object):
         self._inner_threadpool = SimpleThreadPool(self._conf._max_thread)
         NextMarker = ""
         IsTruncated = "true"
-        if self.check_copy_source_format(source_path) != 0:
-            logger.warn(u"Source_path {source_path} format is invalid, please check again".format(source_path=source_path))
-            return -1
         source_schema = source_path.split('/')[0] + '/'
         source_bucket = source_path.split('.')[0]
         source_region = source_path.split('.')[2]
