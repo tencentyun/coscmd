@@ -1595,7 +1595,7 @@ class Interface(object):
                     logger.warn(str(e))
                     continue
             return -1
- 
+
         cos_path = cos_path.lstrip('/')
         try:
             _http_header = yaml.safe_load(_http_headers)
