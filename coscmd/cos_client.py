@@ -785,8 +785,8 @@ class Interface(object):
                 pass
         copy_source = {}
         try:
-            if self._conf._endpoint != None:
-                source_path = source_path.split("/") 
+            if self._conf._endpoint not is None:
+                source_path = source_path.split("/")
                 source_tmp_path = source_path[0].split('.')
                 source_key = '.'.join(source_path[1:])
                 copy_source['Bucket'] = source_tmp_path[0]
@@ -1484,7 +1484,7 @@ class Interface(object):
         except Exception as e:
             logger.warn("Http_haeder parse error.")
             logger.warn(e)
-            return -1 
+            return -1
         cos_path = cos_path.lstrip('/')
         logger.info(u"Download cos://{bucket}/{cos_path}   =>   {local_path}".format(
             bucket=self._conf._bucket,
@@ -1595,7 +1595,7 @@ class Interface(object):
                     logger.warn(str(e))
                     continue
             return -1
-        
+ 
         cos_path = cos_path.lstrip('/')
         try:
             _http_header = yaml.safe_load(_http_headers)
