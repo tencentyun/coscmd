@@ -136,7 +136,7 @@ def change_to_human(_size):
 
 class CoscmdConfig(object):
 
-    def __init__(self, appid, region, endpoint, bucket, secret_id, secret_key,
+    def __init__(self, appid, region, endpoint, bucket, secret_id, secret_key, token=None,
                  part_size=1, max_thread=5, schema='https', anonymous=False, verify='md5', retry=2,
                  *args, **kwargs):
         self._appid = appid
@@ -145,6 +145,7 @@ class CoscmdConfig(object):
         self._bucket = bucket + "-" + appid
         self._secret_id = secret_id
         self._secret_key = secret_key
+        self._token = token
         self._part_size = part_size
         self._max_thread = max_thread
         self._schema = schema
@@ -217,6 +218,7 @@ class Interface(object):
             sdk_config = qcloud_cos.CosConfig(Region=conf._region,
                                               SecretId=conf._secret_id,
                                               SecretKey=conf._secret_key,
+                                              Token=conf._token,
                                               Scheme=conf._schema,
                                               Anonymous=conf._anonymous)
         else:
@@ -224,6 +226,7 @@ class Interface(object):
                                               Region=conf._region,
                                               SecretId=conf._secret_id,
                                               SecretKey=conf._secret_key,
+                                              Token=conf._token,
                                               Scheme=conf._schema,
                                               Anonymous=conf._anonymous)
         self._client = qcloud_cos.CosS3Client(sdk_config)
@@ -699,26 +702,50 @@ class Interface(object):
         return 0
 
     def copy_folder(self, source_path, cos_path, _http_headers='{}', **kwargs):
+        if cos_path.endswith('/') is False:
+            cos_path += '/'
+        if source_path.endswith('/') is False:
+            source_path += '/'
+        cos_path = to_unicode(cos_path)
+        source_path = to_unicode(source_path)
         _success_num = 0
         _skip_num = 0
         _fail_num = 0
         self._inner_threadpool = SimpleThreadPool(self._conf._max_thread)
         NextMarker = ""
         IsTruncated = "true"
-        source_schema = source_path.split('/')[0] + '/'
-        source_bucket = source_path.split('.')[0]
-        source_region = source_path.split('.')[2]
-        source_path = source_path[len(source_schema):]
+
         try:
-            sdk_config_source = qcloud_cos.CosConfig(Region=source_region,
-                                                     SecretId=self._conf._secret_id,
-                                                     SecretKey=self._conf._secret_key,
-                                                     Scheme=self._conf._schema,
-                                                     Anonymous=self._conf._anonymous)
-            self._client_source = qcloud_cos.CosS3Client(sdk_config_source)
+            if self._conf._endpoint is not None:
+                source_tmp_path = source_path.split("/")
+                source_tmp_path = source_tmp_path[0].split('.')
+                source_bucket = source_tmp_path[0]
+                source_endpoint = '.'.join(source_tmp_path[1:])
+                sdk_config_source = qcloud_cos.CosConfig(SecretId=self._conf._secret_id,
+                                                         SecretKey=self._conf._secret_key,
+                                                         Token=self._conf._token,
+                                                         Endpoint=source_endpoint,
+                                                         Scheme=self._conf._schema,
+                                                         Anonymous=self._conf._anonymous)
+                self._client_source = qcloud_cos.CosS3Client(sdk_config_source)
+                print source_bucket, source_endpoint
+            else:
+                source_tmp_path = source_path.split(".")
+                source_bucket = source_tmp_path[0]
+                source_region = source_tmp_path[2]
+                sdk_config_source = qcloud_cos.CosConfig(Region=source_region,
+                                                         SecretId=self._conf._secret_id,
+                                                         SecretKey=self._conf._secret_key,
+                                                         Token=self._conf._token,
+                                                         Scheme=self._conf._schema,
+                                                         Anonymous=self._conf._anonymous)
+                self._client_source = qcloud_cos.CosS3Client(sdk_config_source)
         except Exception as e:
             logger.warn(e)
+            logger.warn(u"CopySource format is invalid")
             return -1
+        source_schema = source_path.split('/')[0] + '/'
+        source_path = source_path[len(source_schema):]
         while IsTruncated == "true":
             for i in range(self._retry):
                 try:
@@ -735,7 +762,7 @@ class Interface(object):
                         NextMarker = rt['NextMarker']
                     if 'Contents' in rt:
                         for _file in rt['Contents']:
-                            _path = _file['Key']
+                            _path = to_unicode(_file['Key'])
                             _source_path = source_schema + _path
                             if source_path.endswith('/') is False and len(source_path) != 0:
                                 _cos_path = cos_path + _path[len(source_path) + 1:]
@@ -769,6 +796,31 @@ class Interface(object):
     def copy_file(self, source_path, cos_path, _http_headers='{}', **kwargs):
         _directive = kwargs['directive']
         _sync = kwargs['sync']
+        copy_source = {}
+        try:
+            if self._conf._endpoint is not None:
+                _source_path = source_path.split("/")
+                source_tmp_path = _source_path[0].split('.')
+                source_key = '/'.join(_source_path[1:])
+                copy_source['Bucket'] = source_tmp_path[0]
+                copy_source['Endpoint'] = '.'.join(source_tmp_path[1:])
+                copy_source['Key'] = source_key
+            else:
+                _source_path = source_path.split(".")
+                copy_source['Bucket'] = _source_path[0]
+                copy_source['Region'] = _source_path[2]
+                copy_source['Key'] = '.'.join(_source_path[4:])[len("com/"):]
+            logger.debug("CopySource:")
+            logger.debug(copy_source)
+        except Exception as e:
+            logger.warn(e)
+            logger.warn("CopySource format is invalid")
+            return -1
+        logger.info(u"Copy cos://{src_bucket}/{src_path}   =>   cos://{dst_bucket}/{dst_path}".format(
+            src_bucket=copy_source['Bucket'],
+            src_path=copy_source['Key'],
+            dst_bucket=self._conf._bucket,
+            dst_path=cos_path))
         if kwargs['sync'] is True:
             try:
                 rt = self._session.head(
@@ -783,31 +835,6 @@ class Interface(object):
                     return -2
             except Exception as e:
                 pass
-        copy_source = {}
-        try:
-            if self._conf._endpoint is not None:
-                source_path = source_path.split("/")
-                source_tmp_path = source_path[0].split('.')
-                source_key = '.'.join(source_path[1:])
-                copy_source['Bucket'] = source_tmp_path[0]
-                copy_source['Endpoint'] = '.'.join(source_tmp_path[1:])
-                copy_source['Key'] = source_key
-            else:
-                source_path = source_path.split(".")
-                copy_source['Bucket'] = source_path[0]
-                copy_source['Region'] = source_path[2]
-                copy_source['Key'] = '.'.join(source_path[4:])[len("com/"):]
-            logger.debug("CopySource:")
-            logger.debug(copy_source)
-        except Exception as e:
-            logger.warn(e)
-            logger.warn("CopySource format is invalid")
-            return -1
-        logger.info(u"Copy cos://{src_bucket}/{src_path}   =>   cos://{dst_bucket}/{dst_path}".format(
-            src_bucket=copy_source['Bucket'],
-            src_path=copy_source['Key'],
-            dst_bucket=self._conf._bucket,
-            dst_path=cos_path))
         try:
             _http_header = yaml.safe_load(_http_headers)
             kwargs = mapped(_http_header)
