@@ -728,7 +728,6 @@ class Interface(object):
                                                          Scheme=self._conf._schema,
                                                          Anonymous=self._conf._anonymous)
                 self._client_source = qcloud_cos.CosS3Client(sdk_config_source)
-                print source_bucket, source_endpoint
             else:
                 source_tmp_path = source_path.split(".")
                 source_bucket = source_tmp_path[0]
