@@ -54,6 +54,8 @@ def config(args):
         cp.add_section("common")
         cp.set('common', 'secret_id', args.secret_id)
         cp.set('common', 'secret_key', args.secret_key)
+        if args.token != "":
+            cp.set('common', 'token', args.token)
         cp.set('common', 'bucket', args.bucket)
         if args.region:
             cp.set('common', 'region', args.region)
@@ -138,6 +140,10 @@ def load_conf():
             except:
                 verify = 'md5'
             try:
+                token = cp.get('common', 'token')
+            except:
+                token = None
+            try:
                 anonymous = cp.get('common', 'anonymous')
                 if anonymous == 'True' or anonymous == 'true':
                     anonymous = True
@@ -164,6 +170,7 @@ def load_conf():
                 appid=appid,
                 secret_id=secret_id,
                 secret_key=cp.get('common', 'secret_key'),
+                token=token,
                 region=compatible(region),
                 endpoint=endpoint,
                 bucket=bucket,
@@ -583,6 +590,7 @@ def command_thread():
     parser_config = sub_parser.add_parser("config", help="Config your information at first")
     parser_config.add_argument('-a', '--secret_id', help='Specify your secret id', type=str, required=True)
     parser_config.add_argument('-s', '--secret_key', help='Specify your secret key', type=str, required=True)
+    parser_config.add_argument('-t', '--token', help='Set x-cos-security-token header', type=str, default="")
     parser_config.add_argument('-b', '--bucket', help='Specify your bucket', type=str, required=True)
 
     group = parser_config.add_mutually_exclusive_group(required=True)

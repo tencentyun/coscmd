@@ -25,6 +25,7 @@ class CosS3Auth(AuthBase):
         self._access_id = conf._secret_id
         self._secret_key = conf._secret_key
         self._anonymous = conf._anonymous
+        self._token = conf._token
         self._expire = expire
 
     def __call__(self, r):
@@ -77,6 +78,8 @@ class CosS3Auth(AuthBase):
         )
         if self._anonymous:
             r.headers['Authorization'] = ""
+        if self._token is not None:
+            r.headers['x-cos-security-token'] = self._token
         r.headers['User-agent'] = 'coscmd-v' + Version
         logger.debug("sign_key" + str(sign_key))
         logger.debug(r.headers['Authorization'])
