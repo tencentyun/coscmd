@@ -70,7 +70,10 @@ def config(args):
         else:
             cp.set('common', 'schema', 'https')
         cp.set('common', 'verify', args.verify)
-        cp.set('common', 'anonymous', args.anonymous)
+        if args.anonymous:
+            cp.set('common', 'anonymous', 'True')
+        else:
+            cp.set('common', 'anonymous', 'False')
         cp.write(f)
         logger.info("Created configuration file in {path}".format(path=to_printable_str(conf_path)))
 
@@ -602,7 +605,7 @@ def command_thread():
     parser_config.add_argument('-u', '--appid', help='Specify your appid', type=str, default="")
     parser_config.add_argument('--verify', help='Specify your encryption method', type=str, default="md5")
     parser_config.add_argument('--do-not-use-ssl', help="Use http://", action="store_true", default=False, dest="use_http")
-    parser_config.add_argument('--anonymous', help="Anonymous operation", type=str, default="False")
+    parser_config.add_argument('--anonymous', help="Anonymous operation", action="store_true", default=False, dest="anonymous")
     parser_config.set_defaults(func=config)
 
     parser_upload = sub_parser.add_parser("upload", help="Upload file or directory to COS")

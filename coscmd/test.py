@@ -11,13 +11,15 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
 access_id = os.environ["COS_KEY"]
 access_key = os.environ["COS_SECRET"]
-bucket_name = "lewzylu" + str(random.randint(0, 1000)) + str(random.randint(0, 1000)) + "-1251668577"
+region = os.environ['COS_REGION']
+appid = os.environ['COS_APPID']
+bucket_name = "lewzylu" + str(random.randint(0, 1000)) + str(random.randint(0, 1000)) + "-" + appid
 
 
 def setUp():
     """Test interface"""
     os.system("python setup.py install")
-    os.system("python coscmd/cos_cmd.py config -a %s -s %s -b %s -r ap-beijing-1" % (access_id, access_key, bucket_name))
+    os.system("python coscmd/cos_cmd.py config -a %s -s %s -b %s -r %s" % (access_id, access_key, bucket_name, region))
     os.system("python coscmd/cos_cmd.py createbucket")
     time.sleep(5)
 
@@ -30,12 +32,7 @@ def tearDown():
 
 
 def gen_file(filePath, fileSize):
-    ds = 0
-    with open(filePath, "w") as f:
-        while ds < fileSize:
-            f.write(str(round(random.uniform(-1000, 1000), 2)))
-            f.write("\n")
-            ds = os.path.getsize(filePath)
+    os.system("dd if=/dev/zero of={file} bs=1K count={fileSize}".format(file=filePath, fileSize=str(int(fileSize*1024))))
 
 
 def check_file_same(local_path, cos_path):
@@ -137,19 +134,6 @@ def test_download_file_02():
     except:
         pass
 
-# def test_download_file_03():
-#     """test download file_tmp_/home/testfolder/"""
-#     gen_file("tmp", 7.1)
-#     rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
-#     assert rt == 0
-#     rt = os.system("python coscmd/cos_cmd.py download -f tmp /home/testfolder/")
-#     assert rt == 0
-#     rt = os.path.exists("/home/testfolder/tmp")
-#     assert rt is True
-#     os.remove("tmp")
-#     os.remove("/home/testfolder/tmp")
-#     os.removedirs("/home/testfolder/")
-
 
 def test_bucketacl():
     """test bucketacl"""
@@ -165,9 +149,9 @@ def test_folder():
         os.makedirs("testfolder/")
     except:
         pass
-    gen_file("testfolder/tmp1", 1.1)
-    gen_file("testfolder/tmp2", 1.1)
-    gen_file("testfolder/tmp3", 1.1)
+    file_num = 1101
+    for i in range(file_num):
+        gen_file("testfolder/testfile_" + str(i), 0.1)
     rt = os.system("python coscmd/cos_cmd.py upload -r testfolder testfolder")
     assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py upload -rs testfolder testfolder")
@@ -177,7 +161,7 @@ def test_folder():
     assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py download -rsf testfolder testfolder")
     assert rt == 0
-    rt = os.system("python coscmd/cos_cmd.py copy -r %s.cos.ap-beijing-1.myqcloud.com/testfolder testfolder2" % bucket_name)
+    rt = os.system("python coscmd/cos_cmd.py copy -r %s.cos.%s.myqcloud.com/testfolder testfolder2" % (bucket_name, region))
     assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py list")
     assert rt == 0
@@ -185,10 +169,7 @@ def test_folder():
     assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py delete -rf testfolder2")
     assert rt == 0
-    os.remove("testfolder/tmp1")
-    os.remove("testfolder/tmp2")
-    os.remove("testfolder/tmp3")
-    os.removedirs("testfolder/")
+    os.system("rm -rf testfolder/")
 
 
 if __name__ == "__main__":
