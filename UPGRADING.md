@@ -10,3 +10,6 @@ Coscmd Upgrade Guide
 - Support copysource include endpoint instead of cosregion
 - Added -H parameter to download parameter
 
+1.8.5.33 to 1.8.5.34
+--------------------
+- Fixed a copy folder bug which has 1000 files limit

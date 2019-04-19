@@ -374,7 +374,7 @@ class Interface(object):
                         if len(upload_filelist) >= 1000:
                             (_succ, _skip,  _fail) = upload_file_list(upload_filelist)
                             _success_num += _succ
-                            _skip_num + _skip
+                            _skip_num += _skip
                             _fail_num += _fail
                             upload_filelist = []
             if len(upload_filelist) > 0:
@@ -768,7 +768,6 @@ class Interface(object):
                             _cos_path = cos_path + _path[len(source_path):]
                         self._inner_threadpool.add_task(
                             self.copy_file, _source_path, _cos_path, _http_headers, **kwargs)
-                break
             except Exception as e:
                 logger.warn(e)
         self._inner_threadpool.wait_completion()
