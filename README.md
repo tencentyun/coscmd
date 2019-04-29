@@ -18,7 +18,7 @@ Windows 或 Linux 系统。
 ### 软件依赖
 
 - Python 2.7/3.5/3.6。
--  最新版本的 pip。
+- 最新版本的 pip。
 
 #### 安装及配置
 
@@ -74,45 +74,52 @@ coscmd -h  //查看当面版本信息
 
 help 信息如下所示：
 ```shell
-usage: cos_cmd.py [-h] [-d] [-b BUCKET] [-r REGION] [-c CONFIG_PATH]
-                  [-l LOG_PATH] [-v]
-                  {config,upload,download,delete,copy,list,info,mget,restore,signurl,createbucket,deletebucket,putobjectacl,getobjectacl,putbucketacl,getbucketacl}
-                  ...
+usage: coscmd [-h] [-d] [-b BUCKET] [-r REGION] [-c CONFIG_PATH] [-l LOG_PATH]
+              [-v]
+              
+              {info,restore,createbucket,signurl,listparts,mget,list,upload,deletebucket,abort,getbucketversioning,putbucketacl,getobjectacl,download,putobjectacl,copy,config,putbucketversioning,getbucketacl,delete}
+              ...
 
 an easy-to-use but powerful command-line tool. try 'coscmd -h' to get more
 informations. try 'coscmd sub-command -h' to learn all command usage, likes
 'coscmd upload -h'
 
 positional arguments:
-  {config,upload,download,delete,copy,list,info,mget,restore,signurl,createbucket,deletebucket,putobjectacl,getobjectacl,putbucketacl,getbucketacl}
-    config              config your information at first.
-    upload              upload file or directory to COS.
-    download            download file from COS to local.
-    delete              delete file or files on COS
-    copy                copy file from COS to COS.
-    list                list files on COS
-    info                get the information of file on COS
-    mget                download file from COS to local.
-    restore             restore
-    signurl             get download url
-    createbucket        create bucket
-    deletebucket        delete bucket
-    putobjectacl        set object acl
-    getobjectacl        get object acl
-    putbucketacl        set bucket acl
-    getbucketacl        get bucket acl
+  {info,restore,createbucket,signurl,listparts,mget,list,upload,deletebucket,abort,getbucketversioning,putbucketacl,getobjectacl,download,putobjectacl,copy,config,putbucketversioning,getbucketacl,delete}
+    config              Config your information at first
+    upload              Upload file or directory to COS
+    download            Download file from COS to local
+    delete              Delete file or files on COS
+    abort               Aborts upload parts on COS
+    copy                Copy file from COS to COS
+    list                List files on COS
+    listparts           List upload parts
+    info                Get the information of file on COS
+    mget                Download file from COS to local
+    restore             Restore
+    signurl             Get download url
+    createbucket        Create bucket
+    deletebucket        Delete bucket
+    putobjectacl        Set object acl
+    getobjectacl        Get object acl
+    putbucketacl        Set bucket acl
+    getbucketacl        Get bucket acl
+    putbucketversioning
+                        Set the versioning state
+    getbucketversioning
+                        Get the versioning state
 
 optional arguments:
   -h, --help            show this help message and exit
-  -d, --debug           debug mode
+  -d, --debug           Debug mode
   -b BUCKET, --bucket BUCKET
-                        set bucket
+                        Specify bucket
   -r REGION, --region REGION
-                        set region
+                        Specify region
   -c CONFIG_PATH, --config_path CONFIG_PATH
-                        set config_path
+                        Specify config_path
   -l LOG_PATH, --log_path LOG_PATH
-                        set log_path
+                        Specify log_path
   -v, --version         show program's version number and exit
 ```
 
@@ -125,10 +132,10 @@ coscmd upload -h  //查看 upload 命令使用方法
 
 COSCMD 工具在使用前需要进行参数配置，用户可以通过如下命令来配置：
 ```
-coscmd  config [-h] -a <SECRET_ID> -s <SECRET_KEY> -b <BUCKET>
-                         (-r <REGION> | -e <ENDPOINT>) [-m <MAX_THREAD>]
-                         [-p <PART_SIZE>] [-u <APPID>] [--do-not-use-ssl]
-                         [--anonymous <ANONYMOUS>]      
+coscmd config [-h] -a SECRET_ID -s SECRET_KEY [-t TOKEN] -b BUCKET
+                     (-r REGION | -e ENDPOINT) [-m MAX_THREAD] [-p PART_SIZE]
+                     [-u APPID] [--verify VERIFY] [--do-not-use-ssl]
+                     [--anonymous ANONYMOUS]    
 ```
 上述示例中使用 "<>" 的字段为必选参数，使用 "[]" 的字段为可选参数，其中：
 
@@ -138,8 +145,11 @@ coscmd  config [-h] -a <SECRET_ID> -s <SECRET_KEY> -b <BUCKET>
 | SECRET_KEY | 必选参数，APPID 对应的密钥 Key 可从 COS 控制台左侧栏【密钥管理】或 [云 API 密钥控制台]( https://console.cloud.tencent.com/cam/capi) 获取 | 字符串 |
 | BUCKET     | 必选参数，指定的存储桶名称，bucket的命名规则为{name}-{appid} ，参考 [创建存储桶](https://cloud.tencent.com/doc/product/436/6232) | 字符串 |
 | REGION     | 必选参数，存储桶所在地域，参考 [可用地域](https://cloud.tencent.com/doc/product/436/6224) | 字符串 |
-| MAX_THREAD | 可选参数，多线程上传时的最大线程数（默认为5）               | 数字   |
-| PART_SIZE  | 可选参数，分块上传的单块大小（单位为 MB，默认为1MB）        | 数字   |
+| MAX_THREAD | 可选参数，多线程操作时的最大线程数（默认为5）                | 数字   |
+| PART_SIZE  | 可选参数，分块上传的单块大小（单位为 MB，默认为1MB）         | 数字   |
+| ENDPOINT | 可选参数，设置请求的 endpoint，设置 ENDPOINT 参数后 REGION 参数会失效                | 字符串   |
+| TOKEN | 可选参数，临时密钥token，当使用临时密钥时需要配置，设置 x-cos-security-token 头部 | 字符串 |
+| --do-not-use-ssl | 使用http协议，而不使用https |  |
 
 
 >!
@@ -149,8 +159,8 @@ coscmd  config [-h] -a <SECRET_ID> -s <SECRET_KEY> -b <BUCKET>
  [common]
 secret_id = AChT4ThiXAbpBDEFGhT4ThiXAbpHIJK
 secret_key = WE54wreefvds3462refgwewerewr
-bucket = ABC-1234567890
-region = ap-guangzhou
+bucket = examplebucket-1250000000
+region = ap-beijing
 max_thread = 5
 part_size = 1
 schema = https
@@ -160,37 +170,38 @@ schema = https
 4. bucket 的命名规则为`{name}-{appid}`。
 
 
-### 指定 Bucket 的命令
+### 指定 Bucket 和 Region 的命令
 -  通过`-b <bucket> 指定 Bucket`， 可以指定特定的 Bucket。
 -  Bucket 的命名规则为`{name}-{appid}`，此处填写的存储桶名称必须为此格式。
+-  通过`-r <region> 指定 Region`， 可以指定特定的 Region。
 ```shell
 #命令格式
-coscmd -b <bucket> method ...
-#操作示例-上传文件
-coscmd -b AAA-12345567 upload a.txt b.txt
+coscmd -b <bucket> -r <region> method ...
 #操作示例-创建bucket
-coscmd -b AAA-12344567 createbucket
+coscmd -b examplebucket-1250000000 -r ap-beijing createbucket
+#操作示例-上传文件
+coscmd -b examplebucket-1250000000 -r ap-beijing upload exampleobject exampleobject
 ```
 
 ### 创建存储桶
--  建议配合`-b <bucket> 指定 Bucket`使用。
+-  建议配合`-b <bucket> 指定 Bucket` 和 `-r <region> 指定 Region` 使用。
 ```shell
 #命令格式
 coscmd -b <bucket> createbucket
 #操作示例
 coscmd createbucket
-coscmd -b AAA-12344567 createbucket
+coscmd -b examplebucket-1250000000 -r ap-beijing createbucket
 ```
 
 ### 删除存储桶
--  建议配合`-b <bucket> 指定 Bucket`使用。
+-  建议配合`-b <bucket> 指定 Bucket` 和 `-r <region> 指定 Region` 使用。
 ```shell
 #命令格式
 coscmd -b <bucket> deletebucket
 #操作示例
 coscmd deletebucket
-coscmd -b AAA-12344567 deletebucket
-coscmd -b AAA-12344567 deletebucket -f
+coscmd -b examplebucket-1250000000 -r ap-beijing deletebucket
+coscmd -b examplebucket-1250000000 -r ap-beijing deletebucket -f
 ```
 
 - 使用 -f 参数则会强制删除该 bucket，包括所有文件、开启版本控制之后历史文件夹、上传产生的碎片。
@@ -201,37 +212,43 @@ coscmd -b AAA-12344567 deletebucket -f
 #命令格式
 coscmd upload <localpath> <cospath>
 #操作示例
-coscmd upload /home/aaa/123.txt bbb/123.txt
-coscmd upload /home/aaa/123.txt bbb/
+#将本地的 /data/exampleobject 文件上传到 cos 的 data/exampleobject 路径下
+coscmd upload /data/exampleobject data/exampleobject 
+coscmd upload /data/exampleobject data/
+#指定头部上传文件
+#指定对象类型，上传一个归档的文件
+coscmd upload /data/exampleobject data/exampleobject -H '{"x-cos-storage-class":"Archive"}'
+#设置meta元属性
+coscmd upload /data/exampleobject data/exampleobject -H '{"x-cos-meta-example":"example"}'
 ```
 - 上传文件夹命令如下：
 ```shell
 #命令格式
 coscmd upload -r <localpath> <cospath>
 #操作示例
-coscmd upload -r /home/aaa/ bbb/aaa
-coscmd upload -r /home/aaa/ bbb/
-#该操作会在bbb/目录下新建一个aaa/文件夹
-coscmd upload -r /home/aaa  bbb/
+coscmd upload -r /data/examplefolder data/examplefolder
+coscmd upload -r /data/examplefolder data/examplefolder
+#cos上的存储路径为 examplefolder2/examplefolder
+coscmd upload -r /data/examplefolder examplefolder2/
 #上传到bucket根目录
-coscmd upload -r /home/aaa/ /
+coscmd upload -r /data/examplefolder/ /
 #同步上传，跳过md5相同的文件
-coscmd upload -rs /home/aaa/ /home/aaa
+coscmd upload -rs /data/examplefolder data/examplefolder
 #忽略.txt和.doc的后缀文件
-coscmd upload -rs /home/aaa/ /home/aaa --ignore *.txt,*.doc
+coscmd upload -rs /data/examplefolder data/examplefolder --ignore *.txt,*.doc
 ```
 
  请将 "<>" 中的参数替换为您需要上传的本地文件路径（localpath），以及 COS 上存储的路径（cospath）。
- 
+
  >!
- >  - 上传文件时需要将 COS 上的路径包括文件（文件夹）的名字补全（参考例子）。
- >  - COSCMD 支持大文件断点上传功能；当分片上传大文件失败时，重新上传该文件只会上传失败的分块，而不会从头开始（请保证重新上传的文件的目录以及内容和上传的目录保持一致）。
- >  - COSCMD 分块上传时会对每一块进行 MD5 校验。
- >  - COSCMD 上传默认会携带`x-cos-meta-md5`的头部，值为该文件的`md5`值。
- >  - 使用 -s 参数可以使用同步上传，跳过上传 md5 一致的文件（COS 上的原文件必须是由 1.8.3.2 之后的 COSCMD 上传的，默认带有 x-cos-meta-md5 的 header）。
- >  - 使用 -H 参数设置 HTTP header 时，请务必保证格式为 json，示例：`coscmd upload -H '{"Cache-Control":"max-age=31536000","Content-Language":"zh-CN"}' <localpath> <cospath>`。
- >  - 在上传文件夹时，使用 --ignore 参数可以忽略某一类文件，支持 shell 通配规则，支持多条规则，用逗号`,`分隔。当忽略一类后缀时，必须最后要输入`,` 或者加入`""`。
- >  - 目前只支持上传最大40TB 的单一文件。
+ > - 上传文件时需要将 COS 上的路径包括文件（文件夹）的名字补全（参考例子）。
+ > - COSCMD 支持大文件断点上传功能；当分片上传大文件失败时，重新上传该文件只会上传失败的分块，而不会从头开始（请保证重新上传的文件的目录以及内容和上传的目录保持一致）。
+ > - COSCMD 分块上传时会对每一块进行 MD5 校验。
+ > - COSCMD 上传默认会携带`x-cos-meta-md5`的头部，值为该文件的`md5`值。
+ > - 使用 -s 参数可以使用同步上传，跳过上传 md5 一致的文件（COS 上的原文件必须是由 1.8.3.2 之后的 COSCMD 上传的，默认带有 x-cos-meta-md5 的 header）。
+ > - 使用 -H 参数设置 HTTP header 时，请务必保证格式为 json，示例：`coscmd upload -H '{"x-cos-storage-class":"Archive","Content-Language":"zh-CN"}' <localpath> <cospath>`。更多头部可参考[PutObject](https://cloud.tencent.com/document/product/436/7749)文档
+ > - 在上传文件夹时，使用 --ignore 参数可以忽略某一类文件，支持 shell 通配规则，支持多条规则，用逗号`,`分隔。当忽略一类后缀时，必须最后要输入`,` 或者加入`""`。
+ > - 目前只支持上传最大40TB 的单一文件。
 
 ### 下载文件或文件夹
 - 下载文件命令如下：
@@ -239,29 +256,29 @@ coscmd upload -rs /home/aaa/ /home/aaa --ignore *.txt,*.doc
 #命令格式
 coscmd download <cospath> <localpath>
 #操作示例
-coscmd download bbb/123.txt /home/aaa/111.txt
-coscmd download bbb/123.txt /home/aaa/
+coscmd download data/exampleobject /data/exampleobject
+coscmd download data/exampleobject /data/
 ```
 - 下载文件夹命令如下：
 ```shell
 #命令格式
 coscmd download -r <cospath> <localpath>
 #操作示例
-coscmd download -r /home/aaa/ bbb/aaa
-coscmd download -r /home/aaa/ bbb/
+coscmd download -r data/examplefolder/ /data/examplefolder
+coscmd download -r data/examplefolder/ /data/
 #覆盖下载当前bucket根目录下所有的文件
-coscmd download -rf / bbb/aaa
+coscmd download -rf / /data/examplefolder
 #同步下载当前bucket根目录下所有的文件，跳过md5校验相同的文件
-coscmd download -rs / bbb/aaa
+coscmd download -rs / /data/examplefolder
 #忽略.txt和.doc的后缀文件
-coscmd download -rs / bbb/aaa --ignore *.txt,*.doc 
+coscmd download -rs / /data/examplefolder --ignore *.txt,*.doc 
 ```
 请将 "<>" 中的参数替换为您需要下载的 COS 上文件的路径（cospath），以及本地存储路径（localpath）。
 >!
-> - 若本地存在同名文件，则会下载失败，使用`-f`参数覆盖本地文件。
-> - `download`接口使用分块下载，老版本的`mget`接口已经废除，请使用`download`接口。
-> - 使用`-s`或者`--sync`参数，可以在下载文件夹时跳过本地已存在的相同文件（前提是下载文件夹是通过`COSCMD`的`upload`接口上传的，文件携带有 `x-cos-meta-md5`头部）。
-> - 在下载文件夹时，使用 --ignore 参数可以忽略某一类文件，支持 shell 通配规则，支持多条规则，用逗号`,`分隔。当忽略一类后缀时，必须最后要输入`,`或者加入`""`。
+>- 老版本的`mget`接口已经废除，`download`接口使用分块下载，请使用`download`接口。
+>- 若本地存在同名文件，则会下载失败，需要使用`-f`参数覆盖本地文件。
+>- 使用`-s`或者`--sync`参数，可以在下载文件夹时跳过本地已存在的相同文件（前提是下载的文件是通过`COSCMD`的`upload`接口上传的，文件携带有 `x-cos-meta-md5`头部）。
+>- 在下载文件夹时，使用 --ignore 参数可以忽略某一类文件，支持 shell 通配规则，支持多条规则，用逗号`,`分隔。当忽略一类后缀时，必须最后要输入`,`或者加入`""`。
 
 ### 删除文件或文件夹
 - 删除文件命令如下：
@@ -269,22 +286,22 @@ coscmd download -rs / bbb/aaa --ignore *.txt,*.doc
 #命令格式
 coscmd delete <cospath>
 #操作示例
-coscmd delete bbb/123.txt
+coscmd delete data/exampleobject
 ```
 - 删除文件夹命令如下：
 ```shell
 #命令格式
 coscmd delete -r <cospath>
 #操作示例
-coscmd delete -r bbb/
+coscmd delete -r /data/examplefolder/
 coscmd delete -r /
 ```
 
  请将"<>"中的参数替换为您需要删除的 COS 上文件的路径（cospath），工具会提示用户是否确认进行删除操作。
 
- >!批量删除需要输入确定，使用`-f`参数跳过确认 
+ >!批量删除需要输 `y` 入确定，使用 `-f` 参数则可以跳过确认直接删除 
 
-### 清除上传文件碎片
+### 清除分块上传文件碎片
 - 命令如下：
 ```shell
 #命令格式
@@ -299,20 +316,29 @@ coscmd abort
 #命令格式
 coscmd copy <sourcepath> <cospath> 
 #操作示例
-coscmd copy bucket-appid.cos.ap-guangzhou.myqcloud.com/a.txt aaa/123.txt
+#复制 examplebucket2-1250000000 存储桶下的 data/exampleobject 对象到 examplebucket1-1250000000 存储桶的 data/examplefolder/exampleobject
+coscmd -b examplebucket1-1250000000 -r ap-guangzhou copy examplebucket2-1250000000.ap-beijing.myqcloud.com/data/exampleobject data/examplefolder/exampleobject
+#修改存储类型，将文件类型改为归档
+coscmd -b examplebucket1-1250000000 -r ap-guangzhou copy examplebucket2-1250000000.ap-beijing.myqcloud.com/data/exampleobject data/examplefolder/exampleobject -H '{"x-cos-storage-class":"Archive"}'
 ```
 - 复制文件夹命令如下：
 ```shell
 #命令格式
 coscmd copy -r <sourcepath> <cospath>
 #操作示例
-coscmd copy -r bucket-appid.cos.ap-guangzhou.myqcloud.com/coscmd/ aaa
-coscmd copy -r bucket-appid.cos.ap-guangzhou.myqcloud.com/coscmd/ aaa/
+#复制 examplebucket2-1250000000 存储桶下的 examplefolder 目录到 examplebucket1-1250000000 存储桶的 examplefolder 目录
+coscmd -b examplebucket1-1250000000 -r ap-guangzhou copy -r examplebucket2-1250000000.cos.ap-guangzhou.myqcloud.com/examplefolder/ examplefolder
+coscmd -b examplebucket1-1250000000 -r ap-guangzhou copy -r examplebucket2-1250000000.cos.ap-guangzhou.myqcloud.com/examplefolder/ examplefolder/
 ```
 
  请将"<>"中的参数替换为您需要复制的 COS 上文件的路径（sourcepath），和您需要复制到 COS 上文件的路径（cospath）
 
  >!sourcepath 的样式如下：```<bucketname>-<appid>.cos.<region>.myqcloud.com/<cospath>```。
+
+ >!
+ > - 使用 -d 参数可以设置 `x-cos-metadata-directive` 参数，可选值为 `Copy` 和 `Replaced`， 默认为`Copy` 
+ > - 使用 -H 参数设置 HTTP header 时，请务必保证格式为 json，示例：`coscmd copy -H -d Replaced '{"x-cos-storage-class":"Archive","Content-Language":"zh-CN"}' <localpath> <cospath>`。更多头部可参考[PutObjectCopy](https://cloud.tencent.com/document/product/436/10881)文档
+ > -
 
 ### 打印文件列表
 打印命令如下：
@@ -321,8 +347,10 @@ coscmd copy -r bucket-appid.cos.ap-guangzhou.myqcloud.com/coscmd/ aaa/
 coscmd list <cospath>
 
 #操作示例
-coscmd list -a
-coscmd list bbb/123.txt  -r -n 10
+#递归打印该bucket下所有的文件列表
+coscmd list -ar
+#递归打印examplefolder前缀的所有文件列表
+coscmd list examplefolder/  -ar
 ```
 请将"<>"中的参数替换为您需要打印文件列表的 COS 上文件的路径（cospath）。
  - 使用`-a`打印全部文件。
@@ -338,7 +366,7 @@ coscmd list bbb/123.txt  -r -n 10
 coscmd info <cospath> 
 
 #操作示例
-coscmd info bbb/123.txt
+coscmd info exampleobject
 ```
 请将"<>"中的参数替换为您需要显示的 COS 上文件的路径（cospath）。
 
@@ -349,61 +377,12 @@ coscmd info bbb/123.txt
 coscmd signurl <cospath>
 
 #操作示例
-coscmd signurl bbb/123.txt
-coscmd signurl bbb/123.txt -t 100
+coscmd signurl exampleobject
+coscmd signurl exampleobject -t 100
 ```
 
 请将 "<>" 中的参数替换为您需要获取下载 URL 的 COS 上文件的路径（cospath）
 使用 `-t time` 设置打印签名的有效时间（单位为秒）
-
-### 设置访问控制（ACL）
-命令如下：
-使用如下命令设置 Bucket 的访问控制：
-```shell
-#命令格式
-coscmd putbucketacl [--grant-read GRANT_READ]  [--grant-write GRANT_WRITE] [--grant-full-control GRANT_FULL_CONTROL]
-
-#操作示例 
-coscmd putbucketacl --grant-read 12345678,12345678/11111 --grant-write anyone --grant-full-control 12345678/22222
-```
-
-使用如下命令设置 Object 的访问控制：
-```shell
-#命令格式
-coscmd putobjectacl [--grant-read GRANT_READ] [--grant-write GRANT_WRITE] [--grant-full-control GRANT_FULL_CONTROL] <cospath> 
-
-#操作示例
-coscmd putobjectacl  --grant-read 12345678,12345678/11111 --grant-write anyone --grant-full-control 12345678/22222 aaa/aaa.txt 
-```
-
-#### ACL 设置指南
-
-- --grant-read 代表读的权限。
-- --grant-write 代表写的权限。
-- --grant-full-control 代表读写的权限。
-- GRANT_READ / GRANT_WRITE / GRANT_FILL_CONTORL 代表被赋权的账号。
-- 若赋权根账号，使用 rootid 的形式。
-- 若赋权子账户，使用 rootid/subid 的形式。
-- 若需要对所有人赋权，使用 anyone 的形式。
-- 同时赋权的多个账号用逗号`,`隔开。
-- 请将参数替换为您所需要删除的 COS 上文件的路径（cospath）。
-
-### 获取访问控制（ACL）
-- 使用如下命令设置 Bucket 的访问控制：
-```shell
-#命令格式
-coscmd getbucketacl 
-#操作示例
-coscmd getbucketacl
-```
-
-- 使用如下命令设置 Object 的访问控制：
-```shell
-#命令格式
-coscmd putbucketacl <cospath> 
-#操作示例
-coscmd getobjectacl aaa/aaa.txt 
-```
 
 ### 开启关闭版本控制
 命令如下：
@@ -423,18 +402,18 @@ coscmd putbucketversioning Suspended
 
 ### 恢复归档文件
 - 恢复归档文件命令如下：
-```
+```shell
 #命令格式
 coscmd restore <cospath>
 #操作示例
-coscmd restore -d 3 -t Expedited a.txt 
+coscmd restore -d 3 -t Expedited exampleobject
 ```
 - 批量恢复归档文件命令如下：
-```
+```shell
 #命令格式
 coscmd restore -r <cospath>
 #操作示例
-coscmd restore -r -d 3 -t Bulk folder/
+coscmd restore -r -d 3 -t Expedited examplefolder/
 ```
 
  请将 "<>" 中的参数替换为您需要打印文件列表的 COS 上文件的路径（cospath）。
