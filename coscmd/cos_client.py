@@ -17,6 +17,7 @@ import datetime
 import pytz
 import yaml
 import fnmatch
+import copy
 from tqdm import tqdm
 from logging.handlers import RotatingFileHandler
 from wsgiref.handlers import format_date_time
@@ -1575,8 +1576,7 @@ class Interface(object):
             local_path = local_path + "_" + str(idx)
             for j in range(self._retry):
                 try:
-                    time.sleep(1 << j)
-                    http_header = _http_header
+                    http_header = copy.copy(_http_header)
                     http_header['Range'] = 'bytes=' + \
                         str(offset) + "-" + str(offset + length - 1)
                     rt = self._session.get(url=url, auth=CosS3Auth(
@@ -1613,6 +1613,7 @@ class Interface(object):
                         logger.warn(response_info(rt))
                         continue
                 except Exception as e:
+                    time.sleep(1 << j)
                     logger.warn(str(e))
                     continue
             return -1

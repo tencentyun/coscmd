@@ -13,3 +13,9 @@ Coscmd Upgrade Guide
 1.8.5.33 to 1.8.5.34
 --------------------
 - Fixed a copy folder bug which has 1000 files limit
+
+1.8.5.34 to 1.8.5.35
+--------------------
+- Fixed a fatal download error that could cause the download file MD5 to be inconsistent with the source file
+- 
+
