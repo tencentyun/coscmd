@@ -16,6 +16,9 @@ Coscmd Upgrade Guide
 
 1.8.5.34 to 1.8.5.35
 --------------------
-- Fixed a fatal download error that could cause the download file MD5 to be inconsistent with the source file
-- 
+- Fixed a fatal download error that could cause the download file MD5 to be inconsistent with the source file 
 
+1.8.5.35 to 1.8.5.36
+--------------------
+- Fixed bug with invalid breakpoint continuation
+- Add the -n parameter to the download command to control the number of fragments downloaded

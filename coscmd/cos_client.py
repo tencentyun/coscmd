@@ -213,8 +213,8 @@ class Interface(object):
         self._etag = 'ETag'
         self._pbar = ''
         self._inner_threadpool = SimpleThreadPool(1)
-        self._multiupload_threshold = 5 * 1024 * 1024 + 1024
-        self._multidownload_threshold = 5 * 1024 * 1024 + 1024
+        self._multiupload_threshold = 20 * 1024 * 1024 + 1024
+        self._multidownload_threshold = 20 * 1024 * 1024 + 1024
         if conf._endpoint == "":
             sdk_config = qcloud_cos.CosConfig(Region=conf._region,
                                               SecretId=conf._secret_id,
@@ -468,7 +468,7 @@ class Interface(object):
             self._upload_id = None
             self._path_md5 = get_md5_filename(local_path, cos_path)
             logger.debug("init with : " + url)
-            if kwargs['force'] and os.path.isfile(self._path_md5):
+            if not kwargs['force'] and os.path.isfile(self._path_md5):
                 with open(self._path_md5, 'rb') as f:
                     self._upload_id = f.read()
                 if self.list_part(cos_path) is True:
@@ -1739,7 +1739,7 @@ class Interface(object):
             logger.warn(str(e))
             return -1
         try:
-            if file_size <= self._conf._part_size * 1024 * 1024 + 1024 or file_size <= self._multidownload_threshold:
+            if file_size <= self._multidownload_threshold:
                 rt = self.single_download(cos_path, local_path, _http_headers, **kwargs)
                 return rt
             else:

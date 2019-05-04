@@ -254,7 +254,7 @@ class Op(object):
         kwargs = {}
         kwargs['force'] = args.force
         kwargs['sync'] = args.sync
-        kwargs['num'] = 10
+        kwargs['num'] = min(20, args.num)
         kwargs['ignore'] = args.ignore.split(',')
         if args.recursive:
             rt = Interface.download_folder(args.cos_path, args.local_path, args.headers, **kwargs)
@@ -628,6 +628,7 @@ def command_thread():
     parser_download.add_argument('-H', '--headers', help="Specify HTTP headers", type=str, default='{}')
     parser_download.add_argument('--versionId', help='Specify versionId of object to list', type=str, default="")
     parser_download.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
+    parser_download.add_argument('-n', '--num', help='Specify max part_num of multidownload', type=int, default=10)
     parser_download.set_defaults(func=Op.download)
 
     parser_delete = sub_parser.add_parser("delete", help="Delete file or files on COS")
