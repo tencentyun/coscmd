@@ -27,5 +27,5 @@ __________
 使用方法
 __________
 
-使用python sdk，参照 https://cloud.tencent.com/document/product/436/10976
+使用coscmd，参照 https://cloud.tencent.com/document/product/436/10976
 
