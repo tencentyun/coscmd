@@ -17,7 +17,7 @@ def requirements():
 
 
 def long_description():
-    with open('README.md', 'rb') as fileobj:
+    with open('README.rst', 'rb') as fileobj:
         return fileobj.read().decode('utf8')
 
 
