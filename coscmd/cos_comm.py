@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from six import text_type, binary_type
 from hashlib import md5
+import os
 
 maplist = {
             'x-cos-copy-source-If-Modified-Since': 'CopySourceIfModifiedSince',
@@ -78,6 +79,7 @@ def to_unicode(s):
 
 
 def get_file_md5(local_path):
+    """获取文件md5"""
     md5_value = md5()
     with open(local_path, "rb") as f:
         while True:
@@ -86,3 +88,8 @@ def get_file_md5(local_path):
                 break
             md5_value.update(data)
     return md5_value.hexdigest()
+
+def gen_local_file(filename, filesize):
+    rt = os.system("dd if=/dev/zero of={filename} bs=1M count={filesize} >/dev/null 2>&1".format(filename=filename, filesize=filesize))
+    return rt
+

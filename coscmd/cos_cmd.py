@@ -193,98 +193,101 @@ def load_conf():
 class Op(object):
     @staticmethod
     def upload(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        while args.cos_path.startswith('/'):
-            args.cos_path = args.cos_path[1:]
-        if args.cos_path == "":
-            args.cos_path = "/"
-        Interface = client.op_int()
+        try:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            while args.cos_path.startswith('/'):
+                args.cos_path = args.cos_path[1:]
+            if args.cos_path == "":
+                args.cos_path = "/"
+            Interface = client.op_int()
 
-        if not isinstance(args.local_path, text_type):
-            args.local_path = args.local_path.decode(fs_coding)
-        if not isinstance(args.cos_path, text_type):
-            args.cos_path = args.cos_path.decode(fs_coding)
+            if not isinstance(args.local_path, text_type):
+                args.local_path = args.local_path.decode(fs_coding)
+            if not isinstance(args.cos_path, text_type):
+                args.cos_path = args.cos_path.decode(fs_coding)
 
-        if not os.path.exists(args.local_path):
-            logger.warn("cannot stat '%s': No such file or directory" % to_printable_str(args.local_path))
-            return -1
-
-        if not os.access(args.local_path, os.R_OK):
-            logger.warn('local_path %s is not readable!' % to_printable_str(args.local_path))
-            return -1
-        args.local_path, args.cos_path = concat_path(args.local_path, args.cos_path)
-        if args.cos_path.startswith('/'):
-            args.cos_path = args.cos_path[1:]
-        kwargs = {}
-        kwargs['sync'] = args.sync
-        kwargs['skipmd5'] = args.skipmd5
-        kwargs['ignore'] = args.ignore.split(',')
-        kwargs['force'] = args.force
-        if args.recursive:
-            if os.path.isfile(args.local_path) is True:
-                rt = Interface.upload_file(args.local_path, args.cos_path, args.headers, **kwargs)
-                return rt
-            elif os.path.isdir(args.local_path):
-                rt = Interface.upload_folder(args.local_path, args.cos_path, args.headers, **kwargs)
-                return rt
-        else:
-            if os.path.isdir(args.local_path):
-                logger.warn("\"{path}\" is a directory, use \'-r\' option to upload it please".format(path=to_printable_str(args.local_path)))
-                return -1
-            if os.path.isfile(args.local_path) is False:
+            if not os.path.exists(args.local_path):
                 logger.warn("cannot stat '%s': No such file or directory" % to_printable_str(args.local_path))
                 return -1
-            rt = Interface.upload_file(args.local_path, args.cos_path, args.headers, **kwargs)
-            return rt
-        return -1
+
+            if not os.access(args.local_path, os.R_OK):
+                logger.warn('local_path %s is not readable!' % to_printable_str(args.local_path))
+                return -1
+            args.local_path, args.cos_path = concat_path(args.local_path, args.cos_path)
+            if args.cos_path.startswith('/'):
+                args.cos_path = args.cos_path[1:]
+            kwargs = {}
+            kwargs['sync'] = args.sync
+            kwargs['skipmd5'] = args.skipmd5
+            kwargs['ignore'] = args.ignore.split(',')
+            kwargs['force'] = args.force
+            if args.recursive:
+                if os.path.isfile(args.local_path) is True:
+                    rt = Interface.upload_file(args.local_path, args.cos_path, args.headers, **kwargs)
+                    return rt
+                elif os.path.isdir(args.local_path):
+                    rt = Interface.upload_folder(args.local_path, args.cos_path, args.headers, **kwargs)
+                    return rt
+            else:
+                if os.path.isdir(args.local_path):
+                    logger.warn("\"{path}\" is a directory, use \'-r\' option to upload it please".format(path=to_printable_str(args.local_path)))
+                    return -1
+                if os.path.isfile(args.local_path) is False:
+                    logger.warn("cannot stat '%s': No such file or directory" % to_printable_str(args.local_path))
+                    return -1
+                rt = Interface.upload_file(args.local_path, args.cos_path, args.headers, **kwargs)
+                return rt
+            return -1
+        except Exception as e:
+            logger.wran(e)
+            return -2
 
     @staticmethod
     def download(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        Interface = client.op_int()
-        if not isinstance(args.local_path, text_type):
-            args.local_path = args.local_path.decode(fs_coding)
-        if not isinstance(args. cos_path, text_type):
-            args.cos_path = args.cos_path.decode(fs_coding)
-        args.cos_path, args.local_path = concat_path(args.cos_path, args.local_path)
-        if args.cos_path.startswith('/'):
-            args.cos_path = args.cos_path[1:]
-        kwargs = {}
-        kwargs['force'] = args.force
-        kwargs['sync'] = args.sync
-        kwargs['num'] = min(20, args.num)
-        kwargs['ignore'] = args.ignore.split(',')
-        if args.recursive:
-            rt = Interface.download_folder(args.cos_path, args.local_path, args.headers, **kwargs)
-            return rt
-        else:
-            rt = Interface.download_file(args.cos_path, args.local_path, args.headers, **kwargs)
-            return rt
-        return -1
-
-    @staticmethod
-    def mget(args):
-        logger.warn("This interface has been abandoned, please use download interface")
-        return -1
-
+        try:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            Interface = client.op_int()
+            if not isinstance(args.local_path, text_type):
+                args.local_path = args.local_path.decode(fs_coding)
+            if not isinstance(args. cos_path, text_type):
+                args.cos_path = args.cos_path.decode(fs_coding)
+            args.cos_path, args.local_path = concat_path(args.cos_path, args.local_path)
+            if args.cos_path.startswith('/'):
+                args.cos_path = args.cos_path[1:]
+            kwargs = {}
+            kwargs['force'] = args.force
+            kwargs['sync'] = args.sync
+            kwargs['num'] = min(20, args.num)
+            kwargs['ignore'] = args.ignore.split(',')
+            if args.recursive:
+                rt = Interface.download_folder(args.cos_path, args.local_path, args.headers, **kwargs)
+                return rt
+            else:
+                rt = Interface.download_file(args.cos_path, args.local_path, args.headers, **kwargs)
+                return rt
+            return -1
+        except Exception as e:
+            logger.warn(e)
+            return -2
+    
     @staticmethod
     def delete(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        while args.cos_path.startswith('/'):
-            args.cos_path = args.cos_path[1:]
-        Interface = client.op_int()
-
-        if not isinstance(args. cos_path, text_type):
-            args.cos_path = args.cos_path.decode(fs_coding)
-
-        kwargs = {}
-        kwargs['force'] = args.force
-        kwargs['versions'] = args.versions
-        kwargs['versionId'] = args.versionId
         try:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            while args.cos_path.startswith('/'):
+                args.cos_path = args.cos_path[1:]
+            Interface = client.op_int()
+
+            if not isinstance(args. cos_path, text_type):
+                args.cos_path = args.cos_path.decode(fs_coding)
+
+            kwargs = {}
+            kwargs['force'] = args.force
+            kwargs['versions'] = args.versions
+            kwargs['versionId'] = args.versionId
             if args.recursive:
                 if args.cos_path.endswith('/') is False:
                     args.cos_path += '/'
@@ -305,255 +308,326 @@ class Op(object):
                     return -1
         except Exception as e:
             logger.warn(e)
-            return -1
+            return -2
 
     @staticmethod
     def copy(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        Interface = client.op_int()
-        _, args.cos_path = concat_path(args.source_path, args.cos_path)
-        while args.cos_path.startswith('/'):
-            args.cos_path = args.cos_path[1:]
-        if not isinstance(args.source_path, text_type):
-            args.source_path = args.source_path.decode(fs_coding)
-        if not isinstance(args.cos_path, text_type):
-            args.cos_path = args.cos_path.decode(fs_coding)
-
-        kwargs = {}
-        kwargs['sync'] = args.sync
-        kwargs['directive'] = args.directive
-        if args.recursive:
+        try:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            Interface = client.op_int()
             _, args.cos_path = concat_path(args.source_path, args.cos_path)
-            if args.cos_path.endswith('/') is False:
-                args.cos_path += '/'
-            if args.cos_path.startswith('/'):
+            while args.cos_path.startswith('/'):
                 args.cos_path = args.cos_path[1:]
-            if not Interface.copy_folder(args.source_path, args.cos_path, args.headers, **kwargs):
-                return 0
+            if not isinstance(args.source_path, text_type):
+                args.source_path = args.source_path.decode(fs_coding)
+            if not isinstance(args.cos_path, text_type):
+                args.cos_path = args.cos_path.decode(fs_coding)
+
+            kwargs = {}
+            kwargs['sync'] = args.sync
+            kwargs['directive'] = args.directive
+            if args.recursive:
+                _, args.cos_path = concat_path(args.source_path, args.cos_path)
+                if args.cos_path.endswith('/') is False:
+                    args.cos_path += '/'
+                if args.cos_path.startswith('/'):
+                    args.cos_path = args.cos_path[1:]
+                if not Interface.copy_folder(args.source_path, args.cos_path, args.headers, **kwargs):
+                    return 0
+                else:
+                    return 1
             else:
-                return 1
-        else:
-            if not Interface.copy_file(args.source_path, args.cos_path, args.headers, **kwargs):
-                return 0
-            else:
-                return -1
+                if not Interface.copy_file(args.source_path, args.cos_path, args.headers, **kwargs):
+                    return 0
+                else:
+                    return -1
+        except Exception as e:
+            logger.warn(e)
+            return -2
 
     @staticmethod
     def list(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        while args.cos_path.startswith('/'):
-            args.cos_path = args.cos_path[1:]
-        if not isinstance(args. cos_path, text_type):
-            args.cos_path = args.cos_path.decode(fs_coding)
-        Interface = client.op_int()
-        kwargs = {}
-        kwargs['recursive'] = args.recursive
-        kwargs['all'] = args.all
-        kwargs['num'] = args.num
-        kwargs['human'] = args.human
-        kwargs['versions'] = args.versions
         try:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            while args.cos_path.startswith('/'):
+                args.cos_path = args.cos_path[1:]
+            if not isinstance(args. cos_path, text_type):
+                args.cos_path = args.cos_path.decode(fs_coding)
+            Interface = client.op_int()
+            kwargs = {}
+            kwargs['recursive'] = args.recursive
+            kwargs['all'] = args.all
+            kwargs['num'] = args.num
+            kwargs['human'] = args.human
+            kwargs['versions'] = args.versions
             if not Interface.list_objects(cos_path=args.cos_path, **kwargs):
                 return 0
             else:
                 return -1
         except Exception as e:
             logger.warn(e)
-            return -1
+            return -2
 
     @staticmethod
     def list_parts(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        Interface = client.op_int()
         try:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            Interface = client.op_int()
             if Interface.list_multipart(cos_path=args.cos_path):
                 return 0
             else:
                 return -1
         except Exception as e:
             logger.warn(e)
-            return -1
+            return -2
 
     @staticmethod
     def abort(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        while args.cos_path.startswith('/'):
-            args.cos_path = args.cos_path[1:]
+        try:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            while args.cos_path.startswith('/'):
+                args.cos_path = args.cos_path[1:]
 
-        if not isinstance(args. cos_path, text_type):
-            args.cos_path = args.cos_path.decode(fs_coding)
-        Interface = client.op_int()
-        if Interface.abort_parts(cos_path=args.cos_path):
-            return 0
-        else:
-            return -1
+            if not isinstance(args. cos_path, text_type):
+                args.cos_path = args.cos_path.decode(fs_coding)
+            Interface = client.op_int()
+            if Interface.abort_parts(cos_path=args.cos_path):
+                return 0
+            else:
+                return -1
+        except Exception as e:
+            logger.warn(e)
+            return -2
 
     @staticmethod
     def info(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        while args.cos_path.startswith('/'):
-            args.cos_path = args.cos_path[1:]
+        try:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            while args.cos_path.startswith('/'):
+                args.cos_path = args.cos_path[1:]
 
-        if not isinstance(args. cos_path, text_type):
-            args.cos_path = args.cos_path.decode(fs_coding)
-        Interface = client.op_int()
-        if not Interface.info_object(args.cos_path, _human=args.human):
-            return 0
-        else:
-            return -1
+            if not isinstance(args. cos_path, text_type):
+                args.cos_path = args.cos_path.decode(fs_coding)
+            Interface = client.op_int()
+            if not Interface.info_object(args.cos_path, _human=args.human):
+                return 0
+            else:
+                return -1
+        except Exception as e:
+            logger.warn(e)
+            return -2
 
     @staticmethod
     def restore(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        while args.cos_path.startswith('/'):
-            args.cos_path = args.cos_path[1:]
+        try:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            while args.cos_path.startswith('/'):
+                args.cos_path = args.cos_path[1:]
 
-        if not isinstance(args. cos_path, text_type):
-            args.cos_path = args.cos_path.decode(fs_coding)
-        Interface = client.op_int()
-        kwargs = {}
-        kwargs['day'] = args.day
-        kwargs['tier'] = args.tier
-        if args.recursive:
-            if not Interface.restore_folder(cos_path=args.cos_path, **kwargs):
-                return 0
+            if not isinstance(args. cos_path, text_type):
+                args.cos_path = args.cos_path.decode(fs_coding)
+            Interface = client.op_int()
+            kwargs = {}
+            kwargs['day'] = args.day
+            kwargs['tier'] = args.tier
+            if args.recursive:
+                if not Interface.restore_folder(cos_path=args.cos_path, **kwargs):
+                    return 0
+                else:
+                    return -1
             else:
-                return -1
-        else:
-            if not Interface.restore_file(cos_path=args.cos_path, **kwargs):
-                return 0
-            else:
-                return -1
+                if not Interface.restore_file(cos_path=args.cos_path, **kwargs):
+                    return 0
+                else:
+                    return -1
+        except Exception as e:
+            logger.warn(e)
+            return -2
 
     @staticmethod
     def signurl(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        if not isinstance(args.cos_path, text_type):
-            args.cos_path = args.cos_path.decode(fs_coding)
-        while args.cos_path.startswith('/'):
-            args.cos_path = args.cos_path[1:]
         try:
-            Interface = client.op_int()
-            rt = Interface.sign_url(args.cos_path, args.timeout)
-            if rt:
-                return 0
-            else:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            if not isinstance(args.cos_path, text_type):
+                args.cos_path = args.cos_path.decode(fs_coding)
+            while args.cos_path.startswith('/'):
+                args.cos_path = args.cos_path[1:]
+            try:
+                Interface = client.op_int()
+                rt = Interface.sign_url(args.cos_path, args.timeout)
+                if rt:
+                    return 0
+                else:
+                    return -1
+            except Exception:
+                logger.warn('Geturl fail')
                 return -1
-        except Exception:
-            logger.warn('Geturl fail')
-            return -1
+        except Exception as e:
+            logger.warn(e)
+            return -2
 
     @staticmethod
     def put_object_acl(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        while args.cos_path.startswith('/'):
-            args.cos_path = args.cos_path[1:]
-        if not isinstance(args. cos_path, text_type):
-            args.cos_path = args.cos_path.decode(fs_coding)
-        Interface = client.op_int()
-        rt = Interface.put_object_acl(args.grant_read, args.grant_write, args.grant_full_control, args.cos_path)
-        if rt is True:
-            return 0
-        else:
-            logger.warn("Put object acl fail")
-            return -1
+        try:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            while args.cos_path.startswith('/'):
+                args.cos_path = args.cos_path[1:]
+            if not isinstance(args. cos_path, text_type):
+                args.cos_path = args.cos_path.decode(fs_coding)
+            Interface = client.op_int()
+            rt = Interface.put_object_acl(args.grant_read, args.grant_write, args.grant_full_control, args.cos_path)
+            if rt is True:
+                return 0
+            else:
+                logger.warn("Put object acl fail")
+                return -1
+        except Exception as e:
+            logger.warn(e)
+            return -2
 
     @staticmethod
     def get_object_acl(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        while args.cos_path.startswith('/'):
-            args.cos_path = args.cos_path[1:]
-        if not isinstance(args. cos_path, text_type):
-            args.cos_path = args.cos_path.decode(fs_coding)
-        Interface = client.op_int()
+        try:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            while args.cos_path.startswith('/'):
+                args.cos_path = args.cos_path[1:]
+            if not isinstance(args. cos_path, text_type):
+                args.cos_path = args.cos_path.decode(fs_coding)
+            Interface = client.op_int()
 
-        rt = Interface.get_object_acl(args.cos_path)
-        if rt is True:
-            return 0
-        else:
-            logger.warn("Get object acl fail")
-            return -1
+            rt = Interface.get_object_acl(args.cos_path)
+            if rt is True:
+                return 0
+            else:
+                logger.warn("Get object acl fail")
+                return -1
+        except Exception as e:
+            logger.warn(e)
+            return -2
 
     @staticmethod
     def create_bucket(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        Interface = client.op_int()
-        if Interface.create_bucket():
-            return 0
-        else:
-            logger.warn("Create bucket fail")
-            return -1
+        try:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            Interface = client.op_int()
+            if Interface.create_bucket():
+                return 0
+            else:
+                logger.warn("Create bucket fail")
+                return -1
+        except Exception as e:
+            logger.warn(e)
+            return -2
 
     @staticmethod
     def delete_bucket(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        Interface = client.op_int()
-        kwargs = {}
-        kwargs['force'] = args.force
-        if Interface.delete_bucket(**kwargs):
-            return 0
-        else:
-            logger.warn("Delete bucket fail")
-            return -1
+        try:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            Interface = client.op_int()
+            kwargs = {}
+            kwargs['force'] = args.force
+            if Interface.delete_bucket(**kwargs):
+                return 0
+            else:
+                logger.warn("Delete bucket fail")
+                return -1
+        except Exception as e:
+            logger.warn(e)
+            return -2
 
     @staticmethod
     def put_bucket_acl(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        Interface = client.op_int()
-        rt = Interface.put_bucket_acl(args.grant_read, args.grant_write, args.grant_full_control)
-        if rt is True:
-            return 0
-        else:
-            logger.warn("put bucket acl fail")
-            return -1
+        try:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            Interface = client.op_int()
+            rt = Interface.put_bucket_acl(args.grant_read, args.grant_write, args.grant_full_control)
+            if rt is True:
+                return 0
+            else:
+                logger.warn("put bucket acl fail")
+                return -1
+        except Exception as e:
+            logger.warn(e)
+            return -2
 
     @staticmethod
     def get_bucket_acl(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        Interface = client.op_int()
-        rt = Interface.get_bucket_acl()
-        if rt is True:
-            return 0
-        else:
-            logger.warn("Get bucket acl fail")
-            return -1
+        try:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            Interface = client.op_int()
+            rt = Interface.get_bucket_acl()
+            if rt is True:
+                return 0
+            else:
+                logger.warn("Get bucket acl fail")
+                return -1
+        except Exception as e:
+            logger.warn(e)
+            return -2
 
     @staticmethod
     def put_bucket_versioning(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        Interface = client.op_int()
-        rt = Interface.put_bucket_versioning(args.status)
-        if rt is True:
-            return 0
-        else:
-            logger.warn("Put bucket versioning fail")
-            return -1
+        try:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            Interface = client.op_int()
+            rt = Interface.put_bucket_versioning(args.status)
+            if rt is True:
+                return 0
+            else:
+                logger.warn("Put bucket versioning fail")
+                return -1
+        except Exception as e:
+            logger.warn(e)
+            return -2
 
     @staticmethod
     def get_bucket_versioning(args):
-        conf = load_conf()
-        client = CosS3Client(conf)
-        Interface = client.op_int()
-        rt = Interface.get_bucket_versioning()
-        if rt is True:
-            return 0
-        else:
-            logger.warn("Get bucket versioning fail")
-            return -1
+        try:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            Interface = client.op_int()
+            rt = Interface.get_bucket_versioning()
+            if rt is True:
+                return 0
+            else:
+                logger.warn("Get bucket versioning fail")
+                return -1
+        except Exception as e:
+            logger.warn(e)
+            return -2
+
+    @staticmethod
+    def probe(args):
+        try:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            Interface = client.op_int()
+            kwargs = {}
+            kwargs['test_num'] = args.num
+            kwargs['file_size'] = args.size
+            rt = Interface.probe(**kwargs)
+            if 0 == rt:
+                return 0
+            else:
+                logger.warn("probe failed")
+                return -1
+        except Exception as e:
+            logger.warn(e)
+            return -2
 
 
 def get_version():
@@ -670,11 +744,6 @@ def command_thread():
     parser_info.add_argument('--human', help='Humanized display', action="store_true", default=False)
     parser_info.set_defaults(func=Op.info)
 
-    parser_mget = sub_parser.add_parser("mget", help="Download file from COS to local")
-    parser_mget.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
-    parser_mget.add_argument('local_path', help="Local file path as /tmp/a.txt", type=str)
-    parser_mget.set_defaults(func=Op.mget)
-
     parser_restore = sub_parser.add_parser("restore", help="Restore")
     parser_restore.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
     parser_restore.add_argument('-r', '--recursive', help="Restore files recursively", action="store_true", default=False)
@@ -720,6 +789,11 @@ def command_thread():
 
     parser_get_bucket_versioning = sub_parser.add_parser("getbucketversioning", help="Get the versioning state")
     parser_get_bucket_versioning.set_defaults(func=Op.get_bucket_versioning)
+
+    parser_probe = sub_parser.add_parser("probe", help="Connection test")
+    parser_probe.add_argument('-n', '--num', help='Specify test times', type=int, default=3)
+    parser_probe.add_argument('-s', '--size', help='Specify test filesize(unit MB)', type=int, default=1)
+    parser_probe.set_defaults(func=Op.probe)
 
     parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + Version)
 

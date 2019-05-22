@@ -26,11 +26,11 @@ import qcloud_cos
 if sys.version > '3':
     from coscmd.cos_auth import CosS3Auth
     from coscmd.cos_threadpool import SimpleThreadPool
-    from coscmd.cos_comm import to_bytes, to_unicode, get_file_md5, mapped
+    from coscmd.cos_comm import *
 else:
     from cos_auth import CosS3Auth
     from cos_threadpool import SimpleThreadPool
-    from cos_comm import to_bytes, to_unicode, get_file_md5, mapped
+    from cos_comm import *
 
 logger = logging.getLogger("coscmd")
 # logger_sdk = logging.getLogger("qcloud_cos.cos_client")
@@ -653,20 +653,20 @@ class Interface(object):
                     u"The file on cos is the same as the local file, skip upload")
                 return -2
         rt = init_multiupload()
-        if not rt:
+        if 0 == rt:
             logger.debug(u"Init multipart upload ok")
         else:
-            logger.debug(u"Init multipart upload failed")
+            logger.warn(u"Init multipart upload failed")
             return -1
         rt = multiupload_parts()
-        if not rt:
+        if 0 == rt:
             logger.debug(u"Multipart upload ok")
         else:
             logger.warn(
                 u"Some partial upload failed. Please retry the last command to continue.")
             return -1
         rt = complete_multiupload()
-        if not rt:
+        if 0 == rt:
             logger.debug(u"Complete multipart upload ok")
         else:
             logger.warn(u"Complete multipart upload failed")
@@ -2138,6 +2138,81 @@ class Interface(object):
             logger.warn(str(e))
             return False
         return False
+
+    def probe(self, **kwargs):
+        test_num = int(kwargs['test_num'])
+        filesize = int(kwargs['file_size'])
+        filename = "tmp_test_" + str(filesize) + "M"
+        time_upload = 0
+        time_download = 0
+        max_time_upload = 0
+        max_time_download = 0
+        min_time_upload = float("inf")
+        min_time_download = float("inf")
+        succ_num = 0
+        rt = gen_local_file(filename, filesize)
+        if 0 != rt:
+            logger.warn("Create testfile failed")
+            logger.info("[failure]")
+            return -1
+        for i in range(test_num):
+            kw = {
+                "skipmd5":True,
+                "sync":False,
+                "force":True,
+                "ignore":""}
+            time_start = time.time()
+            rt = self.upload_file(filename, filename, **kw)
+            time_end = time.time()
+            tmp_time = (time_end - time_start)
+            max_time_upload = max(max_time_upload, tmp_time)
+            min_time_upload = min(min_time_upload, tmp_time)
+            time_upload += tmp_time
+            if 0 != rt:
+                logger.info("[failure]")
+                continue
+            logger.info("[success]")
+            #logger.info("time: {timeuse}".format(timeuse=str(time_upload)))
+
+            time_start = time.time()
+            kw = {
+                "force":True,
+                "sync":False,
+                "num":10,
+                "ignore":""}
+            rt = self.download_file(filename, filename, **kw)
+            time_end = time.time()
+            tmp_time = (time_end - time_start)
+            max_time_download = max(max_time_download, tmp_time)
+            min_time_download = min(min_time_download, tmp_time)
+            time_download += tmp_time
+            if 0 != rt:
+                logger.info("[failure]")
+                continue
+            logger.info("[success]")
+            succ_num += 1
+        logger.info("Success Rate: [{succ_num}/{test_num}]".format(succ_num=int(succ_num), test_num=int(test_num)))
+        os.remove(filename)
+        if succ_num == test_num:
+            table = PrettyTable([str(filesize) + "M TEST", "Average", "Min", "Max"])
+            table.align = "l"
+            table.padding_width = 3
+            table.header = True
+            table.border = False
+            avg_upload_widthband = change_to_human(float(filesize) * succ_num / float(time_upload) * 1024 * 1024) + "B/s"
+            avg_download_widthband = change_to_human(float(filesize) * succ_num / float(time_download) * 1024 * 1024) + "B/s"
+            min_upload_widthband = change_to_human(float(filesize) / float(max_time_upload) * 1024 * 1024) + "B/s"
+            min_download_widthband = change_to_human(float(filesize) / float(max_time_download) * 1024 * 1024) + "B/s"
+            max_upload_widthband = change_to_human(float(filesize) / float(min_time_upload) * 1024 * 1024) + "B/s"
+            max_download_widthband = change_to_human(float(filesize) / float(min_time_download) * 1024 * 1024) + "B/s"
+
+            
+            table.add_row(['Upload', avg_upload_widthband, min_upload_widthband, max_upload_widthband])
+            table.add_row(['Download', avg_download_widthband, min_download_widthband, max_download_widthband])  
+            logger.info(table)
+            return 0
+        return -1
+
 
 
 class CosS3Client(object):
