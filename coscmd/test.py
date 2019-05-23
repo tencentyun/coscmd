@@ -6,6 +6,7 @@ import sys
 import os
 import time
 import filecmp
+import hashlib
 from _threading_local import local
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
@@ -14,137 +15,79 @@ access_key = os.environ["COS_SECRET"]
 region = os.environ['COS_REGION']
 appid = os.environ['COS_APPID']
 bucket_name = "lewzylu" + str(random.randint(0, 1000)) + str(random.randint(0, 1000)) + "-" + appid
+special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+file_name = "tmp"
 
+def get_raw_md5(data):
+    m2 = hashlib.md5(data)
+    etag = '"' + str(m2.hexdigest()) + '"'
+    return etag
+
+def gen_file(path, size):
+    _file = open(path, 'w')
+    _file.seek(1024*1024*size-3)
+    _file.write('cos')
+    _file.close()
 
 def setUp():
-    """Test interface"""
+    """create testbucket"""
     os.system("python setup.py install")
     os.system("python coscmd/cos_cmd.py config -a %s -s %s -b %s -r %s" % (access_id, access_key, bucket_name, region))
-    os.system("python coscmd/cos_cmd.py createbucket")
+    print ("创建bucket")
+    os.system("python coscmd/cos_cmd.py createbucket >/dev/null 2>&1")
     time.sleep(5)
 
 
 def tearDown():
     """delete testbucket"""
-    os.system("python coscmd/cos_cmd.py delete -rf /")
-    os.system("python coscmd/cos_cmd.py deletebucket")
+    print ("删除bucket")
+    os.system("python coscmd/cos_cmd.py delete -rf / >/dev/null 2>&1")
+    os.system("python coscmd/cos_cmd.py deletebucket >/dev/null 2>&1")
     time.sleep(5)
 
+def test_upload_object_1MB():
+    """简单上传1MB小文件"""
+    gen_file(file_name, 1)
 
-def gen_file(filePath, fileSize):
-    os.system("dd if=/dev/zero of={file} bs=1K count={fileSize}".format(file=filePath, fileSize=str(int(fileSize*1024))))
-
-
-def check_file_same(local_path, cos_path):
-    rt = os.system("python coscmd/cos_cmd.py download -f \"{cos_path}\" \"{local_path}_download\""
-                   .format(cos_path=cos_path, local_path=local_path))
-    if rt != 0:
-        return rt
-    rt = os.path.exists(local_path+"_download")
-    if rt:
-        rt = 0
-    else:
-        rt = -1
-    try:
-        os.remove("{local_path}".format(local_path=local_path))
-        os.remove("{local_path}_download".format(local_path=local_path))
-    except:
-        pass
-    return rt
-
-
-def test_upload_file_01():
-    """test upload file_tmp_tmp"""
-    gen_file("tmp", 5.1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
+    with open(file_name, 'rb') as f:
+        etag = get_raw_md5(f.read())
+    rt = os.system("python coscmd/cos_cmd.py upload {local_path} {cos_path} >/dev/null 2>&1".format(local_path=file_name, cos_path=file_name))
     assert rt == 0
-    assert check_file_same("tmp", "tmp") == 0
-    gen_file("tmp", 1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
+    return etag
+
+def test_download_object_1MB():
+    """下载1MB小文件"""
+    etag = test_upload_object_1MB()
+    rt = os.system("python coscmd/cos_cmd.py download -f {cos_path} {local_path} >/dev/null 2>&1".format(local_path=file_name, cos_path=file_name))
+ 
     assert rt == 0
-    assert check_file_same("tmp", "tmp") == 0
+    with open(file_name, 'rb') as f:
+        etag_download = get_raw_md5(f.read())
+    assert etag_download == etag       
+    
+    if os.path.exists(file_name):
+        os.remove(file_name)
 
-
-def test_upload_file_02():
-    """test upload file_tmp_/"""
-    local_path = "tmp"
-    cos_path = "/"
-    gen_file("tmp", 5.1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp /")
+def test_delete_object_1MB():
+    """删除1MB小文件"""
+    test_upload_object_1MB()
+    rt = os.system("python coscmd/cos_cmd.py delete -f {cos_path} >/dev/null 2>&1".format(cos_path=file_name))
     assert rt == 0
-    assert check_file_same("tmp", "tmp") == 0
 
-    gen_file("tmp", 1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp /")
-    assert rt == 0
-    assert check_file_same("tmp", "tmp") == 0
-
-
-# def test_upload_file_03():
-#     """test upload file_tmp_/home/"""
-#     key = u"! #$%&\'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
-#     gen_file("tmp", 5.1)
-#     rt = os.system(u"python coscmd/cos_cmd.py upload tmp \"{key}\"".format(key=key))
-#     assert rt == 0
-
-#     gen_file("tmp", 1)
-#     rt = os.system(u"python coscmd/cos_cmd.py upload tmp \"{key}\"".format(key=key))
-#     assert rt == 0
-
-
-def test_upload_file_04():
-    """test upload file_tmp_home/"""
-    gen_file("tmp", 5.1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp home/")
-    assert rt == 0
-    assert check_file_same("home/tmp", "tmp") == 0
-
-    gen_file("tmp", 1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp home/")
-    assert rt == 0
-    assert check_file_same("home/tmp", "tmp") == 0
-
-
-def test_download_file_01():
-    """test download file_tmp_tmp"""
-    gen_file("tmp", 7.1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
-    assert rt == 0
-    rt = os.system("python coscmd/cos_cmd.py download -f tmp tmp_download")
-    assert rt == 0
-    rt = os.path.exists("tmp_download")
-    assert rt is True
-    os.remove("tmp")
-    os.remove("tmp_download")
-
-
-def test_download_file_02():
-    """test download file_tmp_testfolder/"""
-    gen_file("tmp", 7.1)
-    rt = os.system("python coscmd/cos_cmd.py upload tmp tmp")
-    assert rt == 0
-    rt = os.system("python coscmd/cos_cmd.py download -f tmp testfolder/")
-    assert rt == 0
-    rt = os.path.exists("testfolder/tmp")
-    assert rt is True
-    try:
-        os.remove("tmp")
-        os.remove("testfolder/tmp")
-        os.removedirs("testfolder/")
-    except:
-        pass
+    if os.path.exists(file_name):
+        os.remove(file_name)
 
 
 def test_bucketacl():
-    """test bucketacl"""
-    rt = os.system("python coscmd/cos_cmd.py putbucketacl --grant-read anyone --grant-write anyone --grant-full-control anyone")
+    """Bucket ACL测试"""
+    rt = os.system("python coscmd/cos_cmd.py putbucketacl --grant-read anyone --grant-write anyone --grant-full-control anyone >/dev/null 2>&1")
     assert rt == 0
-    rt = os.system("python coscmd/cos_cmd.py getbucketacl")
+    rt = os.system("python coscmd/cos_cmd.py getbucketacl >/dev/null 2>&1")
     assert rt == 0
 
 
-def test_folder():
-    """test objectacl"""
+def test_upload_download_copy_delete_folder():
+    """文件夹上传下载复制删除"""
     try:
         os.makedirs("testfolder/")
     except:
@@ -152,22 +95,29 @@ def test_folder():
     file_num = 1101
     for i in range(file_num):
         gen_file("testfolder/testfile_" + str(i), 0.1)
-    rt = os.system("python coscmd/cos_cmd.py upload -r testfolder testfolder")
+    print ("文件夹上传")
+    rt = os.system("python coscmd/cos_cmd.py upload -r testfolder testfolder >/dev/null 2>&1")
     assert rt == 0
-    rt = os.system("python coscmd/cos_cmd.py upload -rs testfolder testfolder")
+    print ("文件夹同步上传")
+    rt = os.system("python coscmd/cos_cmd.py upload -rs testfolder testfolder >/dev/null 2>&1")
     assert rt == 0
     time.sleep(5)
-    rt = os.system("python coscmd/cos_cmd.py download -rf testfolder testfolder")
+    print ("文件夹下载")
+    rt = os.system("python coscmd/cos_cmd.py download -rf testfolder testfolder >/dev/null 2>&1")
     assert rt == 0
-    rt = os.system("python coscmd/cos_cmd.py download -rsf testfolder testfolder")
+    print ("文件夹同步下载")
+    rt = os.system("python coscmd/cos_cmd.py download -rsf testfolder testfolder >/dev/null 2>&1")
     assert rt == 0
-    rt = os.system("python coscmd/cos_cmd.py copy -r %s.cos.%s.myqcloud.com/testfolder testfolder2" % (bucket_name, region))
+    print ("文件夹复制")
+    rt = os.system("python coscmd/cos_cmd.py copy -r %s.cos.%s.myqcloud.com/testfolder testfolder2 >/dev/null 2>&1" % (bucket_name, region))
     assert rt == 0
-    rt = os.system("python coscmd/cos_cmd.py list")
+    print ("打印对象")
+    rt = os.system("python coscmd/cos_cmd.py list >/dev/null 2>&1")
     assert rt == 0
-    rt = os.system("python coscmd/cos_cmd.py delete -rf testfolder")
+    print ("删除文件夹")
+    rt = os.system("python coscmd/cos_cmd.py delete -rf testfolder >/dev/null 2>&1")
     assert rt == 0
-    rt = os.system("python coscmd/cos_cmd.py delete -rf testfolder2")
+    rt = os.system("python coscmd/cos_cmd.py delete -rf testfolder2 >/dev/null 2>&1")
     assert rt == 0
     os.system("rm -rf testfolder/")
 
