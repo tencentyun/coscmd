@@ -26,113 +26,13 @@ import qcloud_cos
 if sys.version > '3':
     from coscmd.cos_auth import CosS3Auth
     from coscmd.cos_threadpool import SimpleThreadPool
-    from coscmd.cos_comm import to_bytes, to_unicode, get_file_md5, mapped
+    from coscmd.cos_comm import *
 else:
     from cos_auth import CosS3Auth
     from cos_threadpool import SimpleThreadPool
-    from cos_comm import to_bytes, to_unicode, get_file_md5, mapped
+    from cos_comm import *
 
 logger = logging.getLogger("coscmd")
-# logger_sdk = logging.getLogger("qcloud_cos.cos_client")
-# handle_sdk = logging.StreamHandler()
-# handle_sdk.setLevel(logging.WARN)
-# logger_sdk.addHandler(handle_sdk)
-
-
-def to_printable_str(s):
-    if isinstance(s, text_type):
-        return s.encode('utf-8')
-    else:
-        return s
-
-
-def getTagText(root, tag):
-    node = root.getElementsByTagName(tag)[0]
-    rc = ""
-    for node in node.childNodes:
-        if node.nodeType in (node.TEXT_NODE, node.CDATA_SECTION_NODE):
-            rc = rc + node.data
-
-
-def get_md5_filename(local_path, cos_path):
-    ori_file = os.path.abspath(os.path.dirname(
-        local_path)) + "!!!" + str(os.path.getsize(local_path)) + "!!!" + cos_path
-    m = md5()
-    m.update(to_bytes(ori_file))
-    return os.path.expanduser('~/.tmp/' + m.hexdigest())
-
-
-def query_yes_no(question, default="no"):
-    valid = {"yes": True, "y": True, "ye": True,
-             "no": False, "n": False}
-    if default is None:
-        prompt = " [y/n] "
-    elif default == "yes":
-        prompt = " [Y/n] "
-    elif default == "no":
-        prompt = " [y/N] "
-    else:
-        raise ValueError("invalid default answer: '%s'" % default)
-    while True:
-        sys.stdout.write(question + prompt)
-        sys.stdout.flush()
-        if sys.version > '3':
-            choice = input()
-        else:
-            choice = raw_input()
-        if default is not None and choice == '':
-            return valid[default]
-        elif choice in valid:
-            return valid[choice]
-        else:
-            sys.stdout.write("Please respond with 'yes' or 'no' "
-                             "(or 'y' or 'n').\n")
-
-
-def response_info(rt):
-    request_id = "null"
-    code = rt.status_code
-    try:
-        root = minidom.parseString(rt.content).documentElement
-        message = root.getElementsByTagName("Message")[0].childNodes[0].data
-        request_id = root.getElementsByTagName(
-            "RequestId")[0].childNodes[0].data
-    except Exception:
-        message = u"Not Found"
-
-    try:
-        if request_id == "null":
-            request_id = rt.headers['x-cos-request-id']
-    except:
-        pass
-    return (u'''Error: [code {code}] {message}
-RequestId: {request_id}'''.format(
-        code=code,
-        message=message,
-        request_id=to_printable_str(request_id)))
-
-
-def utc_to_local(utc_time_str, utc_format='%Y-%m-%dT%H:%M:%S.%fZ'):
-    local_tz = pytz.timezone('Asia/Chongqing')
-    local_format = "%Y-%m-%d %H:%M:%S"
-    utc_dt = datetime.datetime.strptime(utc_time_str, utc_format)
-    local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(local_tz)
-    time_str = local_dt.strftime(local_format)
-    return int(time.mktime(time.strptime(time_str, local_format)))
-
-
-def change_to_human(_size):
-    s = int(_size)
-    res = ""
-    if s > 1024 * 1024 * 1024:
-        res = str(round(1.0 * s / (1024 * 1024 * 1024), 1)) + "G"
-    elif s > 1024 * 1024:
-        res = str(round(1.0 * s / (1024 * 1024), 1)) + "M"
-    elif s > 1024:
-        res = str(round(1.0 * s / (1024), 1)) + "K"
-    else:
-        res = str(s)
-    return res
 
 
 class CoscmdConfig(object):
@@ -653,20 +553,20 @@ class Interface(object):
                     u"The file on cos is the same as the local file, skip upload")
                 return -2
         rt = init_multiupload()
-        if not rt:
+        if 0 == rt:
             logger.debug(u"Init multipart upload ok")
         else:
-            logger.debug(u"Init multipart upload failed")
+            logger.warn(u"Init multipart upload failed")
             return -1
         rt = multiupload_parts()
-        if not rt:
+        if 0 == rt:
             logger.debug(u"Multipart upload ok")
         else:
             logger.warn(
                 u"Some partial upload failed. Please retry the last command to continue.")
             return -1
         rt = complete_multiupload()
-        if not rt:
+        if 0 == rt:
             logger.debug(u"Complete multipart upload ok")
         else:
             logger.warn(u"Complete multipart upload failed")
@@ -2138,6 +2038,76 @@ class Interface(object):
             logger.warn(str(e))
             return False
         return False
+
+    def probe(self, **kwargs):
+        test_num = int(kwargs['test_num'])
+        filesize = int(kwargs['file_size'])
+        filename = "tmp_test_" + str(filesize) + "M"
+        time_upload = 0
+        time_download = 0
+        max_time_upload = 0
+        max_time_download = 0
+        min_time_upload = float("inf")
+        min_time_download = float("inf")
+        succ_num = 0
+        rt = gen_local_file(filename, filesize)
+        if 0 != rt:
+            logger.warn("Create testfile failed")
+            logger.info("[failure]")
+            return -1
+        for i in range(test_num):
+            kw = {
+                "skipmd5": True,
+                "sync": False,
+                "force": True,
+                "ignore": ""}
+            time_start = time.time()
+            rt = self.upload_file(filename, filename, **kw)
+            time_end = time.time()
+            tmp_time = (time_end - time_start)
+            max_time_upload = max(max_time_upload, tmp_time)
+            min_time_upload = min(min_time_upload, tmp_time)
+            time_upload += tmp_time
+            if 0 != rt:
+                logger.info("[failure]")
+                continue
+            logger.info("[success]")
+            time_start = time.time()
+            kw = {
+                "force": True,
+                "sync": False,
+                "num": 10,
+                "ignore": ""}
+            rt = self.download_file(filename, filename, **kw)
+            time_end = time.time()
+            tmp_time = (time_end - time_start)
+            max_time_download = max(max_time_download, tmp_time)
+            min_time_download = min(min_time_download, tmp_time)
+            time_download += tmp_time
+            if 0 != rt:
+                logger.info("[failure]")
+                continue
+            logger.info("[success]")
+            succ_num += 1
+        logger.info("Success Rate: [{succ_num}/{test_num}]".format(succ_num=int(succ_num), test_num=int(test_num)))
+        os.remove(filename)
+        if succ_num == test_num:
+            table = PrettyTable([str(filesize) + "M TEST", "Average", "Min", "Max"])
+            table.align = "l"
+            table.padding_width = 3
+            table.header = True
+            table.border = False
+            avg_upload_widthband = change_to_human(float(filesize) * succ_num / float(time_upload) * 1024 * 1024) + "B/s"
+            avg_download_widthband = change_to_human(float(filesize) * succ_num / float(time_download) * 1024 * 1024) + "B/s"
+            min_upload_widthband = change_to_human(float(filesize) / float(max_time_upload) * 1024 * 1024) + "B/s"
+            min_download_widthband = change_to_human(float(filesize) / float(max_time_download) * 1024 * 1024) + "B/s"
+            max_upload_widthband = change_to_human(float(filesize) / float(min_time_upload) * 1024 * 1024) + "B/s"
+            max_download_widthband = change_to_human(float(filesize) / float(min_time_download) * 1024 * 1024) + "B/s"
+            table.add_row(['Upload', avg_upload_widthband, min_upload_widthband, max_upload_widthband])
+            table.add_row(['Download', avg_download_widthband, min_download_widthband, max_download_widthband])
+            logger.info(table)
+            return 0
+        return -1
 
 
 class CosS3Client(object):
