@@ -106,7 +106,7 @@ def test_upload_download_copy_delete_folder():
         pass
     file_num = 1101
     for i in range(file_num):
-        gen_file("testfolder/testfile_" + str(i), 0.1)
+        gen_file("testfolder/testfile_" + str(i), 0.01)
     print ("文件夹上传")
     rt = os.system("python coscmd/cos_cmd.py upload -r testfolder testfolder >/dev/null 2>&1")
     assert rt == 0
