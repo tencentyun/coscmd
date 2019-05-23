@@ -33,106 +33,6 @@ else:
     from cos_comm import *
 
 logger = logging.getLogger("coscmd")
-# logger_sdk = logging.getLogger("qcloud_cos.cos_client")
-# handle_sdk = logging.StreamHandler()
-# handle_sdk.setLevel(logging.WARN)
-# logger_sdk.addHandler(handle_sdk)
-
-
-def to_printable_str(s):
-    if isinstance(s, text_type):
-        return s.encode('utf-8')
-    else:
-        return s
-
-
-def getTagText(root, tag):
-    node = root.getElementsByTagName(tag)[0]
-    rc = ""
-    for node in node.childNodes:
-        if node.nodeType in (node.TEXT_NODE, node.CDATA_SECTION_NODE):
-            rc = rc + node.data
-
-
-def get_md5_filename(local_path, cos_path):
-    ori_file = os.path.abspath(os.path.dirname(
-        local_path)) + "!!!" + str(os.path.getsize(local_path)) + "!!!" + cos_path
-    m = md5()
-    m.update(to_bytes(ori_file))
-    return os.path.expanduser('~/.tmp/' + m.hexdigest())
-
-
-def query_yes_no(question, default="no"):
-    valid = {"yes": True, "y": True, "ye": True,
-             "no": False, "n": False}
-    if default is None:
-        prompt = " [y/n] "
-    elif default == "yes":
-        prompt = " [Y/n] "
-    elif default == "no":
-        prompt = " [y/N] "
-    else:
-        raise ValueError("invalid default answer: '%s'" % default)
-    while True:
-        sys.stdout.write(question + prompt)
-        sys.stdout.flush()
-        if sys.version > '3':
-            choice = input()
-        else:
-            choice = raw_input()
-        if default is not None and choice == '':
-            return valid[default]
-        elif choice in valid:
-            return valid[choice]
-        else:
-            sys.stdout.write("Please respond with 'yes' or 'no' "
-                             "(or 'y' or 'n').\n")
-
-
-def response_info(rt):
-    request_id = "null"
-    code = rt.status_code
-    try:
-        root = minidom.parseString(rt.content).documentElement
-        message = root.getElementsByTagName("Message")[0].childNodes[0].data
-        request_id = root.getElementsByTagName(
-            "RequestId")[0].childNodes[0].data
-    except Exception:
-        message = u"Not Found"
-
-    try:
-        if request_id == "null":
-            request_id = rt.headers['x-cos-request-id']
-    except:
-        pass
-    return (u'''Error: [code {code}] {message}
-RequestId: {request_id}'''.format(
-        code=code,
-        message=message,
-        request_id=to_printable_str(request_id)))
-
-
-def utc_to_local(utc_time_str, utc_format='%Y-%m-%dT%H:%M:%S.%fZ'):
-    local_tz = pytz.timezone('Asia/Chongqing')
-    local_format = "%Y-%m-%d %H:%M:%S"
-    utc_dt = datetime.datetime.strptime(utc_time_str, utc_format)
-    local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(local_tz)
-    time_str = local_dt.strftime(local_format)
-    return int(time.mktime(time.strptime(time_str, local_format)))
-
-
-def change_to_human(_size):
-    s = int(_size)
-    res = ""
-    if s > 1024 * 1024 * 1024:
-        res = str(round(1.0 * s / (1024 * 1024 * 1024), 1)) + "G"
-    elif s > 1024 * 1024:
-        res = str(round(1.0 * s / (1024 * 1024), 1)) + "M"
-    elif s > 1024:
-        res = str(round(1.0 * s / (1024), 1)) + "K"
-    else:
-        res = str(s)
-    return res
 
 
 class CoscmdConfig(object):
@@ -2157,10 +2057,10 @@ class Interface(object):
             return -1
         for i in range(test_num):
             kw = {
-                "skipmd5":True,
-                "sync":False,
-                "force":True,
-                "ignore":""}
+                "skipmd5": True,
+                "sync": False,
+                "force": True,
+                "ignore": ""}
             time_start = time.time()
             rt = self.upload_file(filename, filename, **kw)
             time_end = time.time()
@@ -2172,14 +2072,12 @@ class Interface(object):
                 logger.info("[failure]")
                 continue
             logger.info("[success]")
-            #logger.info("time: {timeuse}".format(timeuse=str(time_upload)))
-
             time_start = time.time()
             kw = {
-                "force":True,
-                "sync":False,
-                "num":10,
-                "ignore":""}
+                "force": True,
+                "sync": False,
+                "num": 10,
+                "ignore": ""}
             rt = self.download_file(filename, filename, **kw)
             time_end = time.time()
             tmp_time = (time_end - time_start)
@@ -2205,14 +2103,11 @@ class Interface(object):
             min_download_widthband = change_to_human(float(filesize) / float(max_time_download) * 1024 * 1024) + "B/s"
             max_upload_widthband = change_to_human(float(filesize) / float(min_time_upload) * 1024 * 1024) + "B/s"
             max_download_widthband = change_to_human(float(filesize) / float(min_time_download) * 1024 * 1024) + "B/s"
-
-            
             table.add_row(['Upload', avg_upload_widthband, min_upload_widthband, max_upload_widthband])
-            table.add_row(['Download', avg_download_widthband, min_download_widthband, max_download_widthband])  
+            table.add_row(['Download', avg_download_widthband, min_download_widthband, max_download_widthband])
             logger.info(table)
             return 0
         return -1
-
 
 
 class CosS3Client(object):

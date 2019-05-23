@@ -18,16 +18,19 @@ bucket_name = "lewzylu" + str(random.randint(0, 1000)) + str(random.randint(0, 1
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 file_name = "tmp"
 
+
 def get_raw_md5(data):
     m2 = hashlib.md5(data)
     etag = '"' + str(m2.hexdigest()) + '"'
     return etag
+
 
 def gen_file(path, size):
     _file = open(path, 'w')
     _file.seek(1024*1024*size-3)
     _file.write('cos')
     _file.close()
+
 
 def setUp():
     """create testbucket"""
@@ -45,6 +48,7 @@ def tearDown():
     os.system("python coscmd/cos_cmd.py deletebucket >/dev/null 2>&1")
     time.sleep(5)
 
+
 def test_upload_object_1MB():
     """简单上传1MB小文件"""
     gen_file(file_name, 1)
@@ -55,18 +59,20 @@ def test_upload_object_1MB():
     assert rt == 0
     return etag
 
+
 def test_download_object_1MB():
     """下载1MB小文件"""
     etag = test_upload_object_1MB()
     rt = os.system("python coscmd/cos_cmd.py download -f {cos_path} {local_path} >/dev/null 2>&1".format(local_path=file_name, cos_path=file_name))
- 
+
     assert rt == 0
     with open(file_name, 'rb') as f:
         etag_download = get_raw_md5(f.read())
-    assert etag_download == etag       
-    
+    assert etag_download == etag
+
     if os.path.exists(file_name):
         os.remove(file_name)
+
 
 def test_delete_object_1MB():
     """删除1MB小文件"""
@@ -83,6 +89,12 @@ def test_bucketacl():
     rt = os.system("python coscmd/cos_cmd.py putbucketacl --grant-read anyone --grant-write anyone --grant-full-control anyone >/dev/null 2>&1")
     assert rt == 0
     rt = os.system("python coscmd/cos_cmd.py getbucketacl >/dev/null 2>&1")
+    assert rt == 0
+
+
+def test_probe():
+    """探测测试"""
+    rt = os.system("python coscmd/cos_cmd.py probe >/dev/null 2>&1")
     assert rt == 0
 
 

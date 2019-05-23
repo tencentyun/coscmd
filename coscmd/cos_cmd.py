@@ -271,7 +271,7 @@ class Op(object):
         except Exception as e:
             logger.warn(e)
             return -2
-    
+
     @staticmethod
     def delete(args):
         try:
