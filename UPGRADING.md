@@ -1,6 +1,11 @@
 Coscmd Upgrade Guide
 ====================
 
+1.8.5.37 to 1.8.6.1
+--------------------
+- Add interface of probe
+- Update unit test
+
 1.8.5.36 to 1.8.5.37
 --------------------
 - Update requirement of requests from 2.6 to 2.8 

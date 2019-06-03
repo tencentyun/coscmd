@@ -1124,178 +1124,175 @@ class Interface(object):
             return False
 
     def list_objects(self, cos_path, **kwargs):
-        try:
-            _recursive = kwargs['recursive']
-            _all = kwargs['all']
-            _num = kwargs['num']
-            _human = kwargs['human']
-            _versions = kwargs['versions']
-            IsTruncated = "true"
-            Delimiter = "/"
-            if _recursive is True:
-                Delimiter = ""
-            if _all is True:
-                _num = -1
-            self._file_num = 0
-            self._total_size = 0
-            if _versions:
-                KeyMarker = ""
-                VersionIdMarker = ""
-                while IsTruncated == "true":
-                    table = PrettyTable(
-                        ["Path", "Size/Type", "Time", "VersionId"])
-                    table.align = "l"
-                    table.align['Size/Type'] = 'r'
-                    table.padding_width = 3
-                    table.header = False
-                    table.border = False
-                    for i in range(self._retry):
-                        try:
-                            if VersionIdMarker == "null":
-                                VersionIdMarker = ""
-                            rt = self._client.list_objects_versions(
-                                Bucket=self._conf._bucket,
-                                Delimiter=Delimiter,
-                                KeyMarker=KeyMarker,
-                                VersionIdMarker=VersionIdMarker,
-                                MaxKeys=1000,
-                                Prefix=cos_path,
-                            )
-                            break
-                        except Exception as e:
-                            time.sleep(1 << i)
-                            logger.warn(e)
-                        if i + 1 == self._retry:
-                            return -1
-                    if 'IsTruncated' in rt:
-                        IsTruncated = rt['IsTruncated']
-                    if 'NextKeyMarker' in rt:
-                        KeyMarker = rt['NextKeyMarker']
-                    if 'NextVersionIdMarker' in rt:
-                        VersionIdMarker = rt['NextVersionIdMarker']
-                    if 'CommonPrefixes' in rt:
-                        for _folder in rt['CommonPrefixes']:
-                            _time = ""
-                            _type = "DIR"
-                            _path = _folder['Prefix']
-                            table.add_row([_path, _type, _time, ""])
-                    if 'DeleteMarker' in rt:
-                        for _file in rt['DeleteMarker']:
-                            self._file_num += 1
-                            _time = _file['LastModified']
-                            _time = time.localtime(utc_to_local(_time))
-                            _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
-                            _versionid = _file['VersionId']
-                            _path = _file['Key']
-                            table.add_row([_path, "", _time, _versionid])
-                            if self._file_num == _num:
-                                break
-                    if 'Version' in rt and (self._file_num < _num or _num == -1):
-                        for _file in rt['Version']:
-                            self._file_num += 1
-                            _time = _file['LastModified']
-                            _time = time.localtime(utc_to_local(_time))
-                            _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
-                            _versionid = _file['VersionId']
-                            _size = _file['Size']
-                            self._total_size += int(_size)
-                            if _human is True:
-                                _size = change_to_human(_size)
-                            _path = _file['Key']
-                            table.add_row([_path, _size, _time, _versionid])
-                            if self._file_num == _num:
-                                break
+        _recursive = kwargs['recursive']
+        _all = kwargs['all']
+        _num = kwargs['num']
+        _human = kwargs['human']
+        _versions = kwargs['versions']
+        IsTruncated = "true"
+        Delimiter = "/"
+        if _recursive is True:
+            Delimiter = ""
+        if _all is True:
+            _num = -1
+        self._file_num = 0
+        self._total_size = 0
+        if _versions:
+            KeyMarker = ""
+            VersionIdMarker = ""
+            while IsTruncated == "true":
+                table = PrettyTable(
+                    ["Path", "Size/Type", "Time", "VersionId"])
+                table.align = "l"
+                table.align['Size/Type'] = 'r'
+                table.padding_width = 3
+                table.header = False
+                table.border = False
+                for i in range(self._retry):
                     try:
-                        print(unicode(table))
+                        if VersionIdMarker == "null":
+                            VersionIdMarker = ""
+                        rt = self._client.list_objects_versions(
+                            Bucket=self._conf._bucket,
+                            Delimiter=Delimiter,
+                            KeyMarker=KeyMarker,
+                            VersionIdMarker=VersionIdMarker,
+                            MaxKeys=1000,
+                            Prefix=cos_path,
+                        )
+                        break
                     except Exception as e:
-                        print(table)
-                    if self._file_num == _num:
-                        break
-
-                if _human:
-                    self._total_size = change_to_human(str(self._total_size))
-                else:
-                    self._total_size = str(self._total_size)
-                if _recursive:
-                    logger.info(u" Files num: {file_num}".format(
-                        file_num=str(self._file_num)))
-                    logger.info(u" Files size: {file_size}".format(
-                        file_size=self._total_size))
-                if _all is False and self._file_num == _num:
-                    logger.info(
-                        u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
-                return 0
-            else:
-                NextMarker = ""
-                while IsTruncated == "true":
-                    table = PrettyTable(["Path", "Size/Type", "Class", "Time"])
-                    table.align = "l"
-                    table.align['Size/Type'] = 'r'
-                    table.padding_width = 3
-                    table.header = False
-                    table.border = False
-                    for i in range(self._retry):
-                        try:
-                            rt = self._client.list_objects(
-                                Bucket=self._conf._bucket,
-                                Delimiter=Delimiter,
-                                Marker=NextMarker,
-                                MaxKeys=1000,
-                                Prefix=cos_path
-                            )
+                        time.sleep(1 << i)
+                        logger.warn(e)
+                    if i + 1 == self._retry:
+                        return -1
+                if 'IsTruncated' in rt:
+                    IsTruncated = rt['IsTruncated']
+                if 'NextKeyMarker' in rt:
+                    KeyMarker = rt['NextKeyMarker']
+                if 'NextVersionIdMarker' in rt:
+                    VersionIdMarker = rt['NextVersionIdMarker']
+                if 'CommonPrefixes' in rt:
+                    for _folder in rt['CommonPrefixes']:
+                        _time = ""
+                        _type = "DIR"
+                        _path = _folder['Prefix']
+                        table.add_row([_path, _type, _time, ""])
+                if 'DeleteMarker' in rt:
+                    for _file in rt['DeleteMarker']:
+                        self._file_num += 1
+                        _time = _file['LastModified']
+                        _time = time.localtime(utc_to_local(_time))
+                        _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
+                        _versionid = _file['VersionId']
+                        _path = _file['Key']
+                        table.add_row([_path, "", _time, _versionid])
+                        if self._file_num == _num:
                             break
-                        except Exception as e:
-                            time.sleep(1 << i)
-                            logger.warn(e)
-                        if i + 1 == self._retry:
-                            return -1
-                    if 'IsTruncated' in rt:
-                        IsTruncated = rt['IsTruncated']
-                    if 'NextMarker' in rt:
-                        NextMarker = rt['NextMarker']
-                    if 'CommonPrefixes' in rt:
-                        for _folder in rt['CommonPrefixes']:
-                            _time = ""
-                            _type = "DIR"
-                            _path = _folder['Prefix']
-                            _class = ""
-                            table.add_row([_path, _type, _class, _time])
-                    if 'Contents' in rt:
-                        for _file in rt['Contents']:
-                            self._file_num += 1
-                            _time = _file['LastModified']
-                            _time = time.localtime(utc_to_local(_time))
-                            _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
-                            _size = _file['Size']
-                            _class = _file['StorageClass']
-                            self._total_size += int(_size)
-                            if _human is True:
-                                _size = change_to_human(_size)
-                            _path = _file['Key']
-                            table.add_row([_path, _size, _class, _time])
-                            if self._file_num == _num:
-                                break
+                if 'Version' in rt and (self._file_num < _num or _num == -1):
+                    for _file in rt['Version']:
+                        self._file_num += 1
+                        _time = _file['LastModified']
+                        _time = time.localtime(utc_to_local(_time))
+                        _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
+                        _versionid = _file['VersionId']
+                        _size = _file['Size']
+                        self._total_size += int(_size)
+                        if _human is True:
+                            _size = change_to_human(_size)
+                        _path = _file['Key']
+                        table.add_row([_path, _size, _time, _versionid])
+                        if self._file_num == _num:
+                            break
+                try:
+                    print(unicode(table))
+                except Exception as e:
+                    print(table)
+                if self._file_num == _num:
+                    break
+
+            if _human:
+                self._total_size = change_to_human(str(self._total_size))
+            else:
+                self._total_size = str(self._total_size)
+            if _recursive:
+                logger.info(u" Files num: {file_num}".format(
+                    file_num=str(self._file_num)))
+                logger.info(u" Files size: {file_size}".format(
+                    file_size=self._total_size))
+            if _all is False and self._file_num == _num:
+                logger.info(
+                    u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
+            return 0
+        else:
+            NextMarker = ""
+            while IsTruncated == "true":
+                table = PrettyTable(["Path", "Size/Type", "Class", "Time"])
+                table.align = "l"
+                table.align['Size/Type'] = 'r'
+                table.padding_width = 3
+                table.header = False
+                table.border = False
+                for i in range(self._retry):
                     try:
-                        print(unicode(table))
-                    except Exception:
-                        print(table)
-                    if self._file_num == _num:
+                        rt = self._client.list_objects(
+                            Bucket=self._conf._bucket,
+                            Delimiter=Delimiter,
+                            Marker=NextMarker,
+                            MaxKeys=1000,
+                            Prefix=cos_path
+                        )
                         break
-                if _human:
-                    self._total_size = change_to_human(str(self._total_size))
-                else:
-                    self._total_size = str(self._total_size)
-                if _recursive:
-                    logger.info(u" Files num: {file_num}".format(
-                        file_num=str(self._file_num)))
-                    logger.info(u" Files size: {file_size}".format(
-                        file_size=self._total_size))
-                if _all is False and self._file_num == _num:
-                    logger.info(
-                        u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
-                return 0
-        except Exception as e:
-            print(e)
+                    except Exception as e:
+                        time.sleep(1 << i)
+                        logger.warn(e)
+                    if i + 1 == self._retry:
+                        return -1
+                if 'IsTruncated' in rt:
+                    IsTruncated = rt['IsTruncated']
+                if 'NextMarker' in rt:
+                    NextMarker = rt['NextMarker']
+                if 'CommonPrefixes' in rt:
+                    for _folder in rt['CommonPrefixes']:
+                        _time = ""
+                        _type = "DIR"
+                        _path = _folder['Prefix']
+                        _class = ""
+                        table.add_row([_path, _type, _class, _time])
+                if 'Contents' in rt:
+                    for _file in rt['Contents']:
+                        self._file_num += 1
+                        _time = _file['LastModified']
+                        _time = time.localtime(utc_to_local(_time))
+                        _time = time.strftime("%Y-%m-%d %H:%M:%S", _time)
+                        _size = _file['Size']
+                        _class = _file['StorageClass']
+                        self._total_size += int(_size)
+                        if _human is True:
+                            _size = change_to_human(_size)
+                        _path = _file['Key']
+                        table.add_row([_path, _size, _class, _time])
+                        if self._file_num == _num:
+                            break
+                try:
+                    print(unicode(table))
+                except Exception:
+                    print(table)
+                if self._file_num == _num:
+                    break
+            if _human:
+                self._total_size = change_to_human(str(self._total_size))
+            else:
+                self._total_size = str(self._total_size)
+            if _recursive:
+                logger.info(u" Files num: {file_num}".format(
+                    file_num=str(self._file_num)))
+                logger.info(u" Files size: {file_size}".format(
+                    file_size=self._total_size))
+            if _all is False and self._file_num == _num:
+                logger.info(
+                    u"Has listed the first {num}, use \'-a\' option to list all please".format(num=self._file_num))
+            return 0
 
     def info_object(self, cos_path, _human=False):
         table = PrettyTable([cos_path, ""])

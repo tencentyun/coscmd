@@ -2,6 +2,9 @@
 from six import text_type, binary_type
 from hashlib import md5
 import os
+import time
+import pytz
+import datetime
 
 maplist = {
             'x-cos-copy-source-If-Modified-Since': 'CopySourceIfModifiedSince',

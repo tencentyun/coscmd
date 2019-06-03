@@ -17,6 +17,7 @@ appid = os.environ['COS_APPID']
 bucket_name = "lewzylu" + str(random.randint(0, 1000)) + str(random.randint(0, 1000)) + "-" + appid
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 file_name = "tmp"
+test_file_num = 55
 
 
 def get_raw_md5(data):
@@ -98,13 +99,13 @@ def test_probe():
     assert rt == 0
 
 
-def test_upload_download_copy_delete_folder():
-    """文件夹上传下载复制删除"""
+def test_upload_folder():
+    """文件夹上传"""
     try:
         os.makedirs("testfolder/")
     except:
         pass
-    file_num = 1101
+    file_num = test_file_num
     for i in range(file_num):
         gen_file("testfolder/testfile_" + str(i), 0.01)
     print ("文件夹上传")
@@ -113,6 +114,21 @@ def test_upload_download_copy_delete_folder():
     print ("文件夹同步上传")
     rt = os.system("python coscmd/cos_cmd.py upload -rs testfolder testfolder >/dev/null 2>&1")
     assert rt == 0
+    os.system("rm -rf testfolder/")
+
+
+def test_download_folder():
+    """文件夹下载"""
+    try:
+        os.makedirs("testfolder/")
+    except:
+        pass
+    file_num = test_file_num
+    for i in range(file_num):
+        gen_file("testfolder/testfile_" + str(i), 0.01)
+    print ("文件夹上传")
+    rt = os.system("python coscmd/cos_cmd.py upload -r testfolder testfolder >/dev/null 2>&1")
+    assert rt == 0
     time.sleep(5)
     print ("文件夹下载")
     rt = os.system("python coscmd/cos_cmd.py download -rf testfolder testfolder >/dev/null 2>&1")
@@ -120,16 +136,45 @@ def test_upload_download_copy_delete_folder():
     print ("文件夹同步下载")
     rt = os.system("python coscmd/cos_cmd.py download -rsf testfolder testfolder >/dev/null 2>&1")
     assert rt == 0
+    os.system("rm -rf testfolder/")
+
+
+def test_copy_folder():
+    """文件夹复制"""
+    try:
+        os.makedirs("testfolder/")
+    except:
+        pass
+    file_num = test_file_num
+    for i in range(file_num):
+        gen_file("testfolder/testfile_" + str(i), 0.01)
+    print ("文件夹上传")
+    rt = os.system("python coscmd/cos_cmd.py upload -r testfolder testfolder >/dev/null 2>&1")
+    assert rt == 0
+    time.sleep(5)
     print ("文件夹复制")
     rt = os.system("python coscmd/cos_cmd.py copy -r %s.cos.%s.myqcloud.com/testfolder testfolder2 >/dev/null 2>&1" % (bucket_name, region))
     assert rt == 0
+    os.system("rm -rf testfolder/")
+
+
+def test_list_folder():
+    """文件夹打印"""
+    try:
+        os.makedirs("testfolder/")
+    except:
+        pass
+    file_num = test_file_num
+    for i in range(file_num):
+        gen_file("testfolder/testfile_" + str(i), 0.01)
+    print ("文件夹上传")
+    rt = os.system("python coscmd/cos_cmd.py upload -r testfolder testfolder >/dev/null 2>&1")
+    assert rt == 0
+    time.sleep(5)
     print ("打印对象")
-    rt = os.system("python coscmd/cos_cmd.py list >/dev/null 2>&1")
-    assert rt == 0
-    print ("删除文件夹")
-    rt = os.system("python coscmd/cos_cmd.py delete -rf testfolder >/dev/null 2>&1")
-    assert rt == 0
-    rt = os.system("python coscmd/cos_cmd.py delete -rf testfolder2 >/dev/null 2>&1")
+    rt = os.system("python coscmd/cos_cmd.py list -n 10 >/dev/null 2>&1")
+    print ("打印全部对象")
+    rt = os.system("python coscmd/cos_cmd.py list -ar >/dev/null 2>&1")
     assert rt == 0
     os.system("rm -rf testfolder/")
 
