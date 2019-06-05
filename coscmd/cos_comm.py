@@ -1,10 +1,23 @@
 # -*- coding: utf-8 -*-
 from six import text_type, binary_type
-from hashlib import md5
-import os
+from prettytable import PrettyTable
+from os import path
+from contextlib import closing
+from xml.dom import minidom
+from six import text_type
+from hashlib import md5, sha1
+from tqdm import tqdm
 import time
-import pytz
+import requests
+import logging
+import sys
+import os
+import base64
 import datetime
+import pytz
+import yaml
+import fnmatch
+import copy
 
 maplist = {
             'x-cos-copy-source-If-Modified-Since': 'CopySourceIfModifiedSince',
