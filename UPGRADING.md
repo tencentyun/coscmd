@@ -1,6 +1,10 @@
 Coscmd Upgrade Guide
 ====================
 
+1.8.6.1 to 1.8.6.2
+--------------------
+- Fixed bug of delete object without -f parameter
+
 1.8.5.37 to 1.8.6.1
 --------------------
 - Add interface of probe
