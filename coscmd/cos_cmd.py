@@ -186,8 +186,7 @@ def load_conf():
             )
             return conf
     except Exception as e:
-        logger.warn(e)
-        return None
+        raise(e)
 
 
 class Op(object):
