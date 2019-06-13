@@ -115,22 +115,26 @@ class Interface(object):
         self._inner_threadpool = SimpleThreadPool(1)
         self._multiupload_threshold = 20 * 1024 * 1024 + 1024
         self._multidownload_threshold = 20 * 1024 * 1024 + 1024
-        if conf._endpoint == "":
-            sdk_config = qcloud_cos.CosConfig(Region=conf._region,
-                                              SecretId=conf._secret_id,
-                                              SecretKey=conf._secret_key,
-                                              Token=conf._token,
-                                              Scheme=conf._schema,
-                                              Anonymous=conf._anonymous)
-        else:
-            sdk_config = qcloud_cos.CosConfig(Endpoint=conf._endpoint,
-                                              Region=conf._region,
-                                              SecretId=conf._secret_id,
-                                              SecretKey=conf._secret_key,
-                                              Token=conf._token,
-                                              Scheme=conf._schema,
-                                              Anonymous=conf._anonymous)
-        self._client = qcloud_cos.CosS3Client(sdk_config)
+        try:
+            if conf._endpoint == "":
+                sdk_config = qcloud_cos.CosConfig(Region=conf._region,
+                                                  SecretId=conf._secret_id,
+                                                  SecretKey=conf._secret_key,
+                                                  Token=conf._token,
+                                                  Scheme=conf._schema,
+                                                  Anonymous=conf._anonymous)
+            else:
+                sdk_config = qcloud_cos.CosConfig(Endpoint=conf._endpoint,
+                                                  Region=conf._region,
+                                                  SecretId=conf._secret_id,
+                                                  SecretKey=conf._secret_key,
+                                                  Token=conf._token,
+                                                  Scheme=conf._schema,
+                                                  Anonymous=conf._anonymous)
+            self._client = qcloud_cos.CosS3Client(sdk_config)
+        except Exception as e:
+            logger.warn(e)
+            raise(e)
         if session is None:
             self._session = requests.session()
         else:
