@@ -1,6 +1,10 @@
 Coscmd Upgrade Guide
 ====================
 
+1.8.6.2 to 1.8.6.3
+--------------------
+- Update abort interface relay on cos-python-sdk
+
 1.8.6.1 to 1.8.6.2
 --------------------
 - Fixed bug of delete object without -f parameter
