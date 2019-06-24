@@ -299,6 +299,9 @@ class Op(object):
                     logger.debug("delete all files under {cos_path} failed!".format(cos_path=to_printable_str(args.cos_path)))
                     return -1
             else:
+                if args.cos_path == '':
+                    logger.warn("not support delete empty path")
+                    return -1
                 if not Interface.delete_file(args.cos_path, **kwargs):
                     logger.debug("delete all files under {cos_path} successfully!".format(cos_path=to_printable_str(args.cos_path)))
                     return 0
@@ -394,7 +397,7 @@ class Op(object):
             if not isinstance(args. cos_path, text_type):
                 args.cos_path = args.cos_path.decode(fs_coding)
             Interface = client.op_int()
-            if Interface.abort_parts(cos_path=args.cos_path):
+            if not Interface.abort_parts(cos_path=args.cos_path):
                 return 0
             else:
                 return -1
@@ -705,7 +708,7 @@ def command_thread():
     parser_download.set_defaults(func=Op.download)
 
     parser_delete = sub_parser.add_parser("delete", help="Delete file or files on COS")
-    parser_delete.add_argument("cos_path", nargs='?', help="Cos_path as a/b.txt", type=str, default='')
+    parser_delete.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
     parser_delete.add_argument('-r', '--recursive', help="Delete files recursively, WARN: all files with the prefix will be deleted!", action="store_true", default=False)
     parser_delete.add_argument('--versions', help='Delete objects with versions', action="store_true", default=False)
     parser_delete.add_argument('--versionId', help='Specify versionId of object to list', type=str, default="")
