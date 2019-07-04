@@ -18,6 +18,7 @@ bucket_name = "lewzylu" + str(random.randint(0, 1000)) + str(random.randint(0, 1
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 file_name = "tmp"
 test_file_num = 55
+seed = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+=-"
 
 
 def get_raw_md5(data):
@@ -27,9 +28,15 @@ def get_raw_md5(data):
 
 
 def gen_file(path, size):
+    sa = []
+    for i in range(8):
+        sa.append(random.choice(seed))
+    salt = ''.join(sa)
     _file = open(path, 'w')
-    _file.seek(1024*1024*size-3)
-    _file.write('cos')
+    _file.seek(100*512*size-8)
+    _file.write(salt)
+    _file.seek(1024*1024*size-8)
+    _file.write(salt)
     _file.close()
 
 
@@ -75,6 +82,31 @@ def test_download_object_1MB():
         os.remove(file_name)
 
 
+def test_upload_object_30MB():
+    """简单上传30MB文件"""
+    gen_file(file_name, 30)
+
+    with open(file_name, 'rb') as f:
+        etag = get_raw_md5(f.read())
+    rt = os.system("python coscmd/cos_cmd.py upload {local_path} {cos_path} >/dev/null 2>&1".format(local_path=file_name, cos_path=file_name))
+    assert rt == 0
+    return etag
+
+
+def test_download_object_30MB():
+    """下载30MB文件"""
+    etag = test_upload_object_30MB()
+    rt = os.system("python coscmd/cos_cmd.py download -f {cos_path} {local_path} >/dev/null 2>&1".format(local_path=file_name, cos_path=file_name))
+
+    assert rt == 0
+    with open(file_name, 'rb') as f:
+        etag_download = get_raw_md5(f.read())
+    assert etag_download == etag
+
+    if os.path.exists(file_name):
+        os.remove(file_name)
+
+
 def test_delete_object_1MB():
     """删除1MB小文件"""
     test_upload_object_1MB()
@@ -103,7 +135,7 @@ def test_upload_folder():
     """文件夹上传"""
     try:
         os.makedirs("testfolder/")
-    except:
+    except Exception:
         pass
     file_num = test_file_num
     for i in range(file_num):
@@ -121,7 +153,7 @@ def test_download_folder():
     """文件夹下载"""
     try:
         os.makedirs("testfolder/")
-    except:
+    except Exception:
         pass
     file_num = test_file_num
     for i in range(file_num):
@@ -143,7 +175,7 @@ def test_copy_folder():
     """文件夹复制"""
     try:
         os.makedirs("testfolder/")
-    except:
+    except Exception:
         pass
     file_num = test_file_num
     for i in range(file_num):
@@ -162,7 +194,7 @@ def test_list_folder():
     """文件夹打印"""
     try:
         os.makedirs("testfolder/")
-    except:
+    except Exception:
         pass
     file_num = test_file_num
     for i in range(file_num):
