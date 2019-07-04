@@ -37,7 +37,7 @@ class WorkerThread(Thread):
                 break
 
     def get_result(self):
-            return self._succ_task_num, self._fail_task_num, self._ret
+        return self._succ_task_num, self._fail_task_num, self._ret
 
 
 class SimpleThreadPool:

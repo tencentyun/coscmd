@@ -175,7 +175,7 @@ def response_info(rt):
     try:
         if request_id == "null":
             request_id = rt.headers['x-cos-request-id']
-    except:
+    except Exception:
         pass
     return (u'''Error: [code {code}] {message}
 RequestId: {request_id}'''.format(

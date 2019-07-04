@@ -101,7 +101,7 @@ class Interface(object):
     def __init__(self, conf, session=None):
         self._conf = conf
         self._upload_id = None
-        self._md5 = {}
+        self._md5 = []
         self._have_finished = 0
         self._err_tips = ''
         self._retry = conf._retry
@@ -193,8 +193,8 @@ class Interface(object):
                         ID = content.getElementsByTagName(
                             "PartNumber")[0].childNodes[0].data
                         self._have_uploaded.append(ID)
-                        self._md5[int(ID)] = content.getElementsByTagName(
-                            self._etag)[0].childNodes[0].data[1:-1]
+                        server_md5 = content.getElementsByTagName(self._etag)[0].childNodes[0].data[1:-1]
+                        self._md5.append({'PartNumber': int(ID), 'ETag': server_md5})
                 else:
                     logger.debug(response_info(rt))
                     logger.debug("list parts error")
@@ -366,7 +366,7 @@ class Interface(object):
 
         def init_multiupload():
             url = self._conf.uri(path=quote(to_printable_str(cos_path)))
-            self._md5 = {}
+            self._md5 = []
             self.c = 0
             self._have_uploaded = []
             self._upload_id = None
@@ -424,20 +424,14 @@ class Interface(object):
                         code=rt.status_code,
                         headers=rt.headers,
                         text=to_printable_str(rt.text)))
-                    try:
-                        self._md5[idx] = rt.headers[self._etag][1:-1]
-                    except:
-                        self._md5[idx] = ""
+                    server_md5 = rt.headers[self._etag][1:-1]
+                    self._md5.append({'PartNumber': idx, 'ETag': server_md5})
                     if rt.status_code == 200:
                         if self._conf._verify == "sha1":
                             local_encryption = sha1(data).hexdigest()
                         else:
                             local_encryption = md5(data).hexdigest()
-                        logger.debug("cos encryption: {key}".format(
-                            key=self._md5[idx]))
-                        logger.debug("local encryption: {key}".format(
-                            key=local_encryption))
-                        if (kwargs['skipmd5'] or self._md5[idx] == local_encryption):
+                        if (kwargs['skipmd5'] or server_md5 == local_encryption):
                             self._have_finished += 1
                             self._pbar.update(length)
                             break
@@ -496,35 +490,16 @@ class Interface(object):
         def complete_multiupload():
             logger.info('Completing multiupload, please wait')
             doc = minidom.Document()
-            root = doc.createElement("CompleteMultipartUpload")
-            list_md5 = sorted(self._md5.items(), key=lambda d: d[0])
-            for i, v in list_md5:
-                t = doc.createElement("Part")
-                t1 = doc.createElement("PartNumber")
-                t1.appendChild(doc.createTextNode(str(i)))
-                t2 = doc.createElement(self._etag)
-                t2.appendChild(doc.createTextNode('"{v}"'.format(v=v)))
-                t.appendChild(t1)
-                t.appendChild(t2)
-                root.appendChild(t)
-                data = root.toxml()
-                url = self._conf.uri(path=quote(to_printable_str(
-                    cos_path))) + "?uploadId={uploadid}".format(uploadid=self._upload_id)
-                logger.debug('complete url: ' + url)
-                logger.debug("complete data: " + data)
+            lst = sorted(self._md5, key=lambda x: x['PartNumber'])
             try:
-                with closing(self._session.post(url, auth=CosS3Auth(self._conf), data=data, stream=True)) as rt:
-                    logger.debug("complete status code: {code}".format(
-                        code=rt.status_code))
-                    logger.debug("complete headers: {headers}".format(
-                        headers=rt.headers))
-                if rt.status_code == 200:
-                    os.remove(self._path_md5)
-                    return 0
-                else:
-                    logger.warn(response_info(rt))
-                    return -1
-            except Exception:
+                self._client.complete_multipart_upload(self._conf._bucket,
+                                                       quote(to_printable_str(cos_path)),
+                                                       self._upload_id,
+                                                       {'Part': lst})
+                os.remove(self._path_md5)
+                return 0
+            except Exception as e:
+                logger.warn(e)
                 return -1
 
         logger.info(u"Upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
@@ -1614,14 +1589,14 @@ class Interface(object):
         except Exception as e:
             try:
                 os.remove(local_path)
-            except:
+            except Exception:
                 pass
             for i in range(parts_num):
                 idx = i + 1
                 file_name = local_path + "_" + str(idx)
                 try:
                     os.remove(file_name)
-                except:
+                except Exception:
                     pass
             logger.warn(e)
             logger.warn("Complete file failure")
@@ -2033,7 +2008,7 @@ class Interface(object):
                     root = minidom.parseString(rt.content).documentElement
                     status = root.getElementsByTagName(
                         "Status")[0].childNodes[0].data
-                except:
+                except Exception:
                     status = "Not configured"
                 logger.info(status)
                 return True

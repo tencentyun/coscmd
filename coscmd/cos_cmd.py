@@ -136,15 +136,15 @@ def load_conf():
                         logger.error("The configuration file is wrong. Please reconfirm")
             try:
                 schema = cp.get('common', 'schema')
-            except:
+            except Exception:
                 schema = 'https'
             try:
                 verify = cp.get('common', 'verify')
-            except:
+            except Exception:
                 verify = 'md5'
             try:
                 token = cp.get('common', 'token')
-            except:
+            except Exception:
                 token = None
             try:
                 anonymous = cp.get('common', 'anonymous')
@@ -152,11 +152,11 @@ def load_conf():
                     anonymous = True
                 else:
                     anonymous = False
-            except:
+            except Exception:
                 anonymous = False
             try:
                 retry = int(cp.get('common', 'retry'))
-            except:
+            except Exception:
                 retry = 2
             region, endpoint = None, None
             if cp.has_option('common', 'region'):
@@ -825,7 +825,7 @@ def command_thread():
     try:
         res = args.func(args)
         return res
-    except:
+    except Exception:
         return 0
 
 
