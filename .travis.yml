@@ -14,7 +14,7 @@ install:
     - pip install coloredlogs
     - pip install requests
     - pip install nose
-    - pip install pep8
+    - pip install pycodestyle
     - pip install tox
     - pip install pyyaml
 script:
