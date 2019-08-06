@@ -17,3 +17,4 @@ coscmd/*.swo
 *.project
 *.pydevproject
 .settings/
+.vscode/
