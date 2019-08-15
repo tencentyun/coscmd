@@ -626,30 +626,37 @@ class Interface(object):
         source_schema = source_path.split('/')[0] + '/'
         source_path = source_path[len(source_schema):]
         while IsTruncated == "true":
-            try:
-                rt = self._client_source.list_objects(
-                    Bucket=source_bucket,
-                    Marker=NextMarker,
-                    MaxKeys=1000,
-                    Delimiter="",
-                    Prefix=source_path,
-                )
-                if 'IsTruncated' in rt:
-                    IsTruncated = rt['IsTruncated']
-                if 'NextMarker' in rt:
-                    NextMarker = rt['NextMarker']
-                if 'Contents' in rt:
-                    for _file in rt['Contents']:
-                        _path = to_unicode(_file['Key'])
-                        _source_path = source_schema + _path
-                        if source_path.endswith('/') is False and len(source_path) != 0:
-                            _cos_path = cos_path + _path[len(source_path) + 1:]
-                        else:
-                            _cos_path = cos_path + _path[len(source_path):]
-                        self._inner_threadpool.add_task(
-                            self.copy_file, _source_path, _cos_path, _http_headers, **kwargs)
-            except Exception as e:
-                logger.warn(e)
+            for i in range(self._retry):
+                try:
+                    rt = self._client_source.list_objects(
+                        Bucket=source_bucket,
+                        Marker=NextMarker,
+                        MaxKeys=1000,
+                        Delimiter="",
+                        Prefix=source_path,
+                    )
+                    if 'IsTruncated' in rt:
+                        IsTruncated = rt['IsTruncated']
+                    if 'NextMarker' in rt:
+                        NextMarker = rt['NextMarker']
+                    if 'Contents' in rt:
+                        for _file in rt['Contents']:
+                            _path = to_unicode(_file['Key'])
+                            _source_path = source_schema + _path
+                            if source_path.endswith('/') is False and len(source_path) != 0:
+                                _cos_path = cos_path + _path[len(source_path) + 1:]
+                            else:
+                                _cos_path = cos_path + _path[len(source_path):]
+                            self._inner_threadpool.add_task(
+                                self.copy_file, _source_path, _cos_path, _http_headers, **kwargs)
+                    break
+                except Exception as e:
+                    time.sleep(1 << i)
+                    logger.warn(e)
+                if i + 1 == self._retry:
+                    logger.warn("ListObjects fail")
+                    return -1
+
         self._inner_threadpool.wait_completion()
         result = self._inner_threadpool.get_result()
         for worker in result['detail']:
