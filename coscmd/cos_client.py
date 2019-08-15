@@ -493,7 +493,7 @@ class Interface(object):
             lst = sorted(self._md5, key=lambda x: x['PartNumber'])
             try:
                 self._client.complete_multipart_upload(self._conf._bucket,
-                                                       quote(to_printable_str(cos_path)),
+                                                       cos_path,
                                                        self._upload_id,
                                                        {'Part': lst})
                 os.remove(self._path_md5)
