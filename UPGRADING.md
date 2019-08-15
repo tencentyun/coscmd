@@ -1,9 +1,13 @@
 Coscmd Upgrade Guide
 ====================
 
+1.8.6.4 to 1.8.6.5
+--------------------
+- Fixing bugs in the complete operation of Chinese files
+
 1.8.6.3 to 1.8.6.4
 --------------------
-- optimize multipart upload complete action
+- Optimize multipart upload complete action
 
 1.8.6.2 to 1.8.6.3
 --------------------
