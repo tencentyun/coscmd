@@ -27,10 +27,12 @@ if sys.version > '3':
     from coscmd.cos_auth import CosS3Auth
     from coscmd.cos_threadpool import SimpleThreadPool
     from coscmd.cos_comm import *
+    from coscmd.cos_color import *
 else:
     from cos_auth import CosS3Auth
     from cos_threadpool import SimpleThreadPool
     from cos_comm import *
+    from cos_color import *
 
 logger = logging.getLogger("coscmd")
 
@@ -154,6 +156,15 @@ class Interface(object):
                 return False
             else:
                 return True
+    
+    def check_file_name(self, _local_path, _cos_path):
+        url = self._conf.uri(path=quote(to_printable_str(_cos_path)))
+        rt = self._session.head(
+            url=url, auth=CosS3Auth(self._conf), stream=True)
+        if rt.status_code != 200: #资源不存在
+            return False
+        else:
+            return True
 
     def sign_url(self, cos_path, timeout=10000):
         cos_path = to_printable_str(cos_path)
@@ -298,10 +309,6 @@ class Interface(object):
             return -1
 
     def single_upload(self, local_path, cos_path, _http_headers='{}', **kwargs):
-        logger.info(u"Upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
-            bucket=self._conf._bucket,
-            local_path=local_path,
-            cos_path=cos_path))
         _md5 = ""
         try:
             _http_header = yaml.safe_load(_http_headers)
@@ -327,6 +334,13 @@ class Interface(object):
                 logger.info(
                     u"The file on cos is the same as the local file, skip upload")
                 return -2
+        if kwargs['mutex'] is True:
+            if self.check_file_name(local_path, cos_path):
+                logger.error(
+                    u"The file {cos_path} on cos has same name as the local file, skip upload".format(
+                        cos_path=cos_path
+                    ))
+                return -2
         try:
             if len(local_path) == 0:
                 data = ""
@@ -340,7 +354,7 @@ class Interface(object):
         for j in range(self._retry):
             try:
                 if j > 0:
-                    logger.info(u"Retry to upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
+                    logger.warn(u"Retry to upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
                         bucket=self._conf._bucket,
                         local_path=local_path,
                         cos_path=cos_path))
@@ -349,6 +363,10 @@ class Interface(object):
                 rt = self._session.put(url=url,
                                        auth=CosS3Auth(self._conf), data=data, headers=http_header)
                 if rt.status_code == 200:
+                    logger.info(u"Upload {local_path}   =>   cos://{bucket}/{cos_path} success".format(
+                        bucket=self._conf._bucket,
+                        local_path=local_path,
+                        cos_path=cos_path))
                     return 0
                 else:
                     time.sleep(2**j)
@@ -502,10 +520,6 @@ class Interface(object):
                 logger.warn(e)
                 return -1
 
-        logger.info(u"Upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
-            bucket=self._conf._bucket,
-            local_path=local_path,
-            cos_path=cos_path))
         _md5 = ""
         try:
             _http_header = yaml.safe_load(_http_headers)
@@ -531,6 +545,13 @@ class Interface(object):
                 logger.info(
                     u"The file on cos is the same as the local file, skip upload")
                 return -2
+        if kwargs['mutex'] is True:
+            if self.check_file_name(local_path, cos_path):
+                logger.error(
+                    u"The file {cos_path} on cos has same name as the local file, skip upload".format(
+                        cos_path=cos_path
+                    ))
+                return -2
         rt = init_multiupload()
         if 0 == rt:
             logger.debug(u"Init multipart upload ok")
@@ -546,7 +567,10 @@ class Interface(object):
             return -1
         rt = complete_multiupload()
         if 0 == rt:
-            logger.debug(u"Complete multipart upload ok")
+            logger.info(u"Upload {local_path}(multipart)   =>   cos://{bucket}/{cos_path} success".format(
+                bucket=self._conf._bucket,
+                local_path=local_path,
+                cos_path=cos_path))
         else:
             logger.warn(u"Complete multipart upload failed")
             return -1
@@ -2047,6 +2071,7 @@ class Interface(object):
             kw = {
                 "skipmd5": True,
                 "sync": False,
+                "mutex": False,
                 "force": True,
                 "ignore": ""}
             time_start = time.time()

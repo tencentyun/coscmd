@@ -218,6 +218,7 @@ class Op(object):
                 args.cos_path = args.cos_path[1:]
             kwargs = {}
             kwargs['sync'] = args.sync
+            kwargs['mutex'] = args.mutex
             kwargs['skipmd5'] = args.skipmd5
             kwargs['ignore'] = args.ignore.split(',')
             kwargs['force'] = args.force
@@ -690,6 +691,7 @@ def command_thread():
     parser_upload.add_argument('-r', '--recursive', help="Upload recursively when upload directory", action="store_true", default=False)
     parser_upload.add_argument('-H', '--headers', help="Specify HTTP headers", type=str, default='{}')
     parser_upload.add_argument('-s', '--sync', help="Upload and skip the same file", action="store_true", default=False)
+    parser_upload.add_argument('-m', '--mutex', help="Upload and skip the file has same name", action="store_true", default=False)
     parser_upload.add_argument('-f', '--force', help="upload without history breakpoint", action="store_true", default=False)
     parser_upload.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
     parser_upload.add_argument('--skipmd5', help='Upload without x-cos-meta-md5', action="store_true", default=False)
