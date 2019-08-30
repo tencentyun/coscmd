@@ -1,6 +1,11 @@
 Coscmd Upgrade Guide
 ====================
 
+1.8.6.5 to 1.8.6.6
+--------------------
+- Support uploading files with key values containing ./
+- Fix the problem that concurrent operation exceptions do not throw exceptions
+
 1.8.6.4 to 1.8.6.5
 --------------------
 - Fixing bugs in the complete operation of Chinese files
