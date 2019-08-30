@@ -91,7 +91,7 @@ class CoscmdConfig(object):
                     bucket=self._bucket,
                     endpoint=self._endpoint
                 )
-
+        url = url.replace('./', '.%2F')
         url = url.replace("+", "%2B")
         return url
 
@@ -365,41 +365,41 @@ class Interface(object):
     def multipart_upload(self, local_path, cos_path, _http_headers='{}', **kwargs):
 
         def init_multiupload():
-            url = self._conf.uri(path=quote(to_printable_str(cos_path)))
             self._md5 = []
             self.c = 0
             self._have_uploaded = []
             self._upload_id = None
             self._path_md5 = get_md5_filename(local_path, cos_path)
-            logger.debug("init with : " + url)
             if not kwargs['force'] and os.path.isfile(self._path_md5):
                 with open(self._path_md5, 'rb') as f:
                     self._upload_id = f.read()
                 if self.list_part(cos_path) is True:
                     logger.info(u"Continue uploading from last breakpoint")
                     return 0
-            http_header = _http_header
-            http_header['x-cos-meta-md5'] = _md5
-            rt = self._session.post(
-                url=url + "?uploads", auth=CosS3Auth(self._conf), headers=http_header)
-            logger.debug("Init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                code=rt.status_code,
-                headers=rt.headers,
-                text=to_printable_str(rt.text)))
 
-            if rt.status_code == 200:
-                root = minidom.parseString(rt.content).documentElement
-                self._upload_id = root.getElementsByTagName(
-                    "UploadId")[0].childNodes[0].data
+            http_headers = _http_headers
+            try:
+                http_headers = yaml.safe_load(http_headers)
+                http_headers['x-cos-meta-md5'] = _md5
+                http_headers = mapped(http_headers)
+            except Exception as e:
+                logger.warn("Http_haeder parse error.")
+                logger.warn(e)
+                return -1
+            try:
+                rt = self._client.create_multipart_upload(Bucket=self._conf._bucket,
+                                                          Key=cos_path,
+                                                          **http_headers)
+                logger.debug("Init resp: {rt}".format(rt=rt))
+                self._upload_id = rt['UploadId']
                 if os.path.isdir(os.path.expanduser("~/.tmp")) is False:
                     os.makedirs(os.path.expanduser("~/.tmp"))
                 with open(self._path_md5, 'wb') as f:
                     f.write(to_bytes(self._upload_id))
                 return 0
-            else:
-                logger.warn(response_info(rt))
+            except Exception as e:
+                logger.warn(e)
                 return -1
-            return 0
 
         def multiupload_parts():
 
@@ -482,7 +482,12 @@ class Interface(object):
             pool.wait_completion()
             result = pool.get_result()
             self._pbar.close()
-            if result['success_all']:
+            _fail_num = 0
+            for worker in result['detail']:
+                for status in worker[2]:
+                    if 0 != status:
+                        _fail_num += 1
+            if _fail_num == 0 and result['success_all']:
                 return 0
             else:
                 return -1
@@ -492,10 +497,11 @@ class Interface(object):
             doc = minidom.Document()
             lst = sorted(self._md5, key=lambda x: x['PartNumber'])
             try:
-                self._client.complete_multipart_upload(self._conf._bucket,
-                                                       cos_path,
-                                                       self._upload_id,
-                                                       {'Part': lst})
+                rt = self._client.complete_multipart_upload(self._conf._bucket,
+                                                            cos_path,
+                                                            self._upload_id,
+                                                            {'Part': lst})
+                logger.debug(rt)
                 os.remove(self._path_md5)
                 return 0
             except Exception as e:
@@ -531,25 +537,28 @@ class Interface(object):
                 logger.info(
                     u"The file on cos is the same as the local file, skip upload")
                 return -2
-        rt = init_multiupload()
-        if 0 == rt:
-            logger.debug(u"Init multipart upload ok")
-        else:
-            logger.warn(u"Init multipart upload failed")
-            return -1
-        rt = multiupload_parts()
-        if 0 == rt:
-            logger.debug(u"Multipart upload ok")
-        else:
-            logger.warn(
-                u"Some partial upload failed. Please retry the last command to continue.")
-            return -1
-        rt = complete_multiupload()
-        if 0 == rt:
-            logger.debug(u"Complete multipart upload ok")
-        else:
-            logger.warn(u"Complete multipart upload failed")
-            return -1
+        try:
+            rt = init_multiupload()
+            if 0 == rt:
+                logger.debug(u"Init multipart upload ok")
+            else:
+                logger.warn(u"Init multipart upload failed")
+                return -1
+            rt = multiupload_parts()
+            if 0 == rt:
+                logger.debug(u"Multipart upload ok")
+            else:
+                logger.warn(
+                    u"Some partial upload failed. Please retry the last command to continue.")
+                return -1
+            rt = complete_multiupload()
+            if 0 == rt:
+                logger.debug(u"Complete multipart upload ok")
+            else:
+                logger.warn(u"Complete multipart upload failed")
+                return -1
+        except Exception as e:
+            logger.warn(e)
         return 0
 
     def upload_file(self, local_path, cos_path, _http_headers='{}', **kwargs):
@@ -1491,11 +1500,10 @@ class Interface(object):
                                 if chunk:
                                     file_len += len(chunk)
                                     f.write(chunk)
-                                    self._pbar.update(len(chunk))
                             f.flush()
                         if file_len != content_len:
-                            raise IOError(
-                                u"Download failed with incomplete file")
+                            raise IOError(u"Download failed with incomplete file in part {part_number}".format(part_number=str(idx)))
+                        self._pbar.update(content_len)
                         return 0
                     else:
                         logger.warn(response_info(rt))
@@ -1575,9 +1583,16 @@ class Interface(object):
         pool.wait_completion()
         result = pool.get_result()
         self._pbar.close()
-        logger.info(u"Completing mget")
-        if result['success_all'] is False:
+        _fail_num = 0
+        for worker in result['detail']:
+            for status in worker[2]:
+                if 0 != status:
+                    _fail_num += 1
+        if not result['success_all'] or _fail_num > 0:
+            logger.info(u"{fail_num} parts download fail".format(fail_num=str(_fail_num)))
             return -1
+
+        logger.info(u"Completing mget")
         try:
             with open(local_path, 'wb') as f:
                 for i in range(parts_num):

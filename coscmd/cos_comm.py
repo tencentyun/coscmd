@@ -70,7 +70,8 @@ def mapped(headers):
             _meta[i] = headers[i]
         else:
             raise Exception('No Parameter Named ' + i + ' Please Check It')
-    _headers['Metadata'] = _meta
+    if len(_meta) > 0:
+        _headers['Metadata'] = _meta
     return _headers
 
 
