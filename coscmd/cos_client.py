@@ -18,6 +18,7 @@ import pytz
 import yaml
 import fnmatch
 import copy
+import threading
 from tqdm import tqdm
 from logging.handlers import RotatingFileHandler
 from wsgiref.handlers import format_date_time
@@ -114,7 +115,7 @@ class Interface(object):
         self._pbar = ''
         self._inner_threadpool = SimpleThreadPool(1)
         self._multiupload_threshold = 20 * 1024 * 1024 + 1024
-        self._multidownload_threshold = 20 * 1024 * 1024 + 1024
+        self._multidownload_threshold = 20
         try:
             if conf._endpoint == "":
                 sdk_config = qcloud_cos.CosConfig(Region=conf._region,
@@ -424,9 +425,9 @@ class Interface(object):
                         code=rt.status_code,
                         headers=rt.headers,
                         text=to_printable_str(rt.text)))
-                    server_md5 = rt.headers[self._etag][1:-1]
-                    self._md5.append({'PartNumber': idx, 'ETag': server_md5})
                     if rt.status_code == 200:
+                        server_md5 = rt.headers[self._etag][1:-1]
+                        self._md5.append({'PartNumber': idx, 'ETag': server_md5})
                         if self._conf._verify == "sha1":
                             local_encryption = sha1(data).hexdigest()
                         else:
@@ -1398,8 +1399,10 @@ class Interface(object):
 
     # 简单下载
     def single_download(self, cos_path, local_path, _http_headers='{}', **kwargs):
+        http_headers = _http_headers
         try:
-            _http_header = yaml.safe_load(_http_headers)
+            http_headers = yaml.safe_load(http_headers)
+            http_headers = mapped(http_headers)
         except Exception as e:
             logger.warn("Http_haeder parse error.")
             logger.warn(e)
@@ -1429,94 +1432,65 @@ class Interface(object):
                     return -1
         url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         try:
-            rt = self._session.get(
-                url=url, headers=_http_header, auth=CosS3Auth(self._conf), stream=True)
-            logger.debug("get resp, status code: {code}, headers: {headers}".format(
-                code=rt.status_code,
-                headers=rt.headers))
-            if 'Content-Length' in rt.headers:
-                content_len = int(rt.headers['Content-Length'])
-            else:
-                raise IOError(u"Download failed without Content-Length header")
-            if rt.status_code == 200:
-                file_len = 0
-                dir_path = os.path.dirname(local_path)
-                if os.path.isdir(dir_path) is False and dir_path != '':
-                    try:
-                        os.makedirs(dir_path, 0o755)
-                    except Exception as e:
-                        pass
+            rt = self._client.get_object(
+                Bucket=self._conf._bucket,
+                Key=cos_path,
+                **http_headers
+            )
+            dir_path = os.path.dirname(local_path)
+            if os.path.isdir(dir_path) is False and dir_path != '':
                 try:
-                    with open(local_path, 'wb') as f:
-                        for chunk in rt.iter_content(chunk_size=1024):
-                            if chunk:
-                                file_len += len(chunk)
-                                f.write(chunk)
-                        f.flush()
+                    os.makedirs(dir_path, 0o755)
                 except Exception as e:
-                    logger.warn(u"Fail to write to file")
-                    raise Exception(e)
-                if file_len != content_len:
-                    raise IOError(u"Download failed with incomplete file")
-            else:
-                raise Exception(response_info(rt))
+                    pass
+            rt['Body'].get_stream_to_file(local_path)
         except Exception as e:
             logger.warn(str(e))
-            os.remove(local_path)
             return -1
         return 0
 
     # 分块下载
     def multipart_download(self, cos_path, local_path, _http_headers='{}', **kwargs):
 
-        def get_parts_data(local_path, offset, length, parts_size, idx):
-            local_path = local_path + "_" + str(idx)
+        mutex = threading.Lock()
+        def get_parts_data(local_path, offset, length, parts_size, idx, file_stream):
             for j in range(self._retry):
                 try:
-                    http_header = copy.copy(_http_header)
+                    http_header = copy.copy(_http_headers)
                     http_header['Range'] = 'bytes=' + \
                         str(offset) + "-" + str(offset + length - 1)
-                    rt = self._session.get(url=url, auth=CosS3Auth(
-                        self._conf), headers=http_header, stream=True)
-                    logger.debug(u"get resp, status code: {code}, headers: {headers}".format(
-                        code=rt.status_code,
-                        headers=rt.headers))
-                    if 'Content-Length' in rt.headers:
-                        content_len = int(rt.headers['Content-Length'])
-                    else:
-                        logger.warn(
-                            u"Download failed without Content-Length header")
-                        continue
-                    if rt.status_code in [206, 200]:
-                        file_len = 0
-                        dir_path = os.path.dirname(local_path)
-                        if os.path.isdir(dir_path) is False and dir_path != '':
-                            try:
-                                os.makedirs(dir_path, 0o755)
-                            except Exception as e:
-                                pass
-                        with open(local_path, 'wb') as f:
-                            for chunk in rt.iter_content(chunk_size=1024 * 1024):
-                                if chunk:
-                                    file_len += len(chunk)
-                                    f.write(chunk)
-                            f.flush()
-                        if file_len != content_len:
-                            raise IOError(u"Download failed with incomplete file in part {part_number}".format(part_number=str(idx)))
-                        self._pbar.update(content_len)
-                        return 0
-                    else:
-                        logger.warn(response_info(rt))
-                        continue
+                    rt = self._client.get_object(
+                        Bucket=self._conf._bucket,
+                        Key=cos_path,
+                        **http_header
+                    )
+                    fp = rt['Body'].get_raw_stream()
+                    chunk_size = 1024
+                    file_len = 0
+                    while True:
+                        
+                        chunk_data = fp.read(chunk_size)
+                        if not chunk_data:
+                            break
+                        chunk_len = len(chunk_data)
+                        # 加互斥锁
+                        mutex.acquire()
+                        file_stream.seek(offset + file_len, 0)
+                        file_stream.write(chunk_data)
+                        mutex.release()
+                        self._pbar.update(chunk_len)
+                        file_len += chunk_len
+                    content_len = int(rt['Content-Length'])
+                    return 0
                 except Exception as e:
                     time.sleep(1 << j)
                     logger.warn(str(e))
                     continue
             return -1
-
         cos_path = cos_path.lstrip('/')
         try:
-            _http_header = yaml.safe_load(_http_headers)
+            _http_headers = yaml.safe_load(_http_headers)
+            _http_headers = mapped(_http_headers)
         except Exception as e:
             logger.warn("Http_haeder parse error.")
             logger.warn(e)
@@ -1543,17 +1517,12 @@ class Interface(object):
                     logger.warn(
                         u"The file {file} already exists, please use -f to overwrite the file".format(file=cos_path))
                     return -1
-        url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         try:
-            rt = self._session.head(url=url, auth=CosS3Auth(self._conf))
-            logger.debug(u"download resp, status code: {code}, headers: {headers}".format(
-                code=rt.status_code,
-                headers=rt.headers))
-            if rt.status_code == 200:
-                file_size = int(rt.headers['Content-Length'])
-            else:
-                logger.warn(response_info(rt))
-                return -1
+            rt = self._client.head_object(
+                Bucket=self._conf._bucket,
+                Key=cos_path
+            )
+            file_size = int(rt['Content-Length'])
         except Exception as e:
             logger.warn(str(e))
             return -1
@@ -1572,16 +1541,33 @@ class Interface(object):
         logger.debug(u'download file concurrently')
         logger.info(u"Downloading {file}".format(file=local_path))
         self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
+        # 如果路径不存在，则创建文件夹
+        dir_path = os.path.dirname(local_path)
+        if os.path.isdir(dir_path) is False and dir_path != '':
+            try:
+                os.makedirs(dir_path, 0o755)
+            except Exception as e:
+                pass
+        # 生成临时文件名字
+        tmp_local_path = "tmp_coscmd_" + local_path
+        tmp_md5 = md5()
+        tmp_md5.update(to_bytes(local_path))
+        while True:
+            tmp_local_path = tmp_local_path + tmp_md5.hexdigest()
+            if os.path.isfile(tmp_local_path) is False:
+                break
+        f = open(tmp_local_path, "wb")
         for i in range(parts_num):
             if i + 1 == parts_num:
-                pool.add_task(get_parts_data, local_path, offset,
-                              file_size - offset, parts_num, i + 1)
+                pool.add_task(get_parts_data, tmp_local_path, offset,
+                              file_size - offset, parts_num, i + 1, f)
             else:
-                pool.add_task(get_parts_data, local_path, offset,
-                              chunk_size, parts_num, i + 1)
+                pool.add_task(get_parts_data, tmp_local_path, offset,
+                              chunk_size, parts_num, i + 1, f)
                 offset += chunk_size
         pool.wait_completion()
         result = pool.get_result()
+        f.close()
         self._pbar.close()
         _fail_num = 0
         for worker in result['detail']:
@@ -1590,38 +1576,15 @@ class Interface(object):
                     _fail_num += 1
         if not result['success_all'] or _fail_num > 0:
             logger.info(u"{fail_num} parts download fail".format(fail_num=str(_fail_num)))
-            return -1
-
-        logger.info(u"Completing mget")
-        try:
-            with open(local_path, 'wb') as f:
-                for i in range(parts_num):
-                    idx = i + 1
-                    file_name = local_path + "_" + str(idx)
-                    length = 1024 * 1024
-                    offset = 0
-                    with open(file_name, 'rb') as File:
-                        while (offset < file_size):
-                            File.seek(offset, 0)
-                            data = File.read(length)
-                            f.write(data)
-                            offset += length
-                    os.remove(file_name)
-                f.flush()
-        except Exception as e:
-            try:
-                os.remove(local_path)
+            try:    
+                os.remove(tmp_local_path)
             except Exception:
                 pass
-            for i in range(parts_num):
-                idx = i + 1
-                file_name = local_path + "_" + str(idx)
-                try:
-                    os.remove(file_name)
-                except Exception:
-                    pass
-            logger.warn(e)
-            logger.warn("Complete file failure")
+            return -1
+
+        rt = os.system("mv %s %s -f" % (tmp_local_path ,local_path))
+        if rt != 0:
+            logger.warn("Move tmp file Error")
             return -1
         return 0
 
