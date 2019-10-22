@@ -424,9 +424,9 @@ class Interface(object):
                         code=rt.status_code,
                         headers=rt.headers,
                         text=to_printable_str(rt.text)))
-                    server_md5 = rt.headers[self._etag][1:-1]
-                    self._md5.append({'PartNumber': idx, 'ETag': server_md5})
                     if rt.status_code == 200:
+                        server_md5 = rt.headers[self._etag][1:-1]
+                        self._md5.append({'PartNumber': idx, 'ETag': server_md5})
                         if self._conf._verify == "sha1":
                             local_encryption = sha1(data).hexdigest()
                         else:
@@ -1398,8 +1398,10 @@ class Interface(object):
 
     # 简单下载
     def single_download(self, cos_path, local_path, _http_headers='{}', **kwargs):
+        http_headers = copy.copy(_http_headers)
         try:
-            _http_header = yaml.safe_load(_http_headers)
+            http_headers = yaml.safe_load(http_headers)
+            http_headers = mapped(http_headers)
         except Exception as e:
             logger.warn("Http_haeder parse error.")
             logger.warn(e)
@@ -1429,40 +1431,20 @@ class Interface(object):
                     return -1
         url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         try:
-            rt = self._session.get(
-                url=url, headers=_http_header, auth=CosS3Auth(self._conf), stream=True)
-            logger.debug("get resp, status code: {code}, headers: {headers}".format(
-                code=rt.status_code,
-                headers=rt.headers))
-            if 'Content-Length' in rt.headers:
-                content_len = int(rt.headers['Content-Length'])
-            else:
-                raise IOError(u"Download failed without Content-Length header")
-            if rt.status_code == 200:
-                file_len = 0
-                dir_path = os.path.dirname(local_path)
-                if os.path.isdir(dir_path) is False and dir_path != '':
-                    try:
-                        os.makedirs(dir_path, 0o755)
-                    except Exception as e:
-                        pass
+            rt = self._client.get_object(
+                Bucket=self._conf._bucket,
+                Key=cos_path,
+                **http_headers
+            )
+            dir_path = os.path.dirname(local_path)
+            if os.path.isdir(dir_path) is False and dir_path != '':
                 try:
-                    with open(local_path, 'wb') as f:
-                        for chunk in rt.iter_content(chunk_size=1024):
-                            if chunk:
-                                file_len += len(chunk)
-                                f.write(chunk)
-                        f.flush()
+                    os.makedirs(dir_path, 0o755)
                 except Exception as e:
-                    logger.warn(u"Fail to write to file")
-                    raise Exception(e)
-                if file_len != content_len:
-                    raise IOError(u"Download failed with incomplete file")
-            else:
-                raise Exception(response_info(rt))
+                    pass
+            rt['Body'].get_stream_to_file(local_path)
         except Exception as e:
             logger.warn(str(e))
-            os.remove(local_path)
             return -1
         return 0
 
@@ -1473,41 +1455,18 @@ class Interface(object):
             local_path = local_path + "_" + str(idx)
             for j in range(self._retry):
                 try:
-                    http_header = copy.copy(_http_header)
+                    http_header = copy.copy(_http_headers)
                     http_header['Range'] = 'bytes=' + \
                         str(offset) + "-" + str(offset + length - 1)
-                    rt = self._session.get(url=url, auth=CosS3Auth(
-                        self._conf), headers=http_header, stream=True)
-                    logger.debug(u"get resp, status code: {code}, headers: {headers}".format(
-                        code=rt.status_code,
-                        headers=rt.headers))
-                    if 'Content-Length' in rt.headers:
-                        content_len = int(rt.headers['Content-Length'])
-                    else:
-                        logger.warn(
-                            u"Download failed without Content-Length header")
-                        continue
-                    if rt.status_code in [206, 200]:
-                        file_len = 0
-                        dir_path = os.path.dirname(local_path)
-                        if os.path.isdir(dir_path) is False and dir_path != '':
-                            try:
-                                os.makedirs(dir_path, 0o755)
-                            except Exception as e:
-                                pass
-                        with open(local_path, 'wb') as f:
-                            for chunk in rt.iter_content(chunk_size=1024 * 1024):
-                                if chunk:
-                                    file_len += len(chunk)
-                                    f.write(chunk)
-                            f.flush()
-                        if file_len != content_len:
-                            raise IOError(u"Download failed with incomplete file in part {part_number}".format(part_number=str(idx)))
-                        self._pbar.update(content_len)
-                        return 0
-                    else:
-                        logger.warn(response_info(rt))
-                        continue
+                    rt = self._client.get_object(
+                        Bucket=self._conf._bucket,
+                        Key=cos_path,
+                        **http_header
+                    )
+                    rt['Body'].get_stream_to_file(local_path)
+                    content_len = int(rt['Content-Length'])
+                    self._pbar.update(content_len)
+                    return 0
                 except Exception as e:
                     time.sleep(1 << j)
                     logger.warn(str(e))
@@ -1516,7 +1475,8 @@ class Interface(object):
 
         cos_path = cos_path.lstrip('/')
         try:
-            _http_header = yaml.safe_load(_http_headers)
+            _http_headers = yaml.safe_load(_http_headers)
+            _http_headers = mapped(_http_headers) 
         except Exception as e:
             logger.warn("Http_haeder parse error.")
             logger.warn(e)
@@ -1543,21 +1503,15 @@ class Interface(object):
                     logger.warn(
                         u"The file {file} already exists, please use -f to overwrite the file".format(file=cos_path))
                     return -1
-        url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         try:
-            rt = self._session.head(url=url, auth=CosS3Auth(self._conf))
-            logger.debug(u"download resp, status code: {code}, headers: {headers}".format(
-                code=rt.status_code,
-                headers=rt.headers))
-            if rt.status_code == 200:
-                file_size = int(rt.headers['Content-Length'])
-            else:
-                logger.warn(response_info(rt))
-                return -1
+            rt = self._client.head_object(
+                Bucket=self._conf._bucket,
+                Key=cos_path
+            )
+            file_size = int(rt['Content-Length'])
         except Exception as e:
             logger.warn(str(e))
             return -1
-        url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         offset = 0
         parts_num = kwargs['num']
         chunk_size = file_size / parts_num
@@ -1571,6 +1525,13 @@ class Interface(object):
         logger.debug(u"chunk_size: " + str(chunk_size))
         logger.debug(u'download file concurrently')
         logger.info(u"Downloading {file}".format(file=local_path))
+        # 如果路径不存在，则创建文件夹
+        dir_path = os.path.dirname(local_path)
+        if os.path.isdir(dir_path) is False and dir_path != '':
+            try:
+                os.makedirs(dir_path, 0o755)
+            except Exception as e:
+                pass
         self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
         for i in range(parts_num):
             if i + 1 == parts_num:
@@ -1629,20 +1590,16 @@ class Interface(object):
         # head操作获取文件大小
         url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         try:
-            rt = self._session.head(url=url, auth=CosS3Auth(self._conf))
-            logger.debug(u"download resp, status code: {code}, headers: {headers}".format(
-                code=rt.status_code,
-                headers=rt.headers))
-            if rt.status_code == 200:
-                file_size = int(rt.headers['Content-Length'])
-            else:
-                logger.warn(response_info(rt))
-                return -1
+            rt = self._client.head_object(
+                Bucket=self._conf._bucket,
+                Key=cos_path
+            )
+            file_size = int(rt['Content-Length'])
         except Exception as e:
             logger.warn(str(e))
             return -1
         try:
-            if file_size <= self._multidownload_threshold:
+            if file_size <= self._multidownload_threshold or kwargs['num'] == 1:
                 rt = self.single_download(cos_path, local_path, _http_headers, **kwargs)
                 return rt
             else:
