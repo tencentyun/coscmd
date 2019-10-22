@@ -1398,7 +1398,7 @@ class Interface(object):
 
     # 简单下载
     def single_download(self, cos_path, local_path, _http_headers='{}', **kwargs):
-        http_headers = _http_headers
+        http_headers = copy.copy(_http_headers)
         try:
             http_headers = yaml.safe_load(http_headers)
             http_headers = mapped(http_headers)
@@ -1455,7 +1455,7 @@ class Interface(object):
             local_path = local_path + "_" + str(idx)
             for j in range(self._retry):
                 try:
-                    http_header = _http_headers
+                    http_header = copy.copy(_http_headers)
                     http_header['Range'] = 'bytes=' + \
                         str(offset) + "-" + str(offset + length - 1)
                     rt = self._client.get_object(
