@@ -1476,7 +1476,7 @@ class Interface(object):
         cos_path = cos_path.lstrip('/')
         try:
             _http_headers = yaml.safe_load(_http_headers)
-            _http_headers = mapped(_http_headers) 
+            _http_headers = mapped(_http_headers)
         except Exception as e:
             logger.warn("Http_haeder parse error.")
             logger.warn(e)
