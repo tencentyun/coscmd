@@ -18,7 +18,6 @@ import pytz
 import yaml
 import fnmatch
 import copy
-import threading
 from tqdm import tqdm
 from logging.handlers import RotatingFileHandler
 from wsgiref.handlers import format_date_time
