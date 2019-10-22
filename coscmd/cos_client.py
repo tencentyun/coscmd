@@ -1452,11 +1452,11 @@ class Interface(object):
     # 分块下载
     def multipart_download(self, cos_path, local_path, _http_headers='{}', **kwargs):
 
-        mutex = threading.Lock()
-        def get_parts_data(local_path, offset, length, parts_size, idx, file_stream):
+        def get_parts_data(local_path, offset, length, parts_size, idx):
+            local_path = local_path + "_" + str(idx)
             for j in range(self._retry):
                 try:
-                    http_header = copy.copy(_http_headers)
+                    http_header = _http_headers
                     http_header['Range'] = 'bytes=' + \
                         str(offset) + "-" + str(offset + length - 1)
                     rt = self._client.get_object(
@@ -1464,33 +1464,20 @@ class Interface(object):
                         Key=cos_path,
                         **http_header
                     )
-                    fp = rt['Body'].get_raw_stream()
-                    chunk_size = 1024
-                    file_len = 0
-                    while True:
-                        
-                        chunk_data = fp.read(chunk_size)
-                        if not chunk_data:
-                            break
-                        chunk_len = len(chunk_data)
-                        # 加互斥锁
-                        mutex.acquire()
-                        file_stream.seek(offset + file_len, 0)
-                        file_stream.write(chunk_data)
-                        mutex.release()
-                        self._pbar.update(chunk_len)
-                        file_len += chunk_len
+                    rt['Body'].get_stream_to_file(local_path)
                     content_len = int(rt['Content-Length'])
+                    self._pbar.update(content_len)
                     return 0
                 except Exception as e:
                     time.sleep(1 << j)
                     logger.warn(str(e))
                     continue
             return -1
+
         cos_path = cos_path.lstrip('/')
         try:
             _http_headers = yaml.safe_load(_http_headers)
-            _http_headers = mapped(_http_headers)
+            _http_headers = mapped(_http_headers) 
         except Exception as e:
             logger.warn("Http_haeder parse error.")
             logger.warn(e)
@@ -1526,7 +1513,6 @@ class Interface(object):
         except Exception as e:
             logger.warn(str(e))
             return -1
-        url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         offset = 0
         parts_num = kwargs['num']
         chunk_size = file_size / parts_num
@@ -1540,7 +1526,6 @@ class Interface(object):
         logger.debug(u"chunk_size: " + str(chunk_size))
         logger.debug(u'download file concurrently')
         logger.info(u"Downloading {file}".format(file=local_path))
-        self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
         # 如果路径不存在，则创建文件夹
         dir_path = os.path.dirname(local_path)
         if os.path.isdir(dir_path) is False and dir_path != '':
@@ -1548,26 +1533,17 @@ class Interface(object):
                 os.makedirs(dir_path, 0o755)
             except Exception as e:
                 pass
-        # 生成临时文件名字
-        tmp_local_path = "tmp_coscmd_" + local_path
-        tmp_md5 = md5()
-        tmp_md5.update(to_bytes(local_path))
-        while True:
-            tmp_local_path = tmp_local_path + tmp_md5.hexdigest()
-            if os.path.isfile(tmp_local_path) is False:
-                break
-        f = open(tmp_local_path, "wb")
+        self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
         for i in range(parts_num):
             if i + 1 == parts_num:
-                pool.add_task(get_parts_data, tmp_local_path, offset,
-                              file_size - offset, parts_num, i + 1, f)
+                pool.add_task(get_parts_data, local_path, offset,
+                              file_size - offset, parts_num, i + 1)
             else:
-                pool.add_task(get_parts_data, tmp_local_path, offset,
-                              chunk_size, parts_num, i + 1, f)
+                pool.add_task(get_parts_data, local_path, offset,
+                              chunk_size, parts_num, i + 1)
                 offset += chunk_size
         pool.wait_completion()
         result = pool.get_result()
-        f.close()
         self._pbar.close()
         _fail_num = 0
         for worker in result['detail']:
@@ -1576,15 +1552,38 @@ class Interface(object):
                     _fail_num += 1
         if not result['success_all'] or _fail_num > 0:
             logger.info(u"{fail_num} parts download fail".format(fail_num=str(_fail_num)))
-            try:    
-                os.remove(tmp_local_path)
-            except Exception:
-                pass
             return -1
 
-        rt = os.system("mv %s %s -f" % (tmp_local_path ,local_path))
-        if rt != 0:
-            logger.warn("Move tmp file Error")
+        logger.info(u"Completing mget")
+        try:
+            with open(local_path, 'wb') as f:
+                for i in range(parts_num):
+                    idx = i + 1
+                    file_name = local_path + "_" + str(idx)
+                    length = 1024 * 1024
+                    offset = 0
+                    with open(file_name, 'rb') as File:
+                        while (offset < file_size):
+                            File.seek(offset, 0)
+                            data = File.read(length)
+                            f.write(data)
+                            offset += length
+                    os.remove(file_name)
+                f.flush()
+        except Exception as e:
+            try:
+                os.remove(local_path)
+            except Exception:
+                pass
+            for i in range(parts_num):
+                idx = i + 1
+                file_name = local_path + "_" + str(idx)
+                try:
+                    os.remove(file_name)
+                except Exception:
+                    pass
+            logger.warn(e)
+            logger.warn("Complete file failure")
             return -1
         return 0
 
