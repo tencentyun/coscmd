@@ -1590,15 +1590,11 @@ class Interface(object):
         # head操作获取文件大小
         url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         try:
-            rt = self._session.head(url=url, auth=CosS3Auth(self._conf))
-            logger.debug(u"download resp, status code: {code}, headers: {headers}".format(
-                code=rt.status_code,
-                headers=rt.headers))
-            if rt.status_code == 200:
-                file_size = int(rt.headers['Content-Length'])
-            else:
-                logger.warn(response_info(rt))
-                return -1
+            rt = self._client.head_object(
+                Bucket=self._conf._bucket,
+                Key=cos_path
+            )
+            file_size = int(rt['Content-Length'])
         except Exception as e:
             logger.warn(str(e))
             return -1
