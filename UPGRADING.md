@@ -1,6 +1,12 @@
 Coscmd Upgrade Guide
 ====================
 
+1.8.6.6 to 1.8.6.7
+--------------------
+- Fix bug of downloading object with `content-encoding:gzip` header
+- Update the error prompt of multipart upload
+- `download` interface will use single download when set param `-n 1`
+
 1.8.6.5 to 1.8.6.6
 --------------------
 - Support uploading files with key values containing ./
