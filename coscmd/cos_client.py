@@ -114,7 +114,7 @@ class Interface(object):
         self._pbar = ''
         self._inner_threadpool = SimpleThreadPool(1)
         self._multiupload_threshold = 20 * 1024 * 1024 + 1024
-        self._multidownload_threshold = 20
+        self._multidownload_threshold = 20 * 1024 * 1024 + 1024
         try:
             if conf._endpoint == "":
                 sdk_config = qcloud_cos.CosConfig(Region=conf._region,
@@ -1603,7 +1603,7 @@ class Interface(object):
             logger.warn(str(e))
             return -1
         try:
-            if file_size <= self._multidownload_threshold:
+            if file_size <= self._multidownload_threshold or kwargs['num'] == 1:
                 rt = self.single_download(cos_path, local_path, _http_headers, **kwargs)
                 return rt
             else:
