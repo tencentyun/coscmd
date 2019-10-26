@@ -260,6 +260,7 @@ class Op(object):
             kwargs['sync'] = args.sync
             kwargs['num'] = min(20, args.num)
             kwargs['ignore'] = args.ignore.split(',')
+            kwargs['skipmd5'] = args.skipmd5
             if args.recursive:
                 rt = Interface.download_folder(args.cos_path, args.local_path, args.headers, **kwargs)
                 return rt
@@ -692,7 +693,7 @@ def command_thread():
     parser_upload.add_argument('-s', '--sync', help="Upload and skip the same file", action="store_true", default=False)
     parser_upload.add_argument('-f', '--force', help="upload without history breakpoint", action="store_true", default=False)
     parser_upload.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
-    parser_upload.add_argument('--skipmd5', help='Upload without x-cos-meta-md5', action="store_true", default=False)
+    parser_upload.add_argument('--skipmd5', help='Upload without x-cos-meta-md5 / sync without check md5', action="store_true", default=False)
     parser_upload.set_defaults(func=Op.upload)
 
     parser_download = sub_parser.add_parser("download", help="Download file from COS to local")
@@ -704,6 +705,7 @@ def command_thread():
     parser_download.add_argument('-H', '--headers', help="Specify HTTP headers", type=str, default='{}')
     parser_download.add_argument('--versionId', help='Specify versionId of object to list', type=str, default="")
     parser_download.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
+    parser_download.add_argument('--skipmd5', help='Download sync without check md5', action="store_true", default=False)
     parser_download.add_argument('-n', '--num', help='Specify max part_num of multidownload', type=int, default=10)
     parser_download.set_defaults(func=Op.download)
 

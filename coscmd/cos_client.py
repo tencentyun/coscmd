@@ -27,10 +27,12 @@ if sys.version > '3':
     from coscmd.cos_auth import CosS3Auth
     from coscmd.cos_threadpool import SimpleThreadPool
     from coscmd.cos_comm import *
+    from coscmd.cos_sync_filter import *
 else:
     from cos_auth import CosS3Auth
     from cos_threadpool import SimpleThreadPool
     from cos_comm import *
+    from cos_sync_filter import *
 
 logger = logging.getLogger("coscmd")
 
@@ -297,23 +299,38 @@ class Interface(object):
         else:
             return -1
 
-    def single_upload(self, local_path, cos_path, _http_headers='{}', **kwargs):
-        logger.info(u"Upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
-            bucket=self._conf._bucket,
-            local_path=local_path,
-            cos_path=cos_path))
-        _md5 = ""
-        try:
-            _http_header = yaml.safe_load(_http_headers)
-        except Exception as e:
-            logger.warn("Http_haeder parse error.")
-            logger.warn(e)
-            return -1
-        for rule in kwargs['ignore']:
-            if fnmatch.fnmatch(local_path, rule) is True:
-                logger.info(u"This file matches the ignore rule, skip upload")
-                return -2
+    def local2remote_sync_check(self, local_path, cos_path, **kwargs):
+        is_ignore = is_ignore_file(local_path, kwargs['ignore'])
+        if is_ignore:
+            logger.info(u"Ignore {local_path}".format(
+                bucket=self._conf._bucket,
+                local_path=local_path))
+            return -2
+        if kwargs['sync'] is True:
+            try:
+                rt = self._client.head_object(
+                    Bucket=self._conf._bucket,
+                    Key=cos_path
+                )
+            except Exception as e:
+                return 0
+            _size = 0
+            _md5 = "-"
+            if 'x-cos-meta-md5' in rt:
+                _md5 = rt['x-cos-meta-md5']
+            if 'Content-Length' in rt:
+                _size = int(rt['Content-Length'])
+            if kwargs["_size"] == _size:
+                if kwargs["skipmd5"] or kwargs["_md5"] == _md5:
+                    logger.info(u"Skip {local_path}   =>   cos://{bucket}/{cos_path}".format(
+                        bucket=self._conf._bucket,
+                        local_path=local_path,
+                        cos_path=cos_path))
+                    return -2
+        return 0
 
+    def single_upload(self, local_path, cos_path, _http_headers='{}', **kwargs):
+        _md5 = ""
         file_size = os.path.getsize(local_path)
         if kwargs['skipmd5'] is False:
             if file_size > 5 * 1024 * 1024 * 1024:
@@ -321,12 +338,19 @@ class Interface(object):
                     u"MD5 is being calculated, please wait. If you do not need to calculate md5, you can use --skipmd5 to skip")
             _md5 = get_file_md5(local_path)
 
-        # -2 means skipfile
-        if kwargs['sync'] is True:
-            if self.check_file_md5(local_path, cos_path, _md5):
-                logger.info(
-                    u"The file on cos is the same as the local file, skip upload")
-                return -2
+        ret = self.local2remote_sync_check(local_path, cos_path, _md5=_md5, _size=file_size, **kwargs)
+        if 0 != ret:
+            return ret
+        logger.info(u"Upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
+                bucket=self._conf._bucket,
+                local_path=local_path,
+                cos_path=cos_path))
+        try:
+            _http_header = yaml.safe_load(_http_headers)
+        except Exception as e:
+            logger.warn("Http_haeder parse error.")
+            logger.warn(e)
+            return -1
         try:
             if len(local_path) == 0:
                 data = ""
@@ -414,33 +438,34 @@ class Interface(object):
                 url = self._conf.uri(path=quote(to_printable_str(
                     cos_path))) + "?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=self._upload_id)
                 for j in range(self._retry):
-                    http_header = _http_header
-                    rt = self._session.put(url=url,
-                                           auth=CosS3Auth(self._conf),
-                                           data=data, headers=http_header)
-                    logger.debug("Multi part result: part{part}, round{round}, code: {code}, headers: {headers}, text: {text}".format(
-                        part=idx,
-                        round=j + 1,
-                        code=rt.status_code,
-                        headers=rt.headers,
-                        text=to_printable_str(rt.text)))
-                    if rt.status_code == 200:
-                        server_md5 = rt.headers[self._etag][1:-1]
-                        self._md5.append({'PartNumber': idx, 'ETag': server_md5})
-                        if self._conf._verify == "sha1":
-                            local_encryption = sha1(data).hexdigest()
+                    try:
+                        http_header = _http_header
+                        rt = self._session.put(url=url,
+                                            auth=CosS3Auth(self._conf),
+                                            data=data, headers=http_header)
+                        logger.debug("Multi part result: part{part}, round{round}, code: {code}, headers: {headers}, text: {text}".format(
+                            part=idx,
+                            round=j + 1,
+                            code=rt.status_code,
+                            headers=rt.headers,
+                            text=to_printable_str(rt.text)))
+                        if rt.status_code == 200:
+                            server_md5 = rt.headers[self._etag][1:-1]
+                            self._md5.append({'PartNumber': idx, 'ETag': server_md5})
+                            if self._conf._verify == "sha1":
+                                local_encryption = sha1(data).hexdigest()
+                            else:
+                                local_encryption = md5(data).hexdigest()
+                            if (kwargs['skipmd5'] or server_md5 == local_encryption):
+                                self._have_finished += 1
+                                self._pbar.update(length)
+                                break
+                            else:
+                                raise Exception("Encryption verification is inconsistent")
                         else:
-                            local_encryption = md5(data).hexdigest()
-                        if (kwargs['skipmd5'] or server_md5 == local_encryption):
-                            self._have_finished += 1
-                            self._pbar.update(length)
-                            break
-                        else:
-                            logger.warn(
-                                "Encryption verification is inconsistent")
-                            continue
-                    else:
-                        logger.warn(response_info(rt))
+                            raise Exception(response_info(rt))
+                    except Exception as e:
+                        logger.warn(e)
                         time.sleep(2**j)
                         continue
                     if j + 1 == self._retry:
@@ -508,23 +533,7 @@ class Interface(object):
                 logger.warn(e)
                 return -1
 
-        logger.info(u"Upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
-            bucket=self._conf._bucket,
-            local_path=local_path,
-            cos_path=cos_path))
         _md5 = ""
-        try:
-            _http_header = yaml.safe_load(_http_headers)
-        except Exception as e:
-            logger.warn("Http_haeder parse error.")
-            logger.warn(e)
-            return -1
-
-        for rule in kwargs['ignore']:
-            if fnmatch.fnmatch(local_path, rule) is True:
-                logger.info(u"This file matches the ignore rule, skip upload")
-                return -2
-
         file_size = os.path.getsize(local_path)
         if kwargs['skipmd5'] is False:
             if file_size > 5 * 1024 * 1024 * 1024:
@@ -532,11 +541,19 @@ class Interface(object):
                     u"MD5 is being calculated, please wait. If you do not need to calculate md5, you can use --skipmd5 to skip")
             _md5 = get_file_md5(local_path)
 
-        if kwargs['sync'] is True:
-            if self.check_file_md5(local_path, cos_path, _md5):
-                logger.info(
-                    u"The file on cos is the same as the local file, skip upload")
-                return -2
+        ret = self.local2remote_sync_check(local_path, cos_path, _md5=_md5, _size=file_size, **kwargs)
+        if 0 != ret:
+            return ret
+        logger.info(u"Upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
+                bucket=self._conf._bucket,
+                local_path=local_path,
+                cos_path=cos_path))
+        try:
+            _http_header = yaml.safe_load(_http_headers)
+        except Exception as e:
+            logger.warn("Http_haeder parse error.")
+            logger.warn(e)
+            return -1
         try:
             rt = init_multiupload()
             if 0 == rt:
@@ -1361,7 +1378,7 @@ class Interface(object):
                                 self.single_download, _cos_path, _local_path, _http_headers, **kwargs)
                         else:
                             multidownload_filelist.append(
-                                [_cos_path, _local_path])
+                                [_cos_path, _local_path, _size])
                     except Exception as e:
                         logger.warn(e)
                         logger.warn("Parse xml error")
@@ -1378,9 +1395,9 @@ class Interface(object):
                         _skip_num += 1
                     else:
                         _fail_num += 1
-            for _cos_path, _local_path in multidownload_filelist:
+            for _cos_path, _local_path, _size in multidownload_filelist:
                 try:
-                    rt = self.multipart_download(_cos_path, _local_path, _http_headers, **kwargs)
+                    rt = self.multipart_download(_cos_path, _local_path, _http_headers, _size=_size, **kwargs)
                     if 0 == rt:
                         _success_num += 1
                     elif -2 == rt:
@@ -1396,8 +1413,54 @@ class Interface(object):
         else:
             return -1
 
+    def remote2local_sync_check(self, cos_path, local_path, **kwargs):
+        is_ignore = is_ignore_file(cos_path, kwargs['ignore'])
+        if is_ignore:
+            logger.info(u"Ignore cos://{bucket}/{cos_path}".format(
+                bucket=self._conf._bucket,
+                cos_path=cos_path))
+            return -2
+        if kwargs['force'] is False:
+            if os.path.isfile(local_path) is True:
+                if kwargs['sync'] is True:
+                    try:
+                        rt = self._client.head_object(
+                            Bucket=self._conf._bucket,
+                            Key=cos_path
+                        )        
+                    except Exception as e:
+                        logger.warn(str(e))
+                        return -1
+                    _size = 0
+                    _md5 = "-"
+                    if 'x-cos-meta-md5' in rt:
+                        _md5 = rt['x-cos-meta-md5']
+                    if 'Content-Length' in rt:
+                        _size = int(rt['Content-Length'])
+                    kwargs["_size"] = _size
+                    kwargs["_md5"] = _md5
+                    if is_sync_skip_file_remote2local(cos_path, local_path, **kwargs):
+                        logger.info(u"Skip cos://{bucket}/{cos_path} => {local_path}".format(
+                            bucket=self._conf._bucket,
+                            local_path=local_path,
+                            cos_path=cos_path))
+                        return -2
+                else:
+                    logger.warn(
+                        u"The file {file} already exists, please use -f to overwrite the file".format(file=local_path))
+                    return -1
+        return 0
+
     # 简单下载
     def single_download(self, cos_path, local_path, _http_headers='{}', **kwargs):
+        cos_path = cos_path.lstrip('/')
+        rt = self.remote2local_sync_check(cos_path, local_path, **kwargs)
+        if 0 != rt:
+            return rt
+        logger.info(u"Download cos://{bucket}/{cos_path}   =>   {local_path}".format(
+            bucket=self._conf._bucket,
+            local_path=local_path,
+            cos_path=cos_path))
         http_headers = copy.copy(_http_headers)
         try:
             http_headers = yaml.safe_load(http_headers)
@@ -1406,30 +1469,6 @@ class Interface(object):
             logger.warn("Http_haeder parse error.")
             logger.warn(e)
             return -1
-        cos_path = cos_path.lstrip('/')
-        logger.info(u"Download cos://{bucket}/{cos_path}   =>   {local_path}".format(
-            bucket=self._conf._bucket,
-            local_path=local_path,
-            cos_path=cos_path))
-        for rule in kwargs['ignore']:
-            if fnmatch.fnmatch(local_path, rule) is True:
-                logger.info(
-                    u"This file matches the ignore rule, skip download")
-                return -2
-
-        if kwargs['force'] is False:
-            if os.path.isfile(local_path) is True:
-                if kwargs['sync'] is True:
-                    _md5 = get_file_md5(local_path)
-                    if self.check_file_md5(local_path, cos_path, _md5):
-                        logger.info(
-                            u"The file on cos is the same as the local file, skip download")
-                        return -2
-                else:
-                    logger.warn(
-                        u"The file {file} already exists, please use -f to overwrite the file".format(file=cos_path))
-                    return -1
-        url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         try:
             rt = self._client.get_object(
                 Bucket=self._conf._bucket,
@@ -1451,8 +1490,7 @@ class Interface(object):
     # 分块下载
     def multipart_download(self, cos_path, local_path, _http_headers='{}', **kwargs):
 
-        def get_parts_data(local_path, offset, length, parts_size, idx):
-            local_path = local_path + "_" + str(idx)
+        def get_parts_data(local_path, offset, length, parts_size):
             for j in range(self._retry):
                 try:
                     http_header = copy.copy(_http_headers)
@@ -1463,9 +1501,18 @@ class Interface(object):
                         Key=cos_path,
                         **http_header
                     )
-                    rt['Body'].get_stream_to_file(local_path)
-                    content_len = int(rt['Content-Length'])
-                    self._pbar.update(content_len)
+                    fstream = rt['Body'].get_raw_stream()
+                    chunk_size=1024 * 1024
+                    with open(local_path, 'rb+') as f:
+                        f.seek(offset)
+                        while True:
+                            chunk_data = fstream.read(chunk_size)
+                            chunk_len = len(chunk_data)         
+                            if (chunk_len == 0):
+                                break
+                            f.write(chunk_data)
+                            self._pbar.update(chunk_len)
+                        f.flush()
                     return 0
                 except Exception as e:
                     time.sleep(1 << j)
@@ -1474,43 +1521,24 @@ class Interface(object):
             return -1
 
         cos_path = cos_path.lstrip('/')
-        try:
-            _http_headers = yaml.safe_load(_http_headers)
-            _http_headers = mapped(_http_headers)
-        except Exception as e:
-            logger.warn("Http_haeder parse error.")
-            logger.warn(e)
-            return -1
+        rt = self.remote2local_sync_check(cos_path, local_path, **kwargs)
+        if 0 != rt:
+            return rt
         logger.info(u"Download cos://{bucket}/{cos_path}   =>   {local_path}".format(
             bucket=self._conf._bucket,
             local_path=local_path,
             cos_path=cos_path))
-        for rule in kwargs['ignore']:
-            if fnmatch.fnmatch(local_path, rule) is True:
-                logger.info(
-                    u"This file matches the ignore rule, skip download")
-                return -2
-
-        if kwargs['force'] is False:
-            if os.path.isfile(local_path) is True:
-                if kwargs['sync'] is True:
-                    _md5 = get_file_md5(local_path)
-                    if self.check_file_md5(local_path, cos_path, _md5):
-                        logger.info(
-                            u"The file on cos is the same as the local file, skip download")
-                        return -2
-                else:
-                    logger.warn(
-                        u"The file {file} already exists, please use -f to overwrite the file".format(file=cos_path))
-                    return -1
         try:
-            rt = self._client.head_object(
-                Bucket=self._conf._bucket,
-                Key=cos_path
-            )
-            file_size = int(rt['Content-Length'])
+            _http_headers = yaml.safe_load(_http_headers)
+            _http_headers = mapped(_http_headers) 
         except Exception as e:
-            logger.warn(str(e))
+            logger.warn("Http_haeder parse error.")
+            logger.warn(e)
+            return -1
+        try:
+            file_size = kwargs['_size']
+        except Exception as e:
+            logger.warn(e)
             return -1
         offset = 0
         parts_num = kwargs['num']
@@ -1525,6 +1553,7 @@ class Interface(object):
         logger.debug(u"chunk_size: " + str(chunk_size))
         logger.debug(u'download file concurrently')
         logger.info(u"Downloading {file}".format(file=local_path))
+
         # 如果路径不存在，则创建文件夹
         dir_path = os.path.dirname(local_path)
         if os.path.isdir(dir_path) is False and dir_path != '':
@@ -1532,14 +1561,17 @@ class Interface(object):
                 os.makedirs(dir_path, 0o755)
             except Exception as e:
                 pass
+        # 需要先用'w'生成固定长度的文件，否则'a'无法seek
+        with open(local_path, "wb") as fstream:
+            fstream.write("@")
         self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
         for i in range(parts_num):
             if i + 1 == parts_num:
                 pool.add_task(get_parts_data, local_path, offset,
-                              file_size - offset, parts_num, i + 1)
+                              file_size - offset, i + 1)
             else:
                 pool.add_task(get_parts_data, local_path, offset,
-                              chunk_size, parts_num, i + 1)
+                              chunk_size, i + 1)
                 offset += chunk_size
         pool.wait_completion()
         result = pool.get_result()
@@ -1551,38 +1583,6 @@ class Interface(object):
                     _fail_num += 1
         if not result['success_all'] or _fail_num > 0:
             logger.info(u"{fail_num} parts download fail".format(fail_num=str(_fail_num)))
-            return -1
-
-        logger.info(u"Completing mget")
-        try:
-            with open(local_path, 'wb') as f:
-                for i in range(parts_num):
-                    idx = i + 1
-                    file_name = local_path + "_" + str(idx)
-                    length = 1024 * 1024
-                    offset = 0
-                    with open(file_name, 'rb') as File:
-                        while (offset < file_size):
-                            File.seek(offset, 0)
-                            data = File.read(length)
-                            f.write(data)
-                            offset += length
-                    os.remove(file_name)
-                f.flush()
-        except Exception as e:
-            try:
-                os.remove(local_path)
-            except Exception:
-                pass
-            for i in range(parts_num):
-                idx = i + 1
-                file_name = local_path + "_" + str(idx)
-                try:
-                    os.remove(file_name)
-                except Exception:
-                    pass
-            logger.warn(e)
-            logger.warn("Complete file failure")
             return -1
         return 0
 
@@ -1599,11 +1599,11 @@ class Interface(object):
             logger.warn(str(e))
             return -1
         try:
-            if file_size <= self._multidownload_threshold or kwargs['num'] == 1:
+            if file_size <= self._multidownload_threshold and kwargs['num'] == 1:
                 rt = self.single_download(cos_path, local_path, _http_headers, **kwargs)
                 return rt
             else:
-                rt = self.multipart_download(cos_path, local_path, _http_headers, **kwargs)
+                rt = self.multipart_download(cos_path, local_path, _http_headers, _size=file_size, **kwargs)
                 return rt
         except Exception as e:
             logger.warn(e)
