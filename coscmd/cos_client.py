@@ -1517,8 +1517,6 @@ class Interface(object):
                 except Exception as e:
                     time.sleep(1 << j)
                     logger.warn(str(e))
-                    import traceback
-                    traceback.print_exc()
                     continue
             return -1
 
