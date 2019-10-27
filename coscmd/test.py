@@ -39,12 +39,13 @@ def gen_file(path, size, random_num=2):
         _file.write(salt)
     _file.close()
 
+
 def gen_test_folder(num=1024):
     for i in range(num):
         gen_file("testfolder/testfile_" + str(i), 0.01, 2)
     for i in range(12):
         gen_file("testfolder/testfile_big_" + str(i), 30, 10)
-    
+
 
 def setUp():
     """create testbucket"""

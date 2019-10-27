@@ -441,8 +441,8 @@ class Interface(object):
                     try:
                         http_header = _http_header
                         rt = self._session.put(url=url,
-                                            auth=CosS3Auth(self._conf),
-                                            data=data, headers=http_header)
+                                               auth=CosS3Auth(self._conf),
+                                               data=data, headers=http_header)
                         logger.debug("Multi part result: part{part}, round{round}, code: {code}, headers: {headers}, text: {text}".format(
                             part=idx,
                             round=j + 1,
@@ -1427,7 +1427,7 @@ class Interface(object):
                         rt = self._client.head_object(
                             Bucket=self._conf._bucket,
                             Key=cos_path
-                        )        
+                        )
                     except Exception as e:
                         logger.warn(str(e))
                         return -1
@@ -1502,12 +1502,12 @@ class Interface(object):
                         **http_header
                     )
                     fstream = rt['Body'].get_raw_stream()
-                    chunk_size=1024 * 1024
+                    chunk_size = 1024 * 1024
                     with open(local_path, 'rb+') as f:
                         f.seek(offset)
                         while True:
                             chunk_data = fstream.read(chunk_size)
-                            chunk_len = len(chunk_data)         
+                            chunk_len = len(chunk_data)
                             if (chunk_len == 0):
                                 break
                             f.write(chunk_data)
@@ -1530,7 +1530,7 @@ class Interface(object):
             cos_path=cos_path))
         try:
             _http_headers = yaml.safe_load(_http_headers)
-            _http_headers = mapped(_http_headers) 
+            _http_headers = mapped(_http_headers)
         except Exception as e:
             logger.warn("Http_haeder parse error.")
             logger.warn(e)
