@@ -1542,7 +1542,7 @@ class Interface(object):
             return -1
         offset = 0
         parts_num = kwargs['num']
-        chunk_size = file_size / parts_num
+        chunk_size = int(file_size / parts_num)
         last_size = file_size - parts_num * chunk_size
         self._have_finished = 0
         if last_size != 0:
@@ -1563,7 +1563,7 @@ class Interface(object):
                 pass
         # 需要先用'w'生成固定长度的文件，否则'a'无法seek
         with open(local_path, "wb") as fstream:
-            fstream.write("@")
+            fstream.write(to_bytes(""))
         self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
         for i in range(parts_num):
             if i + 1 == parts_num:
