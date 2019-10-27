@@ -27,9 +27,7 @@ def is_sync_skip_file_remote2local(cos_path, local_path, **kwargs):
     if "_size" in kwargs:
         _size = os.path.getsize(local_path)
         if _size != kwargs["_size"]:
-            print _size, kwargs["_size"]
             return False
     else:
-        print "222"
         return False
     return True

@@ -27,18 +27,24 @@ def get_raw_md5(data):
     return etag
 
 
-def gen_file(path, size):
+def gen_file(path, size, random_num=2):
     sa = []
     for i in range(8):
         sa.append(random.choice(seed))
     salt = ''.join(sa)
     _file = open(path, 'w')
-    _file.seek(100*512*size-8)
-    _file.write(salt)
-    _file.seek(1024*1024*size-8)
-    _file.write(salt)
+    for i in range(random_num):
+        sk = random.randint(0, int(size * 1024 * 1024))
+        _file.seek(sk)
+        _file.write(salt)
     _file.close()
 
+def gen_test_folder(num=1024):
+    for i in range(num):
+        gen_file("testfolder/testfile_" + str(i), 0.01, 2)
+    for i in range(12):
+        gen_file("testfolder/testfile_big_" + str(i), 30, 10)
+    
 
 def setUp():
     """create testbucket"""
@@ -137,9 +143,8 @@ def test_upload_folder():
         os.makedirs("testfolder/")
     except Exception:
         pass
-    file_num = test_file_num
-    for i in range(file_num):
-        gen_file("testfolder/testfile_" + str(i), 0.01)
+    gen_test_folder(test_file_num)
+
     print("文件夹上传")
     rt = os.system("python coscmd/cos_cmd.py upload -r testfolder testfolder >/dev/null 2>&1")
     assert rt == 0
@@ -155,9 +160,7 @@ def test_download_folder():
         os.makedirs("testfolder/")
     except Exception:
         pass
-    file_num = test_file_num
-    for i in range(file_num):
-        gen_file("testfolder/testfile_" + str(i), 0.01)
+    gen_test_folder(test_file_num)
     print("文件夹上传")
     rt = os.system("python coscmd/cos_cmd.py upload -r testfolder testfolder >/dev/null 2>&1")
     assert rt == 0
@@ -178,8 +181,7 @@ def test_copy_folder():
     except Exception:
         pass
     file_num = test_file_num
-    for i in range(file_num):
-        gen_file("testfolder/testfile_" + str(i), 0.01)
+    gen_test_folder(test_file_num)
     print("文件夹上传")
     rt = os.system("python coscmd/cos_cmd.py upload -r testfolder testfolder >/dev/null 2>&1")
     assert rt == 0
@@ -196,9 +198,7 @@ def test_list_folder():
         os.makedirs("testfolder/")
     except Exception:
         pass
-    file_num = test_file_num
-    for i in range(file_num):
-        gen_file("testfolder/testfile_" + str(i), 0.01)
+    gen_test_folder(test_file_num)
     print("文件夹上传")
     rt = os.system("python coscmd/cos_cmd.py upload -r testfolder testfolder >/dev/null 2>&1")
     assert rt == 0
