@@ -1,5 +1,10 @@
 Coscmd Upgrade Guide
 ====================
+1.8.6.7 to 1.8.6.8
+--------------------
+- Update the way of multipart download to faster downloads 
+- Add param of `--skipmd5` in download whne sync remote2local without md5check
+- Update sync message info
 
 1.8.6.6 to 1.8.6.7
 --------------------
