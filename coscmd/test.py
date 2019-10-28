@@ -40,7 +40,7 @@ def gen_file(path, size, random_num=2):
     _file.close()
 
 
-def gen_test_folder(num=1024):
+def gen_folder(num=1024):
     for i in range(num):
         gen_file("testfolder/testfile_" + str(i), 0.01, 2)
     for i in range(12):
@@ -144,7 +144,7 @@ def test_upload_folder():
         os.makedirs("testfolder/")
     except Exception:
         pass
-    gen_test_folder(test_file_num)
+    gen_folder(test_file_num)
 
     print("文件夹上传")
     rt = os.system("python coscmd/cos_cmd.py upload -r testfolder testfolder >/dev/null 2>&1")
@@ -161,7 +161,7 @@ def test_download_folder():
         os.makedirs("testfolder/")
     except Exception:
         pass
-    gen_test_folder(test_file_num)
+    gen_folder(test_file_num)
     print("文件夹上传")
     rt = os.system("python coscmd/cos_cmd.py upload -r testfolder testfolder >/dev/null 2>&1")
     assert rt == 0
@@ -182,7 +182,7 @@ def test_copy_folder():
     except Exception:
         pass
     file_num = test_file_num
-    gen_test_folder(test_file_num)
+    gen_folder(test_file_num)
     print("文件夹上传")
     rt = os.system("python coscmd/cos_cmd.py upload -r testfolder testfolder >/dev/null 2>&1")
     assert rt == 0
@@ -199,7 +199,7 @@ def test_list_folder():
         os.makedirs("testfolder/")
     except Exception:
         pass
-    gen_test_folder(test_file_num)
+    gen_folder(test_file_num)
     print("文件夹上传")
     rt = os.system("python coscmd/cos_cmd.py upload -r testfolder testfolder >/dev/null 2>&1")
     assert rt == 0
