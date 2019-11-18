@@ -1583,6 +1583,10 @@ class Interface(object):
                     _fail_num += 1
         if not result['success_all'] or _fail_num > 0:
             logger.info(u"{fail_num} parts download fail".format(fail_num=str(_fail_num)))
+            try:
+                os.remove(local_path)
+            except:
+                pass
             return -1
         return 0
 
@@ -1599,7 +1603,7 @@ class Interface(object):
             logger.warn(str(e))
             return -1
         try:
-            if file_size <= self._multidownload_threshold and kwargs['num'] == 1:
+            if file_size <= self._multidownload_threshold or kwargs['num'] == 1:
                 rt = self.single_download(cos_path, local_path, _http_headers, **kwargs)
                 return rt
             else:
