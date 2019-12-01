@@ -1,5 +1,10 @@
 Coscmd Upgrade Guide
 ====================
+1.8.6.8 to 1.8.6.9
+--------------------
+- Delete uncomplete file when download failed
+- Support probe in windows
+
 1.8.6.7 to 1.8.6.8
 --------------------
 - Update the way of multipart download to faster downloads 
