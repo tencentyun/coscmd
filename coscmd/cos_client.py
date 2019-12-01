@@ -1585,7 +1585,7 @@ class Interface(object):
             logger.info(u"{fail_num} parts download fail".format(fail_num=str(_fail_num)))
             try:
                 os.remove(local_path)
-            except:
+            except Exception as e:
                 pass
             return -1
         return 0

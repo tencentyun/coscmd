@@ -108,8 +108,9 @@ def get_file_md5(local_path):
 
 
 def gen_local_file(filename, filesize):
-    rt = os.system("dd if=/dev/zero of={filename} bs=1M count={filesize} >/dev/null 2>&1".format(filename=filename, filesize=filesize))
-    return rt
+    with open(filename, 'wb') as f:
+        f.write(os.urandom(filesize * 1024 * 1024))
+    return 0
 
 
 def to_printable_str(s):
