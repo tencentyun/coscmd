@@ -1,5 +1,9 @@
 Coscmd Upgrade Guide
 ====================
+1.8.6.9 to 1.8.6.10
+--------------------
+- Fix multiupload retry
+
 1.8.6.8 to 1.8.6.9
 --------------------
 - Delete uncomplete file when download failed
