@@ -378,9 +378,6 @@ class Interface(object):
                     time.sleep(2**j)
                     logger.warn(response_info(rt))
                     continue
-                if j + 1 == self._retry:
-                    logger.warn(u"upload file failed")
-                    return -1
             except Exception as e:
                 logger.warn(e)
                 logger.warn(u"Upload file failed")
@@ -443,7 +440,7 @@ class Interface(object):
                         rt = self._session.put(url=url,
                                                auth=CosS3Auth(self._conf),
                                                data=data, headers=http_header)
-                        logger.debug("Multi part result: part{part}, round{round}, code: {code}, headers: {headers}, text: {text}".format(
+                        logger.debug("Multi part result: part: {part}, round: {round}, code: {code}, headers: {headers}, text: {text}".format(
                             part=idx,
                             round=j + 1,
                             code=rt.status_code,
@@ -465,13 +462,12 @@ class Interface(object):
                         else:
                             raise Exception(response_info(rt))
                     except Exception as e:
-                        logger.warn(e)
+                        logger.warn("Upload part failed, key: {key}, partnumber: {part}, retrytimes: {round}, exception: {error}".format(
+                            key=cos_path, part=idx, round=j + 1, error=str(e)))
                         time.sleep(2**j)
                         continue
-                    if j + 1 == self._retry:
-                        logger.warn("Upload part failed: part{part}, round{round}, code: {code}".format(
-                            part=idx, round=j + 1, code=rt.status_code))
-                        return -1
+                if j + 1 == self._retry:
+                    return -1
                 return 0
 
             offset = 0
