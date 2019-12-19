@@ -220,6 +220,7 @@ class Op(object):
             kwargs['sync'] = args.sync
             kwargs['skipmd5'] = args.skipmd5
             kwargs['ignore'] = args.ignore.split(',')
+            kwargs['include'] = args.include.split(',')
             kwargs['force'] = args.force
             if args.recursive:
                 if os.path.isfile(args.local_path) is True:
@@ -260,6 +261,7 @@ class Op(object):
             kwargs['sync'] = args.sync
             kwargs['num'] = min(20, args.num)
             kwargs['ignore'] = args.ignore.split(',')
+            kwargs['include'] = args.include.split(',')
             kwargs['skipmd5'] = args.skipmd5
             if args.recursive:
                 rt = Interface.download_folder(args.cos_path, args.local_path, args.headers, **kwargs)
@@ -329,7 +331,11 @@ class Op(object):
 
             kwargs = {}
             kwargs['sync'] = args.sync
+            kwargs['force'] = args.force
             kwargs['directive'] = args.directive
+            kwargs['skipmd5'] = args.skipmd5
+            kwargs['ignore'] = args.ignore.split(',')
+            kwargs['include'] = args.include.split(',')
             if args.recursive:
                 _, args.cos_path = concat_path(args.source_path, args.cos_path)
                 if args.cos_path.endswith('/') is False:
@@ -665,6 +671,8 @@ def command_thread():
     parser.add_argument('-r', '--region', help="Specify region", type=str, default="")
     parser.add_argument('-c', '--config_path', help="Specify config_path", type=str, default="~/.cos.conf")
     parser.add_argument('-l', '--log_path', help="Specify log_path", type=str, default="~/.cos.log")
+    parser.add_argument('--log_size', help='specify max log size in MB (default 1MB)', type=int, default=128)
+    parser.add_argument('--log_backup_count', help='specify log backup num', type=int, default=1)
 
     sub_parser = parser.add_subparsers()
     parser_config = sub_parser.add_parser("config", help="Config your information at first")
@@ -692,8 +700,9 @@ def command_thread():
     parser_upload.add_argument('-H', '--headers', help="Specify HTTP headers", type=str, default='{}')
     parser_upload.add_argument('-s', '--sync', help="Upload and skip the same file", action="store_true", default=False)
     parser_upload.add_argument('-f', '--force', help="upload without history breakpoint", action="store_true", default=False)
+    parser_upload.add_argument('--include', help='Specify filter rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="*")
     parser_upload.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
-    parser_upload.add_argument('--skipmd5', help='Upload without x-cos-meta-md5 / sync without check md5', action="store_true", default=False)
+    parser_upload.add_argument('--skipmd5', help='Upload without x-cos-meta-md5 / sync without check md5, only check filename and filesize', action="store_true", default=False)
     parser_upload.set_defaults(func=Op.upload)
 
     parser_download = sub_parser.add_parser("download", help="Download file from COS to local")
@@ -704,8 +713,9 @@ def command_thread():
     parser_download.add_argument('-s', '--sync', help="Download and skip the same file", action="store_true", default=False)
     parser_download.add_argument('-H', '--headers', help="Specify HTTP headers", type=str, default='{}')
     parser_download.add_argument('--versionId', help='Specify versionId of object to list', type=str, default="")
+    parser_download.add_argument('--include', help='Specify filter rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="*")
     parser_download.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
-    parser_download.add_argument('--skipmd5', help='Download sync without check md5', action="store_true", default=False)
+    parser_download.add_argument('--skipmd5', help='Download sync without check md5, only check filename and filesize', action="store_true", default=False)
     parser_download.add_argument('-n', '--num', help='Specify max part_num of multidownload', type=int, default=10)
     parser_download.set_defaults(func=Op.download)
 
@@ -728,6 +738,10 @@ def command_thread():
     parser_copy.add_argument('-d', '--directive', help="if Overwrite headers", type=str, choices=['Copy', 'Replaced'], default="Copy")
     parser_copy.add_argument('-s', '--sync', help="Copy and skip the same file", action="store_true", default=False)
     parser_copy.add_argument('-r', '--recursive', help="Copy files recursively", action="store_true", default=False)
+    parser_copy.add_argument('-f', '--force', help="Overwrite file without skip", action="store_true", default=False)
+    parser_copy.add_argument('--include', help='Specify filter rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="*")
+    parser_copy.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
+    parser_copy.add_argument('--skipmd5', help='Copy sync without check md5, only check filename and filesize', action="store_true", default=False)
     parser_copy.set_defaults(func=Op.copy)
 
     parser_list = sub_parser.add_parser("list", help='List files on COS')
@@ -810,7 +824,7 @@ def command_thread():
     if args.debug:
         logger.setLevel(logging.DEBUG)
         console.setLevel(logging.DEBUG)
-    handler = RotatingFileHandler(os.path.expanduser(args.log_path), maxBytes=128*1024*1024, backupCount=1)
+    handler = RotatingFileHandler(os.path.expanduser(args.log_path), maxBytes=args.log_size*1024*1024, backupCount=args.log_backup_count)
     handler.setFormatter(logging.Formatter('%(asctime)s - [%(levelname)s]:  %(message)s'))
     logger.addHandler(handler)
     logging.getLogger('coscmd').addHandler(console)
