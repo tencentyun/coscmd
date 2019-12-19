@@ -152,6 +152,12 @@ def test_upload_folder():
     print("文件夹同步上传")
     rt = os.system("python coscmd/cos_cmd.py upload -rs testfolder testfolder >/dev/null 2>&1")
     assert rt == 0
+    print("文件夹同步上传")
+    rt = os.system("python coscmd/cos_cmd.py upload -rs testfolder testfolder --include '*9,*7' >/dev/null 2>&1")
+    assert rt == 0
+    print("文件夹同步上传")
+    rt = os.system("python coscmd/cos_cmd.py upload -rs testfolder testfolder --ignore '*1,*9' >/dev/null 2>&1")
+    assert rt == 0
     os.system("rm -rf testfolder/")
 
 
@@ -171,6 +177,11 @@ def test_download_folder():
     assert rt == 0
     print("文件夹同步下载")
     rt = os.system("python coscmd/cos_cmd.py download -rsf testfolder testfolder >/dev/null 2>&1")
+    print("文件夹同步下载include")
+    rt = os.system("python coscmd/cos_cmd.py download -rsf testfolder testfolder --include '*9,*7' >/dev/null 2>&1")
+    assert rt == 0
+    print("文件夹同步下载ignore")
+    rt = os.system("python coscmd/cos_cmd.py download -rsf testfolder testfolder --ignore '*1,*9' >/dev/null 2>&1")
     assert rt == 0
     os.system("rm -rf testfolder/")
 
@@ -189,6 +200,12 @@ def test_copy_folder():
     time.sleep(5)
     print("文件夹复制")
     rt = os.system("python coscmd/cos_cmd.py copy -r %s.cos.%s.myqcloud.com/testfolder testfolder2 >/dev/null 2>&1" % (bucket_name, region))
+    assert rt == 0
+    print("文件夹同步复制include")
+    rt = os.system("python coscmd/cos_cmd.py copy -rs %s.cos.%s.myqcloud.com/testfolder testfolder2 --include '*9,*7' >/dev/null 2>&1" % (bucket_name, region))
+    assert rt == 0
+    print("文件夹同步复制ignore")
+    rt = os.system("python coscmd/cos_cmd.py copy -rs %s.cos.%s.myqcloud.com/testfolder testfolder2 --ignore '*1,*9' >/dev/null 2>&1" % (bucket_name, region))
     assert rt == 0
     os.system("rm -rf testfolder/")
 

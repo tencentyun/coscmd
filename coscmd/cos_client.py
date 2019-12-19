@@ -300,9 +300,10 @@ class Interface(object):
             return -1
 
     def local2remote_sync_check(self, local_path, cos_path, **kwargs):
+        is_include = is_include_file(cos_path, kwargs['include'])
         is_ignore = is_ignore_file(local_path, kwargs['ignore'])
-        if is_ignore:
-            logger.info(u"Ignore {local_path}".format(
+        if not is_include or is_ignore:
+            logger.debug(u"Skip {local_path}".format(
                 bucket=self._conf._bucket,
                 local_path=local_path))
             return -2
@@ -322,7 +323,7 @@ class Interface(object):
                 _size = int(rt['Content-Length'])
             if kwargs["_size"] == _size:
                 if kwargs["skipmd5"] or kwargs["_md5"] == _md5:
-                    logger.info(u"Skip {local_path}   =>   cos://{bucket}/{cos_path}".format(
+                    logger.debug(u"Skip {local_path}   =>   cos://{bucket}/{cos_path}".format(
                         bucket=self._conf._bucket,
                         local_path=local_path,
                         cos_path=cos_path))
@@ -337,7 +338,6 @@ class Interface(object):
                 logger.info(
                     u"MD5 is being calculated, please wait. If you do not need to calculate md5, you can use --skipmd5 to skip")
             _md5 = get_file_md5(local_path)
-
         ret = self.local2remote_sync_check(local_path, cos_path, _md5=_md5, _size=file_size, **kwargs)
         if 0 != ret:
             return ret
@@ -581,26 +581,35 @@ class Interface(object):
         else:
             return self.multipart_upload(local_path, cos_path, _http_headers, **kwargs)
 
-    def check_copy_source_format(self, path):
-        try:
-            path_list = path.split('.')
-            if len(path_list) < 5:
-                return -1
-            if path_list[0].find("-") == -1:
-                logger.debug("Do not find -")
-                return -1
-            if path_list[1] != "cos":
-                logger.debug("Do not find .cos.")
-                return -1
-            if path_list[3] != "myqcloud":
-                logger.debug("Do not find myqcloud")
-                return -1
-            if not path_list[4].startswith("com/"):
-                logger.debug("Do not find .com/")
-                return -1
-        except Exception as e:
-            logger.warn(e)
-            return -1
+    def remote2remote_sync_check(self, copy_source, cos_path, **kwargs):
+        ret = self.include_ignore_skip(copy_source['Key'], **kwargs)
+        if 0 != ret:
+            logger.debug(u"Skip cos://{src_bucket}/{src_path} => cos://{dst_bucket}/{dst_path}".format(
+                            src_bucket=copy_source['Bucket'],
+                            src_path=copy_source['Key'],
+                            dst_bucket=self._conf._bucket,
+                            dst_path=cos_path))
+            return -2
+        if kwargs['force'] is False:
+            if kwargs['sync'] is True:
+                try:
+                    rt = self._session.head(url=self._conf._schema + "://" + copy_source['RawPath'], auth=CosS3Auth(self._conf))
+                    src_md5 = rt.headers['x-cos-meta-md5']
+                    src_size = rt.headers['Content-Length']
+                    url = self._conf.uri(path=quote(to_printable_str(cos_path)))
+                    rt = self._session.head(url,  auth=CosS3Auth(self._conf))
+                    dst_md5 = rt.headers['x-cos-meta-md5']
+                    dst_size = rt.headers['Content-Length']
+                    if dst_md5 == src_md5 or (kwargs['skipmd5'] and dst_size == src_size):
+                        logger.debug(u"Skip cos://{src_bucket}/{src_path} => cos://{dst_bucket}/{dst_path}".format(
+                            src_bucket=copy_source['Bucket'],
+                            src_path=copy_source['Key'],
+                            dst_bucket=self._conf._bucket,
+                            dst_path=cos_path))
+                        return -2
+                except Exception as e:
+                    logger.warn(e)
+                    pass
         return 0
 
     def copy_folder(self, source_path, cos_path, _http_headers='{}', **kwargs):
@@ -616,7 +625,6 @@ class Interface(object):
         self._inner_threadpool = SimpleThreadPool(self._conf._max_thread)
         NextMarker = ""
         IsTruncated = "true"
-
         try:
             if self._conf._endpoint is not None:
                 source_tmp_path = source_path.split("/")
@@ -631,9 +639,15 @@ class Interface(object):
                                                          Anonymous=self._conf._anonymous)
                 self._client_source = qcloud_cos.CosS3Client(sdk_config_source)
             else:
-                source_tmp_path = source_path.split(".")
+                source_tmp_path = source_path.split("/")
+                source_tmp_path = source_tmp_path[0].split('.')
                 source_bucket = source_tmp_path[0]
-                source_region = source_tmp_path[2]
+                if len(source_tmp_path) == 5 and source_tmp_path[1] == 'cos':
+                    source_region = source_tmp_path[2]
+                elif len(source_tmp_path) == 4:
+                    source_region = source_tmp_path[1]
+                else:
+                    raise Exception("Parse Region Error")
                 sdk_config_source = qcloud_cos.CosConfig(Region=source_region,
                                                          SecretId=self._conf._secret_id,
                                                          SecretKey=self._conf._secret_key,
@@ -643,7 +657,7 @@ class Interface(object):
                 self._client_source = qcloud_cos.CosS3Client(sdk_config_source)
         except Exception as e:
             logger.warn(e)
-            logger.warn(u"CopySource format is invalid")
+            logger.warn(u"CopySource is invalid: {copysource}".format(copysource=source_path))
             return -1
         source_schema = source_path.split('/')[0] + '/'
         source_path = source_path[len(source_schema):]
@@ -708,36 +722,33 @@ class Interface(object):
                 copy_source['Bucket'] = source_tmp_path[0]
                 copy_source['Endpoint'] = '.'.join(source_tmp_path[1:])
                 copy_source['Key'] = source_key
+                copy_source['RawPath'] = source_path
             else:
-                _source_path = source_path.split(".")
-                copy_source['Bucket'] = _source_path[0]
-                copy_source['Region'] = _source_path[2]
-                copy_source['Key'] = '.'.join(_source_path[4:])[len("com/"):]
-            logger.debug("CopySource:")
-            logger.debug(copy_source)
+                _source_path = source_path.split("/")
+                source_tmp_path = _source_path[0].split('.')
+                source_key = '/'.join(_source_path[1:])
+                copy_source['Bucket'] = source_tmp_path[0]
+                if len(source_tmp_path) == 5 and source_tmp_path[1] == 'cos':
+                    copy_source['Region'] = source_tmp_path[2]
+                elif len(source_tmp_path) == 4:
+                    copy_source['Region'] = source_tmp_path[1]
+                else:
+                    raise Exception("Parse Region Error")
+                    return -1
+                copy_source['Key'] = source_key
+                copy_source['RawPath'] = copy_source['Bucket'] + ".cos." + copy_source['Region'] + ".myqcloud.com/" + copy_source['Key']
         except Exception as e:
             logger.warn(e)
-            logger.warn("CopySource format is invalid")
+            logger.warn(u"CopySource is invalid: {copysource}".format(copysource=source_path))
             return -1
+        rt = self.remote2remote_sync_check(copy_source, cos_path, **kwargs)
+        if 0 != rt:
+            return rt
         logger.info(u"Copy cos://{src_bucket}/{src_path}   =>   cos://{dst_bucket}/{dst_path}".format(
             src_bucket=copy_source['Bucket'],
             src_path=copy_source['Key'],
             dst_bucket=self._conf._bucket,
             dst_path=cos_path))
-        if kwargs['sync'] is True:
-            try:
-                rt = self._session.head(
-                    url=self._conf._schema + "://" + source_path, auth=CosS3Auth(self._conf))
-                src_md5 = rt.headers['x-cos-meta-md5']
-                url = self._conf.uri(path=quote(to_printable_str(cos_path)))
-                rt = self._session.head(url,  auth=CosS3Auth(self._conf))
-                dst_md5 = rt.headers['x-cos-meta-md5']
-                if dst_md5 == src_md5:
-                    logger.info(
-                            u"The file on cos is the same as the local file, skip copy")
-                    return -2
-            except Exception as e:
-                pass
         try:
             _http_header = yaml.safe_load(_http_headers)
             kwargs = mapped(_http_header)
@@ -1409,12 +1420,20 @@ class Interface(object):
         else:
             return -1
 
-    def remote2local_sync_check(self, cos_path, local_path, **kwargs):
+    def include_ignore_skip(self, cos_path, **kwargs):
+        is_include = is_include_file(cos_path, kwargs['include'])
         is_ignore = is_ignore_file(cos_path, kwargs['ignore'])
-        if is_ignore:
-            logger.info(u"Ignore cos://{bucket}/{cos_path}".format(
-                bucket=self._conf._bucket,
-                cos_path=cos_path))
+        if not is_include or is_ignore:
+            return -2
+        return 0
+
+    def remote2local_sync_check(self, cos_path, local_path, **kwargs):
+        ret = self.include_ignore_skip(cos_path, **kwargs)
+        if 0 != ret:
+            logger.debug(u"Skip cos://{bucket}/{cos_path} => {local_path}".format(
+                            bucket=self._conf._bucket,
+                            local_path=local_path,
+                            cos_path=cos_path))
             return -2
         if kwargs['force'] is False:
             if os.path.isfile(local_path) is True:
@@ -1436,7 +1455,7 @@ class Interface(object):
                     kwargs["_size"] = _size
                     kwargs["_md5"] = _md5
                     if is_sync_skip_file_remote2local(cos_path, local_path, **kwargs):
-                        logger.info(u"Skip cos://{bucket}/{cos_path} => {local_path}".format(
+                        logger.debug(u"Skip cos://{bucket}/{cos_path} => {local_path}".format(
                             bucket=self._conf._bucket,
                             local_path=local_path,
                             cos_path=cos_path))
@@ -2020,6 +2039,7 @@ class Interface(object):
                 "skipmd5": True,
                 "sync": False,
                 "force": True,
+                "include": "*",
                 "ignore": ""}
             time_start = time.time()
             rt = self.upload_file(filename, filename, **kw)
@@ -2037,6 +2057,7 @@ class Interface(object):
                 "force": True,
                 "sync": False,
                 "num": 10,
+                "include": "*",
                 "ignore": ""}
             rt = self.download_file(filename, filename, **kw)
             time_end = time.time()
