@@ -301,8 +301,8 @@ class Interface(object):
         logger.info(u"{success_files} files uploaded, {skip_files} files skipped, {fail_files} files failed"
                     .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
         # sync --delete 删除cos上不存在的文件
-        logger.info(u"Synchronizing delete, please wait.")
         if kwargs['sync'] and kwargs['delete']:
+            logger.info(u"Synchronizing delete, please wait.")
             try:
                 src = {"Client": self._client, "Path": raw_local_path}
                 dst = {"Client": self._client, "Bucket": self._conf._bucket, "Path": raw_cos_path}
@@ -312,7 +312,7 @@ class Interface(object):
                     logger.warn("sync delete fail")
                 else:
                     logger.info(u"{succ_files} files sync deleted, {fail_files} files sync failed"
-                        .format(succ_files=del_succ, fail_files=del_fail))
+                                .format(succ_files=del_succ, fail_files=del_fail))
             except Exception as e:
                 logger.warn(e)
         if _fail_num == 0:
@@ -740,8 +740,8 @@ class Interface(object):
         logger.info(u"{success_files} files copied, {skip_files} files skipped, {fail_files} files failed"
                     .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
         # sync --delete 删除cos上不存在的文件
-        logger.info(u"Synchronizing delete, please wait.")
         if kwargs['sync'] and kwargs['delete']:
+            logger.info(u"Synchronizing delete, please wait.")
             try:
                 src = {"Client": self._client, "Bucket": source_bucket, "Path": raw_source_path}
                 dst = {"Client": self._client, "Bucket": self._conf._bucket, "Path": raw_cos_path}
@@ -751,7 +751,7 @@ class Interface(object):
                     logger.warn("sync delete fail")
                 else:
                     logger.info(u"{succ_files} files sync deleted, {fail_files} files sync failed"
-                        .format(succ_files=del_succ, fail_files=del_fail))
+                                .format(succ_files=del_succ, fail_files=del_fail))
             except Exception as e:
                 logger.warn(e)
         if _fail_num == 0:
@@ -1091,6 +1091,7 @@ class Interface(object):
         cos_path = to_printable_str(cos_path)
         part_num = 0
         while IsTruncated == "true":
+            IsTruncated = 'false'
             try:
                 rt = self._client.list_multipart_uploads(
                     Bucket=self._conf._bucket,
@@ -1104,7 +1105,6 @@ class Interface(object):
                     KeyMarker = rt['NextKeyMarker']
                 if "NextUploadIdMarker" in rt:
                     UploadIdMarker = rt['NextUploadIdMarker']
-                IsTruncated = 'false'
                 if 'IsTruncated' in rt:
                     IsTruncated = rt['IsTruncated']
                 if "Upload" in rt:
@@ -1456,8 +1456,8 @@ class Interface(object):
         logger.info(u"{success_files} files downloaded, {skip_files} files skipped, {fail_files} files failed"
                     .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
         # sync --delete 删除本地不存在的文件
-        logger.info(u"Synchronizing delete, please wait.")
         if kwargs['sync'] and kwargs['delete']:
+            logger.info(u"Synchronizing delete, please wait.")
             try:
                 src = {"Client": self._client, "Bucket": self._conf._bucket, "Path": raw_cos_path}
                 dst = {"Client": self._client, "Path": raw_local_path}
@@ -1467,7 +1467,7 @@ class Interface(object):
                     logger.warn("sync delete fail")
                 else:
                     logger.info(u"{succ_files} files sync deleted, {fail_files} files sync failed"
-                        .format(succ_files=del_succ, fail_files=del_fail))
+                                .format(succ_files=del_succ, fail_files=del_fail))
             except Exception as e:
                 logger.warn(e)
         if _fail_num == 0:
@@ -1742,12 +1742,12 @@ class Interface(object):
                 bucket=self._conf._bucket,
                 path=cos_path
                 ))
-            rt = self._client.restore_object(
-                              Bucket=self._conf._bucket,
-                              Key=cos_path,
-                              RestoreRequest=restore_request)
+            self._client.restore_object(
+                    Bucket=self._conf._bucket,
+                    Key=cos_path,
+                    RestoreRequest=restore_request)
             return 0
-        except Exception as e:
+        except CosServiceError as e:
             if e.get_status_code() == 409 and e.get_error_code() == 'RestoreAlreadyInProgress':
                 logger.warn(u"cos://{bucket}/{path} already in pogress".format(
                         bucket=self._conf._bucket,
@@ -2072,7 +2072,6 @@ class Interface(object):
             logger.warn(str(e))
             return False
         return False
-
 
     def probe(self, **kwargs):
         test_num = int(kwargs['test_num'])

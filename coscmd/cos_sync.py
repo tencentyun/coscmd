@@ -11,6 +11,7 @@ else:
 
 logger = logging.getLogger("coscmd")
 
+
 def is_include_file(path, rules):
     for rule in rules:
         if fnmatch.fnmatch(path, rule) is True:
@@ -41,6 +42,7 @@ def is_sync_skip_file_remote2local(cos_path, local_path, **kwargs):
         return False
     return True
 
+
 def delete_objects(src, dst, deleteList):
     """
     批量删除cos上的对象
@@ -55,8 +57,8 @@ def delete_objects(src, dst, deleteList):
         if 'Deleted' in rt:
             success_num += len(rt['Deleted'])
             for file in rt['Deleted']:
-                logger.info(u"Delete cos://{bucket}/{file}".format(bucket=dst['Bucket'], 
-                                                                    file=file['Key'],))
+                logger.info(u"Delete cos://{bucket}/{file}".format(bucket=dst['Bucket'],
+                                                                   file=file['Key'],))
         if 'Error' in rt:
             fail_num += len(rt['Error'])
             for file in rt['Error']:
@@ -65,11 +67,11 @@ def delete_objects(src, dst, deleteList):
                                     file=file['Key'],
                                     code=file['Code'],
                                     msg=file['Message']))
-    
     except Exception as e:
         logger.warn(e)
         return [0, len(deleteList['Object'])]
     return [success_num, fail_num]
+
 
 def local2remote_sync_delete(src, dst, **kwargs):
     """
@@ -101,18 +103,19 @@ def local2remote_sync_delete(src, dst, **kwargs):
                         _cos_path = to_unicode(_file['Key'])
                         _local_path = src['Path'] + _cos_path[len(dst['Path']):]
                         _local_path = to_unicode(_local_path)
-                        if os.path.isfile(_local_path) is False: 
+                        if os.path.isfile(_local_path) is False:
                             deleteList['Object'].append({'Key': _cos_path})
                 break
             except Exception as e:
                 time.sleep(1 << i)
-                logger.warn(e)    
+                logger.warn(e)
             if i + 1 == kwargs['retry']:
                 return [-1, 0, 0]
         _succ, _fail = delete_objects(src, dst, deleteList)
         success_num += _succ
         fail_num += _fail
     return [0, success_num, fail_num]
+
 
 def remote2local_sync_delete(src, dst, **kwargs):
     """
@@ -131,7 +134,7 @@ def remote2local_sync_delete(src, dst, **kwargs):
             if cos_path.endswith('/') is False:
                 cos_path += "/"
             if local_path.endswith('/') is False:
-                local_path += '/' 
+                local_path += "/"
             cos_path = cos_path.lstrip('/')
             # 当前目录下的文件列表
             dirlist = os.listdir(local_path)
@@ -150,7 +153,7 @@ def remote2local_sync_delete(src, dst, **kwargs):
                                 logger.info(u"Delete {file}".format(
                                     file=filepath))
                                 success_num += 1
-                            except:
+                            except Exception:
                                 logger.info(u"Delete {file} fail".format(
                                     file=filepath))
                                 fail_num += 1
@@ -158,6 +161,7 @@ def remote2local_sync_delete(src, dst, **kwargs):
         logger.warn(e)
         return [-1, 0, 0]
     return [0, success_num, fail_num]
+
 
 def remote2remote_sync_delete(src, dst, **kwargs):
     """
@@ -200,10 +204,9 @@ def remote2remote_sync_delete(src, dst, **kwargs):
                 break
             except Exception as e:
                 time.sleep(1 << i)
-                logger.warn(e)    
+                logger.warn(e)
             if i + 1 == kwargs['retry']:
                 return [-1, 0, 0]
-        
         _succ, _fail = delete_objects(src, dst, deleteList)
         success_num += _succ
         fail_num += _fail
