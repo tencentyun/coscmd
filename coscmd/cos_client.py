@@ -27,12 +27,12 @@ if sys.version > '3':
     from coscmd.cos_auth import CosS3Auth
     from coscmd.cos_threadpool import SimpleThreadPool
     from coscmd.cos_comm import *
-    from coscmd.cos_sync_filter import *
+    from coscmd.cos_sync import *
 else:
     from cos_auth import CosS3Auth
     from cos_threadpool import SimpleThreadPool
     from cos_comm import *
-    from cos_sync_filter import *
+    from cos_sync import *
 
 logger = logging.getLogger("coscmd")
 
@@ -255,6 +255,12 @@ class Interface(object):
         _success_num = 0
         _skip_num = 0
         _fail_num = 0
+        raw_local_path = local_path
+        raw_cos_path = cos_path
+        if raw_local_path.endswith('/') is False:
+            raw_local_path += "/"
+        if raw_cos_path.endswith('/') is False:
+            raw_cos_path += '/'
         q = Queue()
         q.put([local_path, cos_path])
         # 上传文件列表
@@ -292,8 +298,23 @@ class Interface(object):
         except Exception as e:
             logger.warn(e)
             return -1
-        logger.info(u"{success_files} files successful, {skip_files} files skipped, {fail_files} files failed"
+        logger.info(u"{success_files} files uploaded, {skip_files} files skipped, {fail_files} files failed"
                     .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
+        # sync --delete 删除cos上不存在的文件
+        logger.info(u"Synchronizing delete, please wait.")
+        if kwargs['sync'] and kwargs['delete']:
+            try:
+                src = {"Client": self._client, "Path": raw_local_path}
+                dst = {"Client": self._client, "Bucket": self._conf._bucket, "Path": raw_cos_path}
+                kwargs['retry'] = self._retry
+                ret, del_succ, del_fail = local2remote_sync_delete(src, dst, **kwargs)
+                if ret != 0:
+                    logger.warn("sync delete fail")
+                else:
+                    logger.info(u"{succ_files} files sync deleted, {fail_files} files sync failed"
+                        .format(succ_files=del_succ, fail_files=del_fail))
+            except Exception as e:
+                logger.warn(e)
         if _fail_num == 0:
             return 0
         else:
@@ -313,7 +334,7 @@ class Interface(object):
                     Bucket=self._conf._bucket,
                     Key=cos_path
                 )
-            except Exception as e:
+            except Exception:
                 return 0
             _size = 0
             _md5 = "-"
@@ -515,7 +536,6 @@ class Interface(object):
 
         def complete_multiupload():
             logger.info('Completing multiupload, please wait')
-            doc = minidom.Document()
             lst = sorted(self._md5, key=lambda x: x['PartNumber'])
             try:
                 rt = self._client.complete_multipart_upload(self._conf._bucket,
@@ -593,13 +613,21 @@ class Interface(object):
         if kwargs['force'] is False:
             if kwargs['sync'] is True:
                 try:
+                    src_md5 = ""
+                    src_size = -1
+                    dst_md5 = "."
+                    dst_size = -2
                     rt = self._session.head(url=self._conf._schema + "://" + copy_source['RawPath'], auth=CosS3Auth(self._conf))
-                    src_md5 = rt.headers['x-cos-meta-md5']
-                    src_size = rt.headers['Content-Length']
+                    if 'x-cos-meta-md5' in rt.headers:
+                        src_md5 = rt.headers['x-cos-meta-md5']
+                    if 'Content-Length' in rt.headers:
+                        src_size = rt.headers['Content-Length']
                     url = self._conf.uri(path=quote(to_printable_str(cos_path)))
                     rt = self._session.head(url,  auth=CosS3Auth(self._conf))
-                    dst_md5 = rt.headers['x-cos-meta-md5']
-                    dst_size = rt.headers['Content-Length']
+                    if 'x-cos-meta-md5' in rt.headers:
+                        dst_md5 = rt.headers['x-cos-meta-md5']
+                    if 'Content-Length' in rt.headers:
+                        dst_size = rt.headers['Content-Length']
                     if dst_md5 == src_md5 or (kwargs['skipmd5'] and dst_size == src_size):
                         logger.debug(u"Skip cos://{src_bucket}/{src_path} => cos://{dst_bucket}/{dst_path}".format(
                             src_bucket=copy_source['Bucket'],
@@ -661,6 +689,12 @@ class Interface(object):
             return -1
         source_schema = source_path.split('/')[0] + '/'
         source_path = source_path[len(source_schema):]
+        raw_source_path = source_path
+        raw_cos_path = cos_path
+        if raw_source_path.endswith('/') is False:
+            raw_source_path += "/"
+        if raw_cos_path.endswith('/') is False:
+            raw_cos_path += '/'
         while IsTruncated == "true":
             for i in range(self._retry):
                 try:
@@ -703,8 +737,23 @@ class Interface(object):
                     _skip_num += 1
                 else:
                     _fail_num += 1
-        logger.info(u"{success_files} files successful, {skip_files} files skipped, {fail_files} files failed"
+        logger.info(u"{success_files} files copied, {skip_files} files skipped, {fail_files} files failed"
                     .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
+        # sync --delete 删除cos上不存在的文件
+        logger.info(u"Synchronizing delete, please wait.")
+        if kwargs['sync'] and kwargs['delete']:
+            try:
+                src = {"Client": self._client, "Bucket": source_bucket, "Path": raw_source_path}
+                dst = {"Client": self._client, "Bucket": self._conf._bucket, "Path": raw_cos_path}
+                kwargs['retry'] = self._retry
+                ret, del_succ, del_fail = remote2remote_sync_delete(src, dst, **kwargs)
+                if ret != 0:
+                    logger.warn("sync delete fail")
+                else:
+                    logger.info(u"{succ_files} files sync deleted, {fail_files} files sync failed"
+                        .format(succ_files=del_succ, fail_files=del_fail))
+            except Exception as e:
+                logger.warn(e)
         if _fail_num == 0:
             return 0
         else:
@@ -734,7 +783,6 @@ class Interface(object):
                     copy_source['Region'] = source_tmp_path[1]
                 else:
                     raise Exception("Parse Region Error")
-                    return -1
                 copy_source['Key'] = source_key
                 copy_source['RawPath'] = copy_source['Bucket'] + ".cos." + copy_source['Region'] + ".myqcloud.com/" + copy_source['Key']
         except Exception as e:
@@ -784,7 +832,6 @@ class Interface(object):
         IsTruncated = "true"
         if _versions:
             NextMarker = ""
-            NextVersionMarker = ""
             KeyMarker = ""
             VersionIdMarker = ""
             while IsTruncated == "true":
@@ -913,7 +960,6 @@ class Interface(object):
         IsTruncated = "true"
         if _versions:
             NextMarker = ""
-            NextVersionMarker = ""
             KeyMarker = ""
             VersionIdMarker = ""
             while IsTruncated == "true":
@@ -1037,50 +1083,43 @@ class Interface(object):
             return -1
         return -1
 
-    def list_multipart(self, cos_path):
-        NextMarker = ""
+    def list_multipart_uploads(self, cos_path):
+        logger.debug("getting uploaded parts")
+        KeyMarker = ""
+        UploadIdMarker = ""
         IsTruncated = "true"
-        _success_num = 0
-        _fail_num = 0
         cos_path = to_printable_str(cos_path)
-        try:
-            while IsTruncated == "true":
-                table = PrettyTable(["Path", "Size/Type", "Time"])
-                table.align = "l"
-                table.align['Size/Type'] = 'r'
-                table.padding_width = 3
-                table.header = False
-                table.border = False
-                url = self._conf.uri(path='?uploads&prefix={prefix}&marker={nextmarker}'
-                                     .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker))))
-                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-                if rt.status_code == 200:
-                    root = minidom.parseString(rt.content).documentElement
-                    IsTruncated = root.getElementsByTagName(
-                        "IsTruncated")[0].childNodes[0].data
-                    if IsTruncated == 'true':
-                        NextMarker = root.getElementsByTagName(
-                            "NextMarker")[0].childNodes[0].data
-                    logger.debug(u"init resp, status code: {code}, headers: {headers}, text: {text}".format(
-                        code=rt.status_code,
-                        headers=rt.headers,
-                        text=rt.text))
-                    fileset = root.getElementsByTagName("Upload")
-                    for _file in fileset:
-                        self._file_num += 1
-                        _key = _file.getElementsByTagName(
-                            "Key")[0].childNodes[0].data
-                        _uploadid = _file.getElementsByTagName(
-                            "UploadId")[0].childNodes[0].data
+        part_num = 0
+        while IsTruncated == "true":
+            try:
+                rt = self._client.list_multipart_uploads(
+                    Bucket=self._conf._bucket,
+                    Prefix=cos_path,
+                    Delimiter='',
+                    KeyMarker=KeyMarker,
+                    UploadIdMarker=UploadIdMarker,
+                    MaxUploads=10,
+                )
+                if "NextKeyMarker" in rt:
+                    KeyMarker = rt['NextKeyMarker']
+                if "NextUploadIdMarker" in rt:
+                    UploadIdMarker = rt['NextUploadIdMarker']
+                IsTruncated = 'false'
+                if 'IsTruncated' in rt:
+                    IsTruncated = rt['IsTruncated']
+                if "Upload" in rt:
+                    for upload in rt['Upload']:
+                        part_num += 1
+                        if 'Key' in upload:
+                            _key = upload['Key']
+                        if 'UploadId' in upload:
+                            _uploadid = upload['UploadId']
                         logger.info(u"Key:{key}, UploadId:{uploadid}".format(
-                            key=_key, uploadid=_uploadid))
-                else:
-                    logger.warn(response_info(rt))
-                    return False
-            return True
-        except Exception as e:
-            logger.warn(e)
-            return False
+                            key=to_unicode(_key), uploadid=_uploadid))
+            except Exception as e:
+                logger.warn(e)
+        logger.info(u" Parts num: {file_num}".format(
+                file_num=str(part_num)))
 
     def abort_parts(self, cos_path):
         NextKeyMarker = ""
@@ -1090,7 +1129,6 @@ class Interface(object):
         _fail_num = 0
         cos_path = to_printable_str(cos_path)
         try:
-            NextMarker = ""
             while IsTruncated == "true":
                 abortList = []
                 for i in range(self._retry):
@@ -1116,7 +1154,7 @@ class Interface(object):
                     NextKeyMarker = rt['NextKeyMarker']
                 if 'Upload' in rt:
                     for _file in rt['Upload']:
-                        _path = _file['Key']
+                        _path = to_unicode(_file['Key'])
                         _uploadid = _file['UploadId']
                         abortList.append({'Key': _path,
                                           'UploadId': _uploadid})
@@ -1354,6 +1392,8 @@ class Interface(object):
         _success_num = 0
         _fail_num = 0
         _skip_num = 0
+        raw_local_path = local_path
+        raw_cos_path = cos_path
         cos_path = to_unicode(cos_path)
         while IsTruncated == "true":
             multidownload_filelist = []
@@ -1413,8 +1453,23 @@ class Interface(object):
                         _fail_num += 1
                 except Exception as e:
                     print(e)
-        logger.info(u"{success_files} files successful, {skip_files} files skipped, {fail_files} files failed"
+        logger.info(u"{success_files} files downloaded, {skip_files} files skipped, {fail_files} files failed"
                     .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
+        # sync --delete 删除本地不存在的文件
+        logger.info(u"Synchronizing delete, please wait.")
+        if kwargs['sync'] and kwargs['delete']:
+            try:
+                src = {"Client": self._client, "Bucket": self._conf._bucket, "Path": raw_cos_path}
+                dst = {"Client": self._client, "Path": raw_local_path}
+                kwargs['retry'] = self._retry
+                ret, del_succ, del_fail = remote2local_sync_delete(src, dst, **kwargs)
+                if ret != 0:
+                    logger.warn("sync delete fail")
+                else:
+                    logger.info(u"{succ_files} files sync deleted, {fail_files} files sync failed"
+                        .format(succ_files=del_succ, fail_files=del_fail))
+            except Exception as e:
+                logger.warn(e)
         if _fail_num == 0:
             return 0
         else:
@@ -2017,6 +2072,7 @@ class Interface(object):
             logger.warn(str(e))
             return False
         return False
+
 
     def probe(self, **kwargs):
         test_num = int(kwargs['test_num'])

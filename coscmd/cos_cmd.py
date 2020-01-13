@@ -222,6 +222,7 @@ class Op(object):
             kwargs['ignore'] = args.ignore.split(',')
             kwargs['include'] = args.include.split(',')
             kwargs['force'] = args.force
+            kwargs['delete'] = args.delete
             if args.recursive:
                 if os.path.isfile(args.local_path) is True:
                     rt = Interface.upload_file(args.local_path, args.cos_path, args.headers, **kwargs)
@@ -263,6 +264,7 @@ class Op(object):
             kwargs['ignore'] = args.ignore.split(',')
             kwargs['include'] = args.include.split(',')
             kwargs['skipmd5'] = args.skipmd5
+            kwargs['delete'] = args.delete
             if args.recursive:
                 rt = Interface.download_folder(args.cos_path, args.local_path, args.headers, **kwargs)
                 return rt
@@ -336,6 +338,7 @@ class Op(object):
             kwargs['skipmd5'] = args.skipmd5
             kwargs['ignore'] = args.ignore.split(',')
             kwargs['include'] = args.include.split(',')
+            kwargs['delete'] = args.delete
             if args.recursive:
                 _, args.cos_path = concat_path(args.source_path, args.cos_path)
                 if args.cos_path.endswith('/') is False:
@@ -385,7 +388,7 @@ class Op(object):
             conf = load_conf()
             client = CosS3Client(conf)
             Interface = client.op_int()
-            if Interface.list_multipart(cos_path=args.cos_path):
+            if Interface.list_multipart_uploads(cos_path=args.cos_path):
                 return 0
             else:
                 return -1
@@ -703,6 +706,7 @@ def command_thread():
     parser_upload.add_argument('--include', help='Specify filter rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="*")
     parser_upload.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
     parser_upload.add_argument('--skipmd5', help='Upload without x-cos-meta-md5 / sync without check md5, only check filename and filesize', action="store_true", default=False)
+    parser_upload.add_argument('--delete', help="delete objects which exists in cos but not exist in local", action="store_true", default=False)
     parser_upload.set_defaults(func=Op.upload)
 
     parser_download = sub_parser.add_parser("download", help="Download file from COS to local")
@@ -716,6 +720,7 @@ def command_thread():
     parser_download.add_argument('--include', help='Specify filter rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="*")
     parser_download.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
     parser_download.add_argument('--skipmd5', help='Download sync without check md5, only check filename and filesize', action="store_true", default=False)
+    parser_download.add_argument('--delete', help="delete objects which exists in local but not exist in cos", action="store_true", default=False)
     parser_download.add_argument('-n', '--num', help='Specify max part_num of multidownload', type=int, default=10)
     parser_download.set_defaults(func=Op.download)
 
@@ -742,6 +747,7 @@ def command_thread():
     parser_copy.add_argument('--include', help='Specify filter rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="*")
     parser_copy.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
     parser_copy.add_argument('--skipmd5', help='Copy sync without check md5, only check filename and filesize', action="store_true", default=False)
+    parser_copy.add_argument('--delete', help="delete objects which exists in sourcepath but not exist in dstpath", action="store_true", default=False)
     parser_copy.set_defaults(func=Op.copy)
 
     parser_list = sub_parser.add_parser("list", help='List files on COS')
