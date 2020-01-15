@@ -1,5 +1,10 @@
 Coscmd Upgrade Guide
 ====================
+1.8.6.10 to 1.8.6.11
+--------------------
+- Fixed Error log when Using coscmd to upload the same file at the same time
+- Added sync delete
+
 1.8.6.9 to 1.8.6.10
 --------------------
 - Fix multiupload retry
