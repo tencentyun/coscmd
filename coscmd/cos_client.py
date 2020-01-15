@@ -413,12 +413,14 @@ class Interface(object):
             self._upload_id = None
             self._path_md5 = get_md5_filename(local_path, cos_path)
             if not kwargs['force'] and os.path.isfile(self._path_md5):
-                with open(self._path_md5, 'rb') as f:
-                    self._upload_id = f.read()
-                if self.list_part(cos_path) is True:
-                    logger.info(u"Continue uploading from last breakpoint")
-                    return 0
-
+                try:
+                    with open(self._path_md5, 'rb') as f:
+                        self._upload_id = f.read()
+                    if self.list_part(cos_path) is True:
+                        logger.info(u"Continue uploading from last breakpoint")
+                        return 0
+                except Exception:
+                    pass
             http_headers = _http_headers
             try:
                 http_headers = yaml.safe_load(http_headers)
@@ -434,10 +436,14 @@ class Interface(object):
                                                           **http_headers)
                 logger.debug("Init resp: {rt}".format(rt=rt))
                 self._upload_id = rt['UploadId']
-                if os.path.isdir(os.path.expanduser("~/.tmp")) is False:
-                    os.makedirs(os.path.expanduser("~/.tmp"))
-                with open(self._path_md5, 'wb') as f:
-                    f.write(to_bytes(self._upload_id))
+                try:
+                    if os.path.isdir(os.path.expanduser("~/.tmp")) is False:
+                        os.makedirs(os.path.expanduser("~/.tmp"))
+                    with open(self._path_md5, 'wb') as f:
+                        f.write(to_bytes(self._upload_id))
+                except Exception:
+                    logger.debug("Open upload tmp file error.")
+                    pass
                 return 0
             except Exception as e:
                 logger.warn(e)
@@ -538,12 +544,14 @@ class Interface(object):
             logger.info('Completing multiupload, please wait')
             lst = sorted(self._md5, key=lambda x: x['PartNumber'])
             try:
-                rt = self._client.complete_multipart_upload(self._conf._bucket,
-                                                            cos_path,
-                                                            self._upload_id,
-                                                            {'Part': lst})
-                logger.debug(rt)
-                os.remove(self._path_md5)
+                self._client.complete_multipart_upload(self._conf._bucket,
+                                                       cos_path,
+                                                       self._upload_id,
+                                                       {'Part': lst})
+                try:
+                    os.remove(self._path_md5)
+                except Exception:
+                    pass
                 return 0
             except Exception as e:
                 logger.warn(e)
