@@ -16,11 +16,7 @@ _______
 安装指南
 __________
 
-使用pip安装 ::
-
-    pip install -U coscmd
-
-手动安装::
+::
 
     python setup.py install
     cd dist
