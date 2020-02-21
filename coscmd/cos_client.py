@@ -24,11 +24,13 @@ from wsgiref.handlers import format_date_time
 import qcloud_cos
 
 if sys.version > '3':
+    from coscmd.cos_global import Version
     from coscmd.cos_auth import CosS3Auth
     from coscmd.cos_threadpool import SimpleThreadPool
     from coscmd.cos_comm import *
     from coscmd.cos_sync import *
 else:
+    from cos_global import Version
     from cos_auth import CosS3Auth
     from cos_threadpool import SimpleThreadPool
     from cos_comm import *
@@ -40,7 +42,7 @@ logger = logging.getLogger("coscmd")
 class CoscmdConfig(object):
 
     def __init__(self, appid, region, endpoint, bucket, secret_id, secret_key, token=None,
-                 part_size=1, max_thread=5, schema='https', anonymous=False, verify='md5', retry=2,
+                 part_size=1, max_thread=5, schema='https', anonymous=False, verify='md5', retry=2, timeout=60,
                  *args, **kwargs):
         self._appid = appid
         self._region = region
@@ -56,6 +58,8 @@ class CoscmdConfig(object):
         self._verify = verify
         self._endpoint = endpoint
         self._retry = retry
+        self._timeout = timeout
+        self._ua = 'coscmd-v' + Version
         logger.debug("config parameter-> appid: {appid}, region: {region}, endpoint: {endpoint}, bucket: {bucket}, part_size: {part_size}, max_thread: {max_thread}".format(
             appid=appid,
             region=region,
@@ -107,6 +111,8 @@ class Interface(object):
         self._have_finished = 0
         self._err_tips = ''
         self._retry = conf._retry
+        self._ua = conf._ua
+        self._timeout = conf._timeout
         self._file_num = 0
         self._folder_num = 0
         self._fail_num = 0
@@ -124,7 +130,9 @@ class Interface(object):
                                                   SecretKey=conf._secret_key,
                                                   Token=conf._token,
                                                   Scheme=conf._schema,
-                                                  Anonymous=conf._anonymous)
+                                                  Anonymous=conf._anonymous,
+                                                  UA=self._ua,
+                                                  Timeout=self._timeout)
             else:
                 sdk_config = qcloud_cos.CosConfig(Endpoint=conf._endpoint,
                                                   Region=conf._region,
@@ -132,7 +140,9 @@ class Interface(object):
                                                   SecretKey=conf._secret_key,
                                                   Token=conf._token,
                                                   Scheme=conf._schema,
-                                                  Anonymous=conf._anonymous)
+                                                  Anonymous=conf._anonymous,
+                                                  UA=self._ua,
+                                                  Timeout=self._timeout)
             self._client = qcloud_cos.CosS3Client(sdk_config, self._retry)
         except Exception as e:
             logger.warn(e)
@@ -141,21 +151,6 @@ class Interface(object):
             self._session = requests.session()
         else:
             self._session = session
-
-    def check_file_md5(self, _local_path, _cos_path, _md5):
-        url = self._conf.uri(path=quote(to_printable_str(_cos_path)))
-        rt = self._session.head(
-            url=url, auth=CosS3Auth(self._conf), stream=True)
-        if rt.status_code != 200:
-            return False
-        tmp = os.stat(_local_path)
-        if tmp.st_size != int(rt.headers['Content-Length']):
-            return False
-        else:
-            if 'x-cos-meta-md5' not in rt.headers or _md5 != rt.headers['x-cos-meta-md5']:
-                return False
-            else:
-                return True
 
     def sign_url(self, cos_path, timeout=10000):
         cos_path = to_printable_str(cos_path)
@@ -392,7 +387,7 @@ class Interface(object):
                 http_header = _http_header
                 http_header['x-cos-meta-md5'] = _md5
                 rt = self._session.put(url=url,
-                                       auth=CosS3Auth(self._conf), data=data, headers=http_header)
+                                       auth=CosS3Auth(self._conf), data=data, headers=http_header, timeout=self._timeout)
                 if rt.status_code == 200:
                     return 0
                 else:
@@ -466,7 +461,8 @@ class Interface(object):
                         http_header = _http_header
                         rt = self._session.put(url=url,
                                                auth=CosS3Auth(self._conf),
-                                               data=data, headers=http_header)
+                                               data=data, headers=http_header,
+                                               timeout=self._timeout)
                         logger.debug("Multi part result: part: {part}, round: {round}, code: {code}, headers: {headers}, text: {text}".format(
                             part=idx,
                             round=j + 1,
@@ -1403,26 +1399,27 @@ class Interface(object):
         raw_local_path = local_path
         raw_cos_path = cos_path
         cos_path = to_unicode(cos_path)
+
+        NextMarker = ""
+        IsTruncated = "true"
         while IsTruncated == "true":
-            multidownload_filelist = []
             self._inner_threadpool = SimpleThreadPool(self._conf._max_thread)
-            url = self._conf.uri(path='?prefix={prefix}&marker={nextmarker}'
-                                 .format(prefix=quote(to_printable_str(cos_path)), nextmarker=quote(to_printable_str(NextMarker))))
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-            if rt.status_code == 200:
-                root = minidom.parseString(rt.content).documentElement
-                IsTruncated = root.getElementsByTagName(
-                    "IsTruncated")[0].childNodes[0].data
-                if IsTruncated == 'true':
-                    NextMarker = root.getElementsByTagName(
-                        "NextMarker")[0].childNodes[0].data
-                fileset = root.getElementsByTagName("Contents")
-                for _file in fileset:
-                    try:
-                        _cos_path = _file.getElementsByTagName(
-                            "Key")[0].childNodes[0].data
-                        _size = int(_file.getElementsByTagName(
-                            "Size")[0].childNodes[0].data)
+            multidownload_filelist = []
+            try:
+                rt = self._client.list_objects(
+                    Bucket=self._conf._bucket,
+                    Marker=NextMarker,
+                    MaxKeys=1000,
+                    Prefix=cos_path,
+                )
+                if 'IsTruncated' in rt:
+                    IsTruncated = rt['IsTruncated']
+                if 'NextMarker' in rt:
+                    NextMarker = rt['NextMarker']
+                if 'Contents' in rt:
+                    for _file in rt['Contents']:
+                        _cos_path = _file['Key']
+                        _size = int(_file['Size'])
                         _local_path = local_path + _cos_path[len(cos_path):]
                         _cos_path = to_unicode(_cos_path)
                         _local_path = to_unicode(_local_path)
@@ -1434,11 +1431,9 @@ class Interface(object):
                         else:
                             multidownload_filelist.append(
                                 [_cos_path, _local_path, _size])
-                    except Exception as e:
-                        logger.warn(e)
-                        logger.warn("Parse xml error")
-            else:
-                logger.warn(response_info(rt))
+            except Exception as e:
+                logger.warn(e)
+                logger.warn("List objects failed")
                 return -1
             self._inner_threadpool.wait_completion()
             result = self._inner_threadpool.get_result()

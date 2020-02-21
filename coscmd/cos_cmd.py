@@ -63,6 +63,8 @@ def config(args):
             cp.set('common', 'endpoint', args.endpoint)
         cp.set('common', 'max_thread', str(args.max_thread))
         cp.set('common', 'part_size', str(args.part_size))
+        cp.set('common', 'retry', str(args.retry))
+        cp.set('common', 'timeout', str(args.timeout))
         if args.appid != "":
             cp.set('common', 'appid', args.appid)
         if args.use_http:
@@ -158,6 +160,10 @@ def load_conf():
                 retry = int(cp.get('common', 'retry'))
             except Exception:
                 retry = 2
+            try:
+                timeout = int(cp.get('common', 'timeout'))
+            except Exception:
+                timeout = 60
             region, endpoint = None, None
             if cp.has_option('common', 'region'):
                 region = cp.get('common', 'region')
@@ -182,7 +188,8 @@ def load_conf():
                 schema=schema,
                 anonymous=anonymous,
                 verify=verify,
-                retry=retry
+                retry=retry,
+                timeout=timeout
             )
             return conf
     except Exception as e:
@@ -690,6 +697,8 @@ def command_thread():
 
     parser_config.add_argument('-m', '--max_thread', help='Specify the number of threads (default 5)', type=int, default=5)
     parser_config.add_argument('-p', '--part_size', help='specify min part size in MB (default 1MB)', type=int, default=1)
+    parser_config.add_argument('--retry', help='specify retry times', type=int, default=5)
+    parser_config.add_argument('--timeout', help='specify request timeout', type=int, default=60)
     parser_config.add_argument('-u', '--appid', help='Specify your appid', type=str, default="")
     parser_config.add_argument('--verify', help='Specify your encryption method', type=str, default="md5")
     parser_config.add_argument('--do-not-use-ssl', help="Use http://", action="store_true", default=False, dest="use_http")
