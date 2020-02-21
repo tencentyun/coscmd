@@ -1418,8 +1418,11 @@ class Interface(object):
                     NextMarker = rt['NextMarker']
                 if 'Contents' in rt:
                     for _file in rt['Contents']:
-                        _path = _file['Key']
-                        _size = _file['Size']
+                        _cos_path = _file['Key']
+                        _size = int(_file['Size'])
+                        _local_path = local_path + _cos_path[len(cos_path):]
+                        _cos_path = to_unicode(_cos_path)
+                        _local_path = to_unicode(_local_path)
                         if _cos_path.endswith('/'):
                             continue
                         if _size <= self._multidownload_threshold:
@@ -1428,7 +1431,6 @@ class Interface(object):
                         else:
                             multidownload_filelist.append(
                                 [_cos_path, _local_path, _size])
-                        self._inner_threadpool.add_task(self.restore_file, _path, **kwargs)
             except Exception as e:
                 logger.warn(e)
                 logger.warn("List objects failed")
