@@ -259,7 +259,7 @@ class Op(object):
             Interface = client.op_int()
             if not isinstance(args.local_path, text_type):
                 args.local_path = args.local_path.decode(fs_coding)
-            if not isinstance(args. cos_path, text_type):
+            if not isinstance(args.cos_path, text_type):
                 args.cos_path = args.cos_path.decode(fs_coding)
             args.cos_path, args.local_path = concat_path(args.cos_path, args.local_path)
             if args.cos_path.startswith('/'):
