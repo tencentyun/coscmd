@@ -1,5 +1,9 @@
 Coscmd Upgrade Guide
 ====================
+1.8.6.12 to 1.8.6.13
+--------------------
+- Fix download encode bug
+
 1.8.6.11 to 1.8.6.12
 --------------------
 - Add timeout parameter
