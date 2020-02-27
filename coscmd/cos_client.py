@@ -1420,8 +1420,8 @@ class Interface(object):
                     for _file in rt['Contents']:
                         _cos_path = _file['Key']
                         _size = int(_file['Size'])
-                        _local_path = local_path + _cos_path[len(cos_path):]
                         _cos_path = to_unicode(_cos_path)
+                        _local_path = local_path + _cos_path[len(cos_path):]
                         _local_path = to_unicode(_local_path)
                         if _cos_path.endswith('/'):
                             continue
@@ -1554,7 +1554,17 @@ class Interface(object):
                     os.makedirs(dir_path, 0o755)
                 except Exception as e:
                     pass
-            rt['Body'].get_stream_to_file(local_path)
+            fstream = rt['Body'].get_raw_stream()
+            chunk_size = 1024 * 1024
+            with open(local_path, 'wb') as f:
+                while True:
+                    chunk_data = fstream.read(chunk_size)
+                    chunk_len = len(chunk_data)
+                    if (chunk_len == 0):
+                        break
+                    f.write(chunk_data)
+                f.flush()
+            return 0
         except Exception as e:
             logger.warn(str(e))
             return -1
