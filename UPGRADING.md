@@ -1,5 +1,10 @@
 Coscmd Upgrade Guide
 ====================
+1.8.6.13 to 1.8.6.14
+--------------------
+- Fix error-log encode when retrying
+- Use new connection when retry to upload
+
 1.8.6.12 to 1.8.6.13
 --------------------
 - Fix download encode bug
