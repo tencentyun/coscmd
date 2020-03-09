@@ -145,7 +145,7 @@ class Interface(object):
                                                   Timeout=self._timeout)
             self._client = qcloud_cos.CosS3Client(sdk_config, self._retry)
         except Exception as e:
-            logger.warn(e)
+            logger.warn(to_unicode(e))
             raise(e)
         if session is None:
             self._session = requests.session()
@@ -225,7 +225,7 @@ class Interface(object):
                         multiupload_filelist.append([_local_path, _cos_path])
                 except Exception as e:
                     _fail_num += 1
-                    logger.warn(e)
+                    logger.warn(to_unicode(e))
             self._inner_threadpool.wait_completion()
             result = self._inner_threadpool.get_result()
             for worker in result['detail']:
@@ -291,7 +291,7 @@ class Interface(object):
                 _skip_num += _skip
                 _fail_num += _fail
         except Exception as e:
-            logger.warn(e)
+            logger.warn(to_unicode(e))
             return -1
         logger.info(u"{success_files} files uploaded, {skip_files} files skipped, {fail_files} files failed"
                     .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
@@ -309,7 +309,7 @@ class Interface(object):
                     logger.info(u"{succ_files} files sync deleted, {fail_files} files sync failed"
                                 .format(succ_files=del_succ, fail_files=del_fail))
             except Exception as e:
-                logger.warn(e)
+                logger.warn(to_unicode(e))
         if _fail_num == 0:
             return 0
         else:
@@ -365,7 +365,7 @@ class Interface(object):
             _http_header = yaml.safe_load(_http_headers)
         except Exception as e:
             logger.warn("Http_haeder parse error.")
-            logger.warn(e)
+            logger.warn(to_unicode(e))
             return -1
         try:
             if len(local_path) == 0:
@@ -374,7 +374,7 @@ class Interface(object):
                 with open(local_path, 'rb') as File:
                     data = File.read()
         except Exception as e:
-            logger.warn(e)
+            logger.warn(to_unicode(e))
             return 0
         url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         for j in range(self._retry):
@@ -391,12 +391,12 @@ class Interface(object):
                 if rt.status_code == 200:
                     return 0
                 else:
-                    time.sleep(2**j)
-                    logger.warn(response_info(rt))
-                    continue
+                    raise Exception(response_info(rt))
             except Exception as e:
-                logger.warn(e)
-                logger.warn(u"Upload file failed")
+                self._session.close()
+                self._session = requests.session()
+                logger.warn(to_unicode(e))
+                time.sleep(2**j)
         return -1
 
     def multipart_upload(self, local_path, cos_path, _http_headers='{}', **kwargs):
@@ -423,7 +423,7 @@ class Interface(object):
                 http_headers = mapped(http_headers)
             except Exception as e:
                 logger.warn("Http_haeder parse error.")
-                logger.warn(e)
+                logger.warn(to_unicode(e))
                 return -1
             try:
                 rt = self._client.create_multipart_upload(Bucket=self._conf._bucket,
@@ -441,7 +441,7 @@ class Interface(object):
                     pass
                 return 0
             except Exception as e:
-                logger.warn(e)
+                logger.warn(to_unicode(e))
                 return -1
 
         def multiupload_parts():
@@ -452,7 +452,7 @@ class Interface(object):
                         File.seek(offset, 0)
                         data = File.read(length)
                 except Exception as e:
-                    logger.warn(e)
+                    logger.warn(to_unicode(e))
                     return -1
                 url = self._conf.uri(path=quote(to_printable_str(
                     cos_path))) + "?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=self._upload_id)
@@ -479,19 +479,18 @@ class Interface(object):
                             if (kwargs['skipmd5'] or server_md5 == local_encryption):
                                 self._have_finished += 1
                                 self._pbar.update(length)
-                                break
+                                return 0
                             else:
                                 raise Exception("Encryption verification is inconsistent")
                         else:
                             raise Exception(response_info(rt))
                     except Exception as e:
-                        logger.warn("Upload part failed, key: {key}, partnumber: {part}, retrytimes: {round}, exception: {error}".format(
+                        self._session.close()
+                        self._session = requests.session()
+                        logger.warn(u"Upload part failed, key: {key}, partnumber: {part}, retrytimes: {round}, exception: {error}".format(
                             key=cos_path, part=idx, round=j + 1, error=str(e)))
                         time.sleep(2**j)
-                        continue
-                if j + 1 == self._retry:
-                    return -1
-                return 0
+                return -1
 
             offset = 0
             file_size = path.getsize(local_path)
@@ -550,7 +549,7 @@ class Interface(object):
                     pass
                 return 0
             except Exception as e:
-                logger.warn(e)
+                logger.warn(to_unicode(e))
                 return -1
 
         _md5 = ""
@@ -572,7 +571,7 @@ class Interface(object):
             _http_header = yaml.safe_load(_http_headers)
         except Exception as e:
             logger.warn("Http_haeder parse error.")
-            logger.warn(e)
+            logger.warn(to_unicode(e))
             return -1
         try:
             rt = init_multiupload()
@@ -595,7 +594,7 @@ class Interface(object):
                 logger.warn(u"Complete multipart upload failed")
                 return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warn(to_unicode(e))
         return 0
 
     def upload_file(self, local_path, cos_path, _http_headers='{}', **kwargs):
@@ -640,7 +639,7 @@ class Interface(object):
                             dst_path=cos_path))
                         return -2
                 except Exception as e:
-                    logger.warn(e)
+                    logger.warn(to_unicode(e))
                     pass
         return 0
 
@@ -688,7 +687,7 @@ class Interface(object):
                                                          Anonymous=self._conf._anonymous)
                 self._client_source = qcloud_cos.CosS3Client(sdk_config_source)
         except Exception as e:
-            logger.warn(e)
+            logger.warn(to_unicode(e))
             logger.warn(u"CopySource is invalid: {copysource}".format(copysource=source_path))
             return -1
         source_schema = source_path.split('/')[0] + '/'
@@ -726,7 +725,7 @@ class Interface(object):
                     break
                 except Exception as e:
                     time.sleep(1 << i)
-                    logger.warn(e)
+                    logger.warn(to_unicode(e))
                 if i + 1 == self._retry:
                     logger.warn("ListObjects fail")
                     return -1
@@ -757,7 +756,7 @@ class Interface(object):
                     logger.info(u"{succ_files} files sync deleted, {fail_files} files sync failed"
                                 .format(succ_files=del_succ, fail_files=del_fail))
             except Exception as e:
-                logger.warn(e)
+                logger.warn(to_unicode(e))
         if _fail_num == 0:
             return 0
         else:
@@ -790,7 +789,7 @@ class Interface(object):
                 copy_source['Key'] = source_key
                 copy_source['RawPath'] = copy_source['Bucket'] + ".cos." + copy_source['Region'] + ".myqcloud.com/" + copy_source['Key']
         except Exception as e:
-            logger.warn(e)
+            logger.warn(to_unicode(e))
             logger.warn(u"CopySource is invalid: {copysource}".format(copysource=source_path))
             return -1
         rt = self.remote2remote_sync_check(copy_source, cos_path, **kwargs)
@@ -806,7 +805,7 @@ class Interface(object):
             kwargs = mapped(_http_header)
         except Exception as e:
             logger.warn("Http_haeder parse error.")
-            logger.warn(e)
+            logger.warn(to_unicode(e))
             return -1
         try:
             rt = self._client.copy(Bucket=self._conf._bucket,
@@ -817,7 +816,7 @@ class Interface(object):
                                    MAXThread=self._conf._max_thread, **kwargs)
             return 0
         except Exception as e:
-            logger.warn(e)
+            logger.warn(to_unicode(e))
             return -1
 
     def delete_folder(self, cos_path, **kwargs):
@@ -855,7 +854,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warn(e)
+                        logger.warn(to_unicode(e))
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -911,7 +910,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warn(e)
+                        logger.warn(to_unicode(e))
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -980,7 +979,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warn(e)
+                        logger.warn(to_unicode(e))
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -1031,7 +1030,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warn(e)
+                        logger.warn(to_unicode(e))
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -1121,7 +1120,7 @@ class Interface(object):
                         logger.info(u"Key:{key}, UploadId:{uploadid}".format(
                             key=to_unicode(_key), uploadid=_uploadid))
             except Exception as e:
-                logger.warn(e)
+                logger.warn(to_unicode(e))
         logger.info(u" Parts num: {file_num}".format(
                 file_num=str(part_num)))
 
@@ -1147,7 +1146,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warn(e)
+                        logger.warn(to_unicode(e))
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -1174,7 +1173,7 @@ class Interface(object):
                                 key=file['Key'],
                                 uploadid=file['UploadId']))
                         except Exception as e:
-                            logger.warn(e)
+                            logger.warn(to_unicode(e))
                             logger.info(u"Abort Key: {key}, UploadId: {uploadid} fail".format(
                                 key=file['Key'],
                                 uploadid=file['UploadId']))
@@ -1186,7 +1185,7 @@ class Interface(object):
             else:
                 return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warn(to_unicode(e))
             return -1
 
     def list_objects(self, cos_path, **kwargs):
@@ -1229,7 +1228,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warn(e)
+                        logger.warn(to_unicode(e))
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -1311,7 +1310,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warn(e)
+                        logger.warn(to_unicode(e))
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -1432,7 +1431,7 @@ class Interface(object):
                             multidownload_filelist.append(
                                 [_cos_path, _local_path, _size])
             except Exception as e:
-                logger.warn(e)
+                logger.warn(to_unicode(e))
                 logger.warn("List objects failed")
                 return -1
             self._inner_threadpool.wait_completion()
@@ -1472,7 +1471,7 @@ class Interface(object):
                     logger.info(u"{succ_files} files sync deleted, {fail_files} files sync failed"
                                 .format(succ_files=del_succ, fail_files=del_fail))
             except Exception as e:
-                logger.warn(e)
+                logger.warn(to_unicode(e))
         if _fail_num == 0:
             return 0
         else:
@@ -1540,7 +1539,7 @@ class Interface(object):
             http_headers = mapped(http_headers)
         except Exception as e:
             logger.warn("Http_haeder parse error.")
-            logger.warn(e)
+            logger.warn(to_unicode(e))
             return -1
         try:
             rt = self._client.get_object(
@@ -1616,12 +1615,12 @@ class Interface(object):
             _http_headers = mapped(_http_headers)
         except Exception as e:
             logger.warn("Http_haeder parse error.")
-            logger.warn(e)
+            logger.warn(to_unicode(e))
             return -1
         try:
             file_size = kwargs['_size']
         except Exception as e:
-            logger.warn(e)
+            logger.warn(to_unicode(e))
             return -1
         offset = 0
         parts_num = kwargs['num']
@@ -1693,7 +1692,7 @@ class Interface(object):
                 rt = self.multipart_download(cos_path, local_path, _http_headers, _size=file_size, **kwargs)
                 return rt
         except Exception as e:
-            logger.warn(e)
+            logger.warn(to_unicode(e))
 
     def restore_folder(self, cos_path, **kwargs):
         self._inner_threadpool = SimpleThreadPool(self._conf._max_thread)
@@ -1715,7 +1714,7 @@ class Interface(object):
                     break
                 except Exception as e:
                     time.sleep(1 << i)
-                    logger.warn(e)
+                    logger.warn(to_unicode(e))
                 if i + 1 == self._retry:
                     return -1
             if 'IsTruncated' in rt:
@@ -1767,7 +1766,7 @@ class Interface(object):
                         path=cos_path
                 ))
                 return -2
-            logger.warn(e)
+            logger.warn(to_unicode(e))
             return -1
 
     def put_object_acl(self, grant_read, grant_write, grant_full_control, cos_path):
