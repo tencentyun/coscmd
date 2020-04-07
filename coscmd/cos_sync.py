@@ -43,7 +43,7 @@ def is_sync_skip_file_remote2local(cos_path, local_path, **kwargs):
     return True
 
 
-def delete_objects(src, dst, deleteList):
+def delete_objects(src, deleteList):
     """
     批量删除cos上的对象
     """
@@ -52,18 +52,18 @@ def delete_objects(src, dst, deleteList):
     rt = {}
     try:
         if len(deleteList['Object']) > 0:
-            rt = dst['Client'].delete_objects(Bucket=dst['Bucket'],
+            rt = src['Client'].delete_objects(Bucket=src['Bucket'],
                                               Delete=deleteList)
         if 'Deleted' in rt:
             success_num += len(rt['Deleted'])
             for file in rt['Deleted']:
-                logger.info(u"Delete cos://{bucket}/{file}".format(bucket=dst['Bucket'],
+                logger.info(u"Delete cos://{bucket}/{file}".format(bucket=src['Bucket'],
                                                                    file=file['Key'],))
         if 'Error' in rt:
             fail_num += len(rt['Error'])
             for file in rt['Error']:
                 logger.info(u"Delete cos://{bucket}/{file} fail, code: {code}, msg: {msg}"
-                            .format(bucket=dst['Bucket'],
+                            .format(bucket=src['Bucket'],
                                     file=file['Key'],
                                     code=file['Code'],
                                     msg=file['Message']))
@@ -111,7 +111,7 @@ def local2remote_sync_delete(src, dst, **kwargs):
                 logger.warn(e)
             if i + 1 == kwargs['retry']:
                 return [-1, 0, 0]
-        _succ, _fail = delete_objects(src, dst, deleteList)
+        _succ, _fail = delete_objects(dst, deleteList)
         success_num += _succ
         fail_num += _fail
     return [0, success_num, fail_num]
@@ -207,7 +207,7 @@ def remote2remote_sync_delete(src, dst, **kwargs):
                 logger.warn(e)
             if i + 1 == kwargs['retry']:
                 return [-1, 0, 0]
-        _succ, _fail = delete_objects(src, dst, deleteList)
+        _succ, _fail = delete_objects(dst, deleteList)
         success_num += _succ
         fail_num += _fail
     return [0, success_num, fail_num]

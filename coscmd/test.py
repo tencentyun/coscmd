@@ -192,7 +192,6 @@ def test_copy_folder():
         os.makedirs("testfolder/")
     except Exception:
         pass
-    file_num = test_file_num
     gen_folder(test_file_num)
     print("文件夹上传")
     rt = os.system("python coscmd/cos_cmd.py upload -r testfolder testfolder >/dev/null 2>&1")
@@ -206,6 +205,12 @@ def test_copy_folder():
     assert rt == 0
     print("文件夹同步复制ignore")
     rt = os.system("python coscmd/cos_cmd.py copy -rs %s.cos.%s.myqcloud.com/testfolder testfolder2 --ignore '*1,*9' >/dev/null 2>&1" % (bucket_name, region))
+    assert rt == 0
+    print("文件夹同步复制--delete")
+    rt = os.system("python coscmd/cos_cmd.py copy -rs %s.cos.%s.myqcloud.com/testfolder testfolder2 --ignore '*1,*9' --delete >/dev/null 2>&1" % (bucket_name, region))
+    assert rt == 0
+    print("文件夹move")
+    rt = os.system("python coscmd/cos_cmd.py move -r %s.cos.%s.myqcloud.com/testfolder testfolder2 >/dev/null 2>&1" % (bucket_name, region))
     assert rt == 0
     os.system("rm -rf testfolder/")
 

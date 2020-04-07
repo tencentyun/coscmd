@@ -740,13 +740,17 @@ class Interface(object):
                     _skip_num += 1
                 else:
                     _fail_num += 1
-        logger.info(u"{success_files} files copied, {skip_files} files skipped, {fail_files} files failed"
-                    .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
+        if kwargs['move']:
+            logger.info(u"{success_files} files moved, {skip_files} files skipped, {fail_files} files failed"
+                        .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
+        else:
+            logger.info(u"{success_files} files copied, {skip_files} files skipped, {fail_files} files failed"
+                        .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
         # sync --delete 删除cos上不存在的文件
         if kwargs['sync'] and kwargs['delete']:
             logger.info(u"Synchronizing delete, please wait.")
             try:
-                src = {"Client": self._client, "Bucket": source_bucket, "Path": raw_source_path}
+                src = {"Client": self._client_source, "Bucket": source_bucket, "Path": raw_source_path}
                 dst = {"Client": self._client, "Bucket": self._conf._bucket, "Path": raw_cos_path}
                 kwargs['retry'] = self._retry
                 ret, del_succ, del_fail = remote2remote_sync_delete(src, dst, **kwargs)
@@ -765,6 +769,7 @@ class Interface(object):
     def copy_file(self, source_path, cos_path, _http_headers='{}', **kwargs):
         _directive = kwargs['directive']
         _sync = kwargs['sync']
+        _move = kwargs['move']
         copy_source = {}
         try:
             if self._conf._endpoint is not None:
@@ -775,6 +780,13 @@ class Interface(object):
                 copy_source['Endpoint'] = '.'.join(source_tmp_path[1:])
                 copy_source['Key'] = source_key
                 copy_source['RawPath'] = source_path
+                sdk_config_source = qcloud_cos.CosConfig(SecretId=self._conf._secret_id,
+                                                         SecretKey=self._conf._secret_key,
+                                                         Token=self._conf._token,
+                                                         Endpoint=copy_source['Endpoint'],
+                                                         Scheme=self._conf._schema,
+                                                         Anonymous=self._conf._anonymous)
+                _source_client = qcloud_cos.CosS3Client(sdk_config_source)
             else:
                 _source_path = source_path.split("/")
                 source_tmp_path = _source_path[0].split('.')
@@ -788,6 +800,13 @@ class Interface(object):
                     raise Exception("Parse Region Error")
                 copy_source['Key'] = source_key
                 copy_source['RawPath'] = copy_source['Bucket'] + ".cos." + copy_source['Region'] + ".myqcloud.com/" + copy_source['Key']
+                sdk_config_source = qcloud_cos.CosConfig(Region=copy_source['Region'],
+                                                         SecretId=self._conf._secret_id,
+                                                         SecretKey=self._conf._secret_key,
+                                                         Token=self._conf._token,
+                                                         Scheme=self._conf._schema,
+                                                         Anonymous=self._conf._anonymous)
+                _source_client = qcloud_cos.CosS3Client(sdk_config_source)
         except Exception as e:
             logger.warn(to_unicode(e))
             logger.warn(u"CopySource is invalid: {copysource}".format(copysource=source_path))
@@ -795,11 +814,7 @@ class Interface(object):
         rt = self.remote2remote_sync_check(copy_source, cos_path, **kwargs)
         if 0 != rt:
             return rt
-        logger.info(u"Copy cos://{src_bucket}/{src_path}   =>   cos://{dst_bucket}/{dst_path}".format(
-            src_bucket=copy_source['Bucket'],
-            src_path=copy_source['Key'],
-            dst_bucket=self._conf._bucket,
-            dst_path=cos_path))
+
         try:
             _http_header = yaml.safe_load(_http_headers)
             kwargs = mapped(_http_header)
@@ -808,12 +823,32 @@ class Interface(object):
             logger.warn(to_unicode(e))
             return -1
         try:
-            rt = self._client.copy(Bucket=self._conf._bucket,
-                                   Key=cos_path,
-                                   CopySource=copy_source,
-                                   CopyStatus=_directive,
-                                   PartSize=self._conf._part_size,
-                                   MAXThread=self._conf._max_thread, **kwargs)
+            if _move:
+                logger.info(u"Move cos://{src_bucket}/{src_path}   =>   cos://{dst_bucket}/{dst_path}".format(
+                    src_bucket=copy_source['Bucket'],
+                    src_path=copy_source['Key'],
+                    dst_bucket=self._conf._bucket,
+                    dst_path=cos_path))
+                self._client.copy(Bucket=self._conf._bucket,
+                                  Key=cos_path,
+                                  CopySource=copy_source,
+                                  CopyStatus=_directive,
+                                  PartSize=self._conf._part_size,
+                                  MAXThread=self._conf._max_thread, **kwargs)
+                _source_client.delete_object(Bucket=copy_source['Bucket'],
+                                             Key=copy_source['Key'])
+            else:
+                logger.info(u"Copy cos://{src_bucket}/{src_path}   =>   cos://{dst_bucket}/{dst_path}".format(
+                        src_bucket=copy_source['Bucket'],
+                        src_path=copy_source['Key'],
+                        dst_bucket=self._conf._bucket,
+                        dst_path=cos_path))
+                rt = self._client.copy(Bucket=self._conf._bucket,
+                                       Key=cos_path,
+                                       CopySource=copy_source,
+                                       CopyStatus=_directive,
+                                       PartSize=self._conf._part_size,
+                                       MAXThread=self._conf._max_thread, **kwargs)
             return 0
         except Exception as e:
             logger.warn(to_unicode(e))
