@@ -346,6 +346,49 @@ class Op(object):
             kwargs['ignore'] = args.ignore.split(',')
             kwargs['include'] = args.include.split(',')
             kwargs['delete'] = args.delete
+            kwargs['move'] = False
+            if args.recursive:
+                _, args.cos_path = concat_path(args.source_path, args.cos_path)
+                if args.cos_path.endswith('/') is False:
+                    args.cos_path += '/'
+                if args.cos_path.startswith('/'):
+                    args.cos_path = args.cos_path[1:]
+                if not Interface.copy_folder(args.source_path, args.cos_path, args.headers, **kwargs):
+                    return 0
+                else:
+                    return 1
+            else:
+                if not Interface.copy_file(args.source_path, args.cos_path, args.headers, **kwargs):
+                    return 0
+                else:
+                    return -1
+        except Exception as e:
+            logger.warn(e)
+            return -2
+
+    @staticmethod
+    def move(args):
+        try:
+            conf = load_conf()
+            client = CosS3Client(conf)
+            Interface = client.op_int()
+            _, args.cos_path = concat_path(args.source_path, args.cos_path)
+            while args.cos_path.startswith('/'):
+                args.cos_path = args.cos_path[1:]
+            if not isinstance(args.source_path, text_type):
+                args.source_path = args.source_path.decode(fs_coding)
+            if not isinstance(args.cos_path, text_type):
+                args.cos_path = args.cos_path.decode(fs_coding)
+
+            kwargs = {}
+            kwargs['sync'] = False
+            kwargs['force'] = True
+            kwargs['directive'] = args.directive
+            kwargs['skipmd5'] = True
+            kwargs['ignore'] = args.ignore.split(',')
+            kwargs['include'] = args.include.split(',')
+            kwargs['delete'] = False
+            kwargs['move'] = True
             if args.recursive:
                 _, args.cos_path = concat_path(args.source_path, args.cos_path)
                 if args.cos_path.endswith('/') is False:
@@ -758,6 +801,16 @@ def command_thread():
     parser_copy.add_argument('--skipmd5', help='Copy sync without check md5, only check filename and filesize', action="store_true", default=False)
     parser_copy.add_argument('--delete', help="delete objects which exists in sourcepath but not exist in dstpath", action="store_true", default=False)
     parser_copy.set_defaults(func=Op.copy)
+
+    parser_move = sub_parser.add_parser("move", help="move file from COS to COS")
+    parser_move.add_argument('source_path', help="Source file path as 'bucket-appid.cos.ap-guangzhou.myqcloud.com/a.txt'", type=str)
+    parser_move.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
+    parser_move.add_argument('-H', '--headers', help="Specify HTTP headers", type=str, default='{}')
+    parser_move.add_argument('-d', '--directive', help="if Overwrite headers", type=str, choices=['Copy', 'Replaced'], default="Copy")
+    parser_move.add_argument('-r', '--recursive', help="Copy files recursively", action="store_true", default=False)
+    parser_move.add_argument('--include', help='Specify filter rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="*")
+    parser_move.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
+    parser_move.set_defaults(func=Op.move)
 
     parser_list = sub_parser.add_parser("list", help='List files on COS')
     parser_list.add_argument("cos_path", nargs='?', help="Cos_path as a/b.txt", type=str, default='')
