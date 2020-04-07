@@ -1,5 +1,9 @@
 Coscmd Upgrade Guide
 ====================
+1.8.6.14 to 1.8.6.15
+--------------------
+- Added `move`
+
 1.8.6.13 to 1.8.6.14
 --------------------
 - Fix error-log encode when retrying
