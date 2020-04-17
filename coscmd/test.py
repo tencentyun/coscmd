@@ -207,7 +207,7 @@ def test_copy_folder():
     rt = os.system("python coscmd/cos_cmd.py copy -rs %s.cos.%s.myqcloud.com/testfolder testfolder2 --ignore '*1,*9' >/dev/null 2>&1" % (bucket_name, region))
     assert rt == 0
     print("文件夹同步复制--delete")
-    rt = os.system("python coscmd/cos_cmd.py copy -rs %s.cos.%s.myqcloud.com/testfolder testfolder2 --ignore '*1,*9' --delete >/dev/null 2>&1" % (bucket_name, region))
+    rt = os.system("python coscmd/cos_cmd.py copy -rs %s.cos.%s.myqcloud.com/testfolder testfolder2 --ignore '*1,*9' -f --delete >/dev/null 2>&1" % (bucket_name, region))
     assert rt == 0
     print("文件夹move")
     rt = os.system("python coscmd/cos_cmd.py move -r %s.cos.%s.myqcloud.com/testfolder testfolder2 >/dev/null 2>&1" % (bucket_name, region))
