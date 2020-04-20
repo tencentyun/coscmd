@@ -2,7 +2,11 @@ Coscmd Upgrade Guide
 ====================
 1.8.6.14 to 1.8.6.15
 --------------------
-- Added `move`
+- Fix a bug of sync delete
+
+1.8.6.14 to 1.8.6.15
+--------------------
+- Added `move` Interface
 
 1.8.6.13 to 1.8.6.14
 --------------------
