@@ -1,6 +1,6 @@
 Coscmd Upgrade Guide
 ====================
-1.8.6.14 to 1.8.6.15
+1.8.6.15 to 1.8.6.16
 --------------------
 - Fix a bug of sync delete
 
