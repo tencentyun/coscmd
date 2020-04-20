@@ -256,6 +256,7 @@ class Interface(object):
             raw_local_path += "/"
         if raw_cos_path.endswith('/') is False:
             raw_cos_path += '/'
+        raw_cos_path = raw_cos_path.lstrip('/')
         q = Queue()
         q.put([local_path, cos_path])
         # 上传文件列表
@@ -297,6 +298,9 @@ class Interface(object):
                     .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
         # sync --delete 删除cos上不存在的文件
         if kwargs['sync'] and kwargs['delete']:
+            if kwargs['force'] is False:
+                if query_yes_no(u"WARN: you are deleting some files in the '{cos_path}' cos_path, please make sure".format(cos_path=raw_cos_path)) is False:
+                    return -3
             logger.info(u"Synchronizing delete, please wait.")
             try:
                 src = {"Client": self._client, "Path": raw_local_path}
@@ -648,6 +652,7 @@ class Interface(object):
             cos_path += '/'
         if source_path.endswith('/') is False:
             source_path += '/'
+        cos_path = cos_path.lstrip('/')
         cos_path = to_unicode(cos_path)
         source_path = to_unicode(source_path)
         _success_num = 0
@@ -698,6 +703,7 @@ class Interface(object):
             raw_source_path += "/"
         if raw_cos_path.endswith('/') is False:
             raw_cos_path += '/'
+        raw_cos_path = raw_cos_path.lstrip('/')
         while IsTruncated == "true":
             for i in range(self._retry):
                 try:
@@ -748,6 +754,9 @@ class Interface(object):
                         .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
         # sync --delete 删除cos上不存在的文件
         if kwargs['sync'] and kwargs['delete']:
+            if kwargs['force'] is False:
+                if query_yes_no(u"WARN: you are deleting some files in the '{cos_path}' cos_path, please make sure".format(cos_path=raw_cos_path)) is False:
+                    return -3
             logger.info(u"Synchronizing delete, please wait.")
             try:
                 src = {"Client": self._client_source, "Bucket": source_bucket, "Path": raw_source_path}
@@ -857,7 +866,7 @@ class Interface(object):
     def delete_folder(self, cos_path, **kwargs):
         if kwargs['force'] is False:
             if query_yes_no(u"WARN: you are deleting the file in the '{cos_path}' cos_path, please make sure".format(cos_path=cos_path)) is False:
-                return False
+                return -3
         _force = kwargs['force']
         _versions = kwargs['versions']
         cos_path = to_unicode(cos_path)
@@ -1093,7 +1102,7 @@ class Interface(object):
     def delete_file(self, cos_path, **kwargs):
         if kwargs['force'] is False:
             if query_yes_no(u"WARN: you are deleting the file in the '{cos_path}' cos_path, please make sure".format(cos_path=cos_path)) is False:
-                return -1
+                return -3
         _versionId = kwargs["versionId"]
         url = self._conf.uri(path="{path}?versionId={versionId}"
                              .format(path=quote(to_printable_str(cos_path)), versionId=_versionId))
@@ -1494,6 +1503,9 @@ class Interface(object):
                     .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
         # sync --delete 删除本地不存在的文件
         if kwargs['sync'] and kwargs['delete']:
+            if kwargs['force'] is False:
+                if query_yes_no(u"WARN: you are deleting the file in the '{local_path}' local_path, please make sure".format(local_path=raw_local_path)) is False:
+                    return -3
             logger.info(u"Synchronizing delete, please wait.")
             try:
                 src = {"Client": self._client, "Bucket": self._conf._bucket, "Path": raw_cos_path}
