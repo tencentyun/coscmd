@@ -120,6 +120,7 @@ class Interface(object):
         self._have_uploaded = []
         self._etag = 'ETag'
         self._pbar = ''
+        self._phar_updated_size = 0
         self._inner_threadpool = SimpleThreadPool(1)
         self._multiupload_threshold = 20 * 1024 * 1024 + 1024
         self._multidownload_threshold = 20 * 1024 * 1024 + 1024
@@ -151,6 +152,14 @@ class Interface(object):
             self._session = requests.session()
         else:
             self._session = session
+
+    def phar_listener(self, file_size):
+        while file_size > 0:
+            self._pbar.update(self._phar_updated_size)
+            file_size -= self._phar_updated_size
+            self._phar_updated_size = 0
+            time.sleep(0.1)
+        return 0
 
     def sign_url(self, cos_path, timeout=10000):
         cos_path = to_printable_str(cos_path)
@@ -482,7 +491,7 @@ class Interface(object):
                                 local_encryption = md5(data).hexdigest()
                             if (kwargs['skipmd5'] or server_md5 == local_encryption):
                                 self._have_finished += 1
-                                self._pbar.update(length)
+                                self._phar_updated_size += length
                                 return 0
                             else:
                                 raise Exception("Encryption verification is inconsistent")
@@ -510,14 +519,17 @@ class Interface(object):
             _max_thread = min(self._conf._max_thread,
                               parts_num - self._have_finished)
             pool = SimpleThreadPool(_max_thread)
-
-            logger.debug("chunk_size: " + str(chunk_size))
-            logger.debug('Upload file concurrently')
             self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
+            phar_pool = SimpleThreadPool(1)
+            phar_pool.add_task(self.phar_listener, file_size)
             for i in range(parts_num):
                 if(str(i + 1) in self._have_uploaded):
-                    offset += chunk_size
-                    self._pbar.update(chunk_size)
+                    if i + 1 == parts_num:
+                        offset += (file_size - offset)
+                        self._phar_updated_size += (file_size - offset)
+                    else:
+                        offset += chunk_size
+                        self._phar_updated_size += chunk_size
                     continue
                 if i + 1 == parts_num:
                     pool.add_task(multiupload_parts_data, local_path,
@@ -528,6 +540,7 @@ class Interface(object):
                     offset += chunk_size
             pool.wait_completion()
             result = pool.get_result()
+            phar_pool.complete()
             self._pbar.close()
             _fail_num = 0
             for worker in result['detail']:
@@ -1640,7 +1653,7 @@ class Interface(object):
                             if (chunk_len == 0):
                                 break
                             f.write(chunk_data)
-                            self._pbar.update(chunk_len)
+                            self._phar_updated_size += chunk_len
                         f.flush()
                     return 0
                 except Exception as e:
@@ -1694,6 +1707,8 @@ class Interface(object):
         with open(local_path, "wb") as fstream:
             fstream.write(to_bytes(""))
         self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
+        phar_pool = SimpleThreadPool(1)
+        phar_pool.add_task(self.phar_listener, file_size)
         for i in range(parts_num):
             if i + 1 == parts_num:
                 pool.add_task(get_parts_data, local_path, offset,
@@ -1704,6 +1719,7 @@ class Interface(object):
                 offset += chunk_size
         pool.wait_completion()
         result = pool.get_result()
+        phar_pool.complete()
         self._pbar.close()
         _fail_num = 0
         for worker in result['detail']:
@@ -1721,7 +1737,6 @@ class Interface(object):
 
     def download_file(self, cos_path, local_path, _http_headers='{}', **kwargs):
         # head操作获取文件大小
-        url = self._conf.uri(path=quote(to_printable_str(cos_path)))
         try:
             rt = self._client.head_object(
                 Bucket=self._conf._bucket,
