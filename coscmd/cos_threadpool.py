@@ -69,7 +69,7 @@ class SimpleThreadPool:
     def wait_completion(self):
         self._queue.join()
         self._finished = True
-    
+
     def complete(self):
         self._finished = True
 
