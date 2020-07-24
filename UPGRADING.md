@@ -1,5 +1,9 @@
 Coscmd Upgrade Guide
 ====================
+1.8.6.16 to 1.8.6.17
+--------------------
+- Fix a bug of phar update in multi-thread
+
 1.8.6.15 to 1.8.6.16
 --------------------
 - Fix a bug of sync delete
