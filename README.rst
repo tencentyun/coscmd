@@ -22,13 +22,15 @@ __________
     cd dist
     sudo easy_install coscmd-1.8.6.3-py3.6.egg # 提前安装easy_install
     ln -s {{PYTHON_DIR}}/bin/coscmd xcoscmd # [可选]为避免和官方coscmd冲突，通过软链使用此版本
-
 或
 ::
     pip install xcoscmd -i https://pypi.tuna.tsinghua.edu.cn/simple
-    或 pip install xcoscmd -i https://pypi.doubanio.com/simple
-    或 pip install xcoscmd -i http://mirrors.tencent.com/pypi/simple
-
+或
+::
+   pip install xcoscmd -i https://pypi.doubanio.com/simple
+或
+::
+   pip install xcoscmd -i http://mirrors.tencent.com/pypi/simple
 
 改造
 __________
