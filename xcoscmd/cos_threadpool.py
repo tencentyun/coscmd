@@ -6,7 +6,7 @@ from six.moves.queue import Queue
 from threading import Lock
 import gc
 import time
-logger = getLogger("coscmd")
+logger = getLogger("xcoscmd")
 
 
 class WorkerThread(Thread):

@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 from platform import python_version_tuple
-from coscmd import cos_global
+from xcoscmd import cos_global
 
 
 def requirements():
@@ -22,19 +22,19 @@ def long_description():
 
 
 setup(
-    name='coscmd',
+    name='xcoscmd',
     version=cos_global.Version,
     url='https://www.qcloud.com/',
     license='MIT',
-    author='lewzylu',
-    author_email='327874225@qq.com',
-    description='simple command for cos',
+    author='aslinwang',
+    author_email='dream_jet@qq.com',
+    description='simple command for cos, forked from https://github.com/tencentyun/coscmd',
     long_description=long_description(),
     packages=find_packages(),
     install_requires=requirements(),
     entry_points={
         'console_scripts': [
-            'coscmd=coscmd.cos_cmd:_main',
+            'xcoscmd=xcoscmd.cos_cmd:_main',
         ],
     }
 )

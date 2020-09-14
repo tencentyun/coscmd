@@ -9,16 +9,16 @@ import os
 import json
 import requests
 from threading import Thread
-from coscmd import cos_global
+from xcoscmd import cos_global
 
 if sys.version > '3':
-    from coscmd.cos_client import CoscmdConfig, CosS3Client
-    from coscmd.cos_global import Version
+    from xcoscmd.cos_client import CoscmdConfig, CosS3Client
+    from xcoscmd.cos_global import Version
 else:
     from cos_client import CoscmdConfig, CosS3Client
     from cos_global import Version
 
-logger = logging.getLogger("coscmd")
+logger = logging.getLogger("xcoscmd")
 
 fs_coding = sys.getfilesystemencoding()
 
@@ -95,7 +95,7 @@ def load_conf():
 
     conf_path = os.path.expanduser(config_path)
     if not os.path.exists(conf_path):
-        logger.warn("{conf} couldn't be found, please use \'coscmd config -h\' to learn how to config coscmd!".format(conf=to_printable_str(conf_path)))
+        logger.warn("{conf} couldn't be found, please use \'xcoscmd config -h\' to learn how to config xcoscmd!".format(conf=to_printable_str(conf_path)))
         raise IOError
     else:
         logger.debug('{conf} is found'.format(conf=to_printable_str(conf_path)))
@@ -640,15 +640,15 @@ def get_version():
 
 def version_check():
     try:
-        ret = requests.get("https://pypi.org/pypi/coscmd/json").content
+        ret = requests.get("https://pypi.org/pypi/xcoscmd/json").content
         res_json = json.loads(ret)
         latest_version = res_json["info"]["version"]
         lat_spl = latest_version.split('.')
         cur_spl = cos_global.Version.split('.')
         if cur_spl[0] < lat_spl[0] or cur_spl[1] < lat_spl[1] or cur_spl[2] < lat_spl[2]:
-            logger.info("The current version of coscmd is {v1} \
+            logger.info("The current version of xcoscmd is {v1} \
 and the latest version is {v2}. It is recommended \
-to upgrade coscmd with the command'pip install coscmd -U'.".format(v1=cos_global.Version, v2=latest_version))
+to upgrade xcoscmd with the command'pip install xcoscmd -U'.".format(v1=cos_global.Version, v2=latest_version))
     except Exception as e:
         logger.debug(e)
 
@@ -657,8 +657,8 @@ def command_thread():
     global res
     res = -1
     desc = """an easy-to-use but powerful command-line tool.
-              try \'coscmd -h\' to get more informations.
-              try \'coscmd sub-command -h\' to learn all command usage, likes \'coscmd upload -h\'"""
+              try \'xcoscmd -h\' to get more informations.
+              try \'xcoscmd sub-command -h\' to learn all command usage, likes \'xcoscmd upload -h\'"""
     parser = ArgumentParser(description=desc)
     parser.add_argument('-d', '--debug', help="Debug mode", action="store_true", default=False)
     parser.add_argument('-b', '--bucket', help="Specify bucket", type=str, default="")
@@ -803,7 +803,7 @@ def command_thread():
 
     args = parser.parse_args()
 
-    logger = logging.getLogger('coscmd')
+    logger = logging.getLogger('xcoscmd')
     logger.setLevel(logging.INFO)
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
@@ -813,7 +813,7 @@ def command_thread():
     handler = RotatingFileHandler(os.path.expanduser(args.log_path), maxBytes=128*1024*1024, backupCount=1)
     handler.setFormatter(logging.Formatter('%(asctime)s - [%(levelname)s]:  %(message)s'))
     logger.addHandler(handler)
-    logging.getLogger('coscmd').addHandler(console)
+    logging.getLogger('xcoscmd').addHandler(console)
     global pre_appid, pre_bucket, pre_region, config_path
     config_path = args.config_path
     pre_bucket = args.bucket

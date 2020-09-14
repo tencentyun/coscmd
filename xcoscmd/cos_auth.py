@@ -10,13 +10,13 @@ from six.moves.urllib.parse import quote, urlparse, unquote, urlencode
 from requests.auth import AuthBase
 
 if sys.version > '3':
-    from coscmd.cos_global import Version
-    from coscmd.cos_comm import to_bytes
+    from xcoscmd.cos_global import Version
+    from xcoscmd.cos_comm import to_bytes
 else:
     from cos_global import Version
     from cos_comm import to_bytes
 
-logger = logging.getLogger("coscmd")
+logger = logging.getLogger("xcoscmd")
 
 
 class CosS3Auth(AuthBase):
@@ -80,7 +80,7 @@ class CosS3Auth(AuthBase):
             r.headers['Authorization'] = ""
         if self._token is not None:
             r.headers['x-cos-security-token'] = self._token
-        r.headers['User-agent'] = 'coscmd-v' + Version
+        r.headers['User-agent'] = 'xcoscmd-v' + Version
         logger.debug("sign_key" + str(sign_key))
         logger.debug(r.headers['Authorization'])
 

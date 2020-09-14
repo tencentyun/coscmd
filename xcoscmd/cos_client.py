@@ -24,17 +24,17 @@ from wsgiref.handlers import format_date_time
 import qcloud_cos
 
 if sys.version > '3':
-    from coscmd.cos_auth import CosS3Auth
-    from coscmd.cos_threadpool import SimpleThreadPool
-    from coscmd.cos_comm import *
-    from coscmd.cos_color import *
+    from xcoscmd.cos_auth import CosS3Auth
+    from xcoscmd.cos_threadpool import SimpleThreadPool
+    from xcoscmd.cos_comm import *
+    from xcoscmd.cos_color import *
 else:
     from cos_auth import CosS3Auth
     from cos_threadpool import SimpleThreadPool
     from cos_comm import *
     from cos_color import *
 
-logger = logging.getLogger("coscmd")
+logger = logging.getLogger("xcoscmd")
 
 
 class CoscmdConfig(object):
