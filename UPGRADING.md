@@ -1,5 +1,11 @@
 Coscmd Upgrade Guide
 ====================
+
+1.8.6.17 to 1.8.6.18
+--------------------
+- Raise exception when download incompleted part
+- Support upload/download with header `x-cos-traffic-limit`
+
 1.8.6.16 to 1.8.6.17
 --------------------
 - Fix a bug of phar update in multi-thread
