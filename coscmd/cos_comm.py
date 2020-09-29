@@ -55,7 +55,9 @@ maplist = {
             'x-cos-storage-class': 'StorageClass',
             'Cache-Control': 'CacheControl',
             'If-None-Match': 'IfNoneMatch',
-            'Content-Type': 'ContentType'
+            'Content-Type': 'ContentType',
+            'Pic-Operations': 'PicOperations',
+            'x-cos-traffic-limit': 'TrafficLimit',
         }
 
 

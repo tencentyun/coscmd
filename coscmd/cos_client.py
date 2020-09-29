@@ -158,7 +158,7 @@ class Interface(object):
             self._pbar.update(self._phar_updated_size)
             file_size -= self._phar_updated_size
             self._phar_updated_size = 0
-            time.sleep(0.1)
+            time.sleep(0.05)
         return 0
 
     def sign_url(self, cos_path, timeout=10000):
@@ -541,6 +541,8 @@ class Interface(object):
             pool.wait_completion()
             result = pool.get_result()
             phar_pool.complete()
+            # 让进度条加载完
+            time.sleep(0.05)
             self._pbar.close()
             _fail_num = 0
             for worker in result['detail']:
@@ -1645,6 +1647,7 @@ class Interface(object):
                     )
                     fstream = rt['Body'].get_raw_stream()
                     chunk_size = 1024 * 1024
+                    part_read_len = 0
                     with open(local_path, 'rb+') as f:
                         f.seek(offset)
                         while True:
@@ -1653,8 +1656,11 @@ class Interface(object):
                             if (chunk_len == 0):
                                 break
                             f.write(chunk_data)
-                            self._phar_updated_size += chunk_len
+                            part_read_len += chunk_len
                         f.flush()
+                    if part_read_len != length:
+                        raise Exception("Download incomplete part of [%s]" % http_header['Range'])
+                    self._phar_updated_size += length
                     return 0
                 except Exception as e:
                     time.sleep(1 << j)
@@ -1703,7 +1709,7 @@ class Interface(object):
                 os.makedirs(dir_path, 0o755)
             except Exception as e:
                 pass
-        # 需要先用'w'生成固定长度的文件，否则'a'无法seek
+        # 需要先用'w'生成固定长度的文件
         with open(local_path, "wb") as fstream:
             fstream.write(to_bytes(""))
         self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
@@ -1720,6 +1726,8 @@ class Interface(object):
         pool.wait_completion()
         result = pool.get_result()
         phar_pool.complete()
+        # 让进度条加载完
+        time.sleep(0.05)
         self._pbar.close()
         _fail_num = 0
         for worker in result['detail']:
