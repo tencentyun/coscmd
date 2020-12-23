@@ -57,10 +57,10 @@ def config(args):
         if args.token != "":
             cp.set('common', 'token', args.token)
         cp.set('common', 'bucket', args.bucket)
-        if args.region:
-            cp.set('common', 'region', args.region)
-        else:
+        if args.endpoint:
             cp.set('common', 'endpoint', args.endpoint)
+        else:
+            cp.set('common', 'region', args.region)
         cp.set('common', 'max_thread', str(args.max_thread))
         cp.set('common', 'part_size', str(args.part_size))
         cp.set('common', 'retry', str(args.retry))
@@ -167,7 +167,7 @@ def load_conf():
             region, endpoint = None, None
             if cp.has_option('common', 'region'):
                 region = cp.get('common', 'region')
-            elif pre_region == "" and cp.has_option('common', 'endpoint'):
+            if cp.has_option('common', 'endpoint'):
                 endpoint = cp.get('common', 'endpoint')
             if pre_appid != "":
                 appid = pre_appid
@@ -230,6 +230,7 @@ class Op(object):
             kwargs['include'] = args.include.split(',')
             kwargs['force'] = args.force
             kwargs['delete'] = args.delete
+            kwargs['yes'] = args.yes
             if args.recursive:
                 if os.path.isfile(args.local_path) is True:
                     rt = Interface.upload_file(args.local_path, args.cos_path, args.headers, **kwargs)
@@ -272,6 +273,7 @@ class Op(object):
             kwargs['include'] = args.include.split(',')
             kwargs['skipmd5'] = args.skipmd5
             kwargs['delete'] = args.delete
+            kwargs['yes'] = args.yes
             if args.recursive:
                 rt = Interface.download_folder(args.cos_path, args.local_path, args.headers, **kwargs)
                 return rt
@@ -299,6 +301,7 @@ class Op(object):
             kwargs['force'] = args.force
             kwargs['versions'] = args.versions
             kwargs['versionId'] = args.versionId
+            kwargs['yes'] = args.yes
             if args.recursive:
                 if args.cos_path.endswith('/') is False:
                     args.cos_path += '/'
@@ -346,6 +349,7 @@ class Op(object):
             kwargs['ignore'] = args.ignore.split(',')
             kwargs['include'] = args.include.split(',')
             kwargs['delete'] = args.delete
+            kwargs['yes'] = args.yes
             kwargs['move'] = False
             if args.recursive:
                 _, args.cos_path = concat_path(args.source_path, args.cos_path)
@@ -755,6 +759,7 @@ def command_thread():
     parser_upload.add_argument('-H', '--headers', help="Specify HTTP headers", type=str, default='{}')
     parser_upload.add_argument('-s', '--sync', help="Upload and skip the same file", action="store_true", default=False)
     parser_upload.add_argument('-f', '--force', help="upload without history breakpoint", action="store_true", default=False)
+    parser_upload.add_argument('-y', '--yes', help="Skip confirmation", action="store_true", default=False)
     parser_upload.add_argument('--include', help='Specify filter rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="*")
     parser_upload.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
     parser_upload.add_argument('--skipmd5', help='Upload without x-cos-meta-md5 / sync without check md5, only check filename and filesize', action="store_true", default=False)
@@ -765,6 +770,7 @@ def command_thread():
     parser_download.add_argument("cos_path", help="Cos_path as a/b.txt", type=str)
     parser_download.add_argument('local_path', help="Local file path as /tmp/a.txt", type=str)
     parser_download.add_argument('-f', '--force', help="Overwrite the saved files", action="store_true", default=False)
+    parser_download.add_argument('-y', '--yes', help="Skip confirmation", action="store_true", default=False)
     parser_download.add_argument('-r', '--recursive', help="Download recursively when upload directory", action="store_true", default=False)
     parser_download.add_argument('-s', '--sync', help="Download and skip the same file", action="store_true", default=False)
     parser_download.add_argument('-H', '--headers', help="Specify HTTP headers", type=str, default='{}')
@@ -782,6 +788,7 @@ def command_thread():
     parser_delete.add_argument('--versions', help='Delete objects with versions', action="store_true", default=False)
     parser_delete.add_argument('--versionId', help='Specify versionId of object to list', type=str, default="")
     parser_delete.add_argument('-f', '--force', help="Delete directly without confirmation", action="store_true", default=False)
+    parser_delete.add_argument('-y', '--yes', help="Delete directly without confirmation", action="store_true", default=False)
     parser_delete.set_defaults(func=Op.delete)
 
     parser_abort = sub_parser.add_parser("abort", help='Aborts upload parts on COS')
@@ -796,6 +803,7 @@ def command_thread():
     parser_copy.add_argument('-s', '--sync', help="Copy and skip the same file", action="store_true", default=False)
     parser_copy.add_argument('-r', '--recursive', help="Copy files recursively", action="store_true", default=False)
     parser_copy.add_argument('-f', '--force', help="Overwrite file without skip", action="store_true", default=False)
+    parser_copy.add_argument('-y', '--yes', help="Skip confirmation", action="store_true", default=False)
     parser_copy.add_argument('--include', help='Specify filter rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="*")
     parser_copy.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
     parser_copy.add_argument('--skipmd5', help='Copy sync without check md5, only check filename and filesize', action="store_true", default=False)

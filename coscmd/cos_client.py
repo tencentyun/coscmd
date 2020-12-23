@@ -70,32 +70,32 @@ class CoscmdConfig(object):
 
     def uri(self, path=None):
         if path:
-            if self._region is not None:
-                url = u"{schema}://{bucket}.cos.{region}.myqcloud.com/{path}".format(
-                    schema=self._schema,
-                    bucket=self._bucket,
-                    region=self._region,
-                    path=to_unicode(path)
-                )
-            else:
+            if self._endpoint is not None:
                 url = u"{schema}://{bucket}.{endpoint}/{path}".format(
                     schema=self._schema,
                     bucket=self._bucket,
                     endpoint=self._endpoint,
                     path=to_unicode(path)
                 )
-        else:
-            if self._region is not None:
-                url = u"{schema}://{bucket}.cos.{region}.myqcloud.com/".format(
+            else:
+                url = u"{schema}://{bucket}.cos.{region}.myqcloud.com/{path}".format(
                     schema=self._schema,
                     bucket=self._bucket,
-                    region=self._region
+                    region=self._region,
+                    path=to_unicode(path)
                 )
-            else:
+        else:
+            if self._endpoint is not None:
                 url = u"{schema}://{bucket}.{endpoint}/".format(
                     schema=self._schema,
                     bucket=self._bucket,
                     endpoint=self._endpoint
+                )
+            else:
+                url = u"{schema}://{bucket}.cos.{region}.myqcloud.com/".format(
+                    schema=self._schema,
+                    bucket=self._bucket,
+                    region=self._region
                 )
         url = url.replace('./', '.%2F')
         url = url.replace("+", "%2B")
@@ -125,8 +125,9 @@ class Interface(object):
         self._multiupload_threshold = 20 * 1024 * 1024 + 1024
         self._multidownload_threshold = 20 * 1024 * 1024 + 1024
         try:
-            if conf._endpoint == "":
-                sdk_config = qcloud_cos.CosConfig(Region=conf._region,
+            if conf._endpoint != "":
+                sdk_config = qcloud_cos.CosConfig(Endpoint=conf._endpoint,
+                                                  Region=conf._region,
                                                   SecretId=conf._secret_id,
                                                   SecretKey=conf._secret_key,
                                                   Token=conf._token,
@@ -135,8 +136,7 @@ class Interface(object):
                                                   UA=self._ua,
                                                   Timeout=self._timeout)
             else:
-                sdk_config = qcloud_cos.CosConfig(Endpoint=conf._endpoint,
-                                                  Region=conf._region,
+                sdk_config = qcloud_cos.CosConfig(Region=conf._region,
                                                   SecretId=conf._secret_id,
                                                   SecretKey=conf._secret_key,
                                                   Token=conf._token,
@@ -307,7 +307,7 @@ class Interface(object):
                     .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
         # sync --delete 删除cos上不存在的文件
         if kwargs['sync'] and kwargs['delete']:
-            if kwargs['force'] is False:
+            if kwargs['force'] is False and kwargs['yes'] is False:
                 if query_yes_no(u"WARN: you are deleting some files in the '{cos_path}' cos_path, please make sure".format(cos_path=raw_cos_path)) is False:
                     return -3
             logger.info(u"Synchronizing delete, please wait.")
@@ -769,7 +769,7 @@ class Interface(object):
                         .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
         # sync --delete 删除cos上不存在的文件
         if kwargs['sync'] and kwargs['delete']:
-            if kwargs['force'] is False:
+            if kwargs['force'] is False and kwargs['yes'] is False:
                 if query_yes_no(u"WARN: you are deleting some files in the '{cos_path}' cos_path, please make sure".format(cos_path=raw_cos_path)) is False:
                     return -3
             logger.info(u"Synchronizing delete, please wait.")
@@ -879,7 +879,7 @@ class Interface(object):
             return -1
 
     def delete_folder(self, cos_path, **kwargs):
-        if kwargs['force'] is False:
+        if kwargs['force'] is False and kwargs['yes'] is False:
             if query_yes_no(u"WARN: you are deleting the file in the '{cos_path}' cos_path, please make sure".format(cos_path=cos_path)) is False:
                 return -3
         _force = kwargs['force']
@@ -1115,7 +1115,7 @@ class Interface(object):
         return 0
 
     def delete_file(self, cos_path, **kwargs):
-        if kwargs['force'] is False:
+        if kwargs['force'] is False and kwargs['yes'] is False:
             if query_yes_no(u"WARN: you are deleting the file in the '{cos_path}' cos_path, please make sure".format(cos_path=cos_path)) is False:
                 return -3
         _versionId = kwargs["versionId"]
@@ -1518,7 +1518,7 @@ class Interface(object):
                     .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
         # sync --delete 删除本地不存在的文件
         if kwargs['sync'] and kwargs['delete']:
-            if kwargs['force'] is False:
+            if kwargs['force'] is False and kwargs['yes'] is False:
                 if query_yes_no(u"WARN: you are deleting the file in the '{local_path}' local_path, please make sure".format(local_path=raw_local_path)) is False:
                     return -3
             logger.info(u"Synchronizing delete, please wait.")
@@ -1819,6 +1819,7 @@ class Interface(object):
         restore_request = {}
         restore_request['Days'] = _day
         restore_request['CASJobParameters'] = {'Tier': _tier}
+        cos_path = to_unicode(cos_path)
         try:
             logger.info(u"Restore cos://{bucket}/{path}".format(
                 bucket=self._conf._bucket,
@@ -1830,13 +1831,13 @@ class Interface(object):
                     RestoreRequest=restore_request)
             return 0
         except CosServiceError as e:
-            if e.get_status_code() == 409 and e.get_error_code() == 'RestoreAlreadyInProgress':
+            if e.get_status_code() == 409:
                 logger.warn(u"cos://{bucket}/{path} already in pogress".format(
                         bucket=self._conf._bucket,
                         path=cos_path
                 ))
                 return -2
-            logger.warn(to_unicode(e))
+            logger.warn(e.get_error_code())
             return -1
 
     def put_object_acl(self, grant_read, grant_write, grant_full_control, cos_path):
