@@ -423,7 +423,7 @@ class Interface(object):
             if not kwargs['force'] and os.path.isfile(self._path_md5):
                 try:
                     with open(self._path_md5, 'rb') as f:
-                        self._upload_id = f.read()
+                        self._upload_id = f.read().decode()
                     if self.list_part(cos_path) is True:
                         logger.info(u"Continue uploading from last breakpoint")
                         return 0
@@ -468,7 +468,7 @@ class Interface(object):
                     logger.warn(to_unicode(e))
                     return -1
                 url = self._conf.uri(path=quote(to_printable_str(
-                    cos_path))) + "?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=str(self._upload_id))
+                    cos_path))) + "?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=self._upload_id)
                 for j in range(self._retry):
                     try:
                         http_header = _http_header
