@@ -423,7 +423,7 @@ class Interface(object):
             if not kwargs['force'] and os.path.isfile(self._path_md5):
                 try:
                     with open(self._path_md5, 'rb') as f:
-                        self._upload_id = f.read()
+                        self._upload_id = f.read().decode()
                     if self.list_part(cos_path) is True:
                         logger.info(u"Continue uploading from last breakpoint")
                         return 0
