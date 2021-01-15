@@ -1,5 +1,9 @@
 Coscmd Upgrade Guide
 ====================
+1.8.6.18 to 1.8.6.20
+--------------------
+- Fix resume upload interface
+
 1.8.6.18 to 1.8.6.19
 --------------------
 - Increase the priority of `endpoint` over `region`
