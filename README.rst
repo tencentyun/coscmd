@@ -47,3 +47,10 @@ __________
 
 使用coscmd，参照 https://cloud.tencent.com/document/product/436/10976
 
+附录：CentOS Python环境安装
+__________
+::
+   yum install python3
+   wget https://bootstrap.pypa.io/3.2/get-pip.py
+   python3 get-pip.py
+
