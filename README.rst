@@ -49,6 +49,7 @@ __________
 
 附录：CentOS Python环境安装
 __________
+
 ::
    yum install python3
    wget https://bootstrap.pypa.io/3.2/get-pip.py
