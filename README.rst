@@ -51,6 +51,7 @@ __________
 __________
 
 ::
+
    yum install python3
    wget https://bootstrap.pypa.io/3.2/get-pip.py
    python3 get-pip.py
