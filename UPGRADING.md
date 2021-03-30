@@ -1,5 +1,9 @@
 Coscmd Upgrade Guide
 ====================
+1.8.6.20 to 1.8.6.21
+--------------------
+- Fix deadlock in multithreading
+
 1.8.6.18 to 1.8.6.20
 --------------------
 - Fix resume upload interface

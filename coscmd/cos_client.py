@@ -519,7 +519,7 @@ class Interface(object):
             _max_thread = min(self._conf._max_thread,
                               parts_num - self._have_finished)
             pool = SimpleThreadPool(_max_thread)
-            self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
+            self._pbar = tqdm(total=file_size, unit='B', unit_divisor=1024, unit_scale=True)
             phar_pool = SimpleThreadPool(1)
             phar_pool.add_task(self.phar_listener, file_size)
             for i in range(parts_num):
@@ -1712,7 +1712,7 @@ class Interface(object):
         # 需要先用'w'生成固定长度的文件
         with open(local_path, "wb") as fstream:
             fstream.write(to_bytes(""))
-        self._pbar = tqdm(total=file_size, unit='B', unit_scale=True)
+        self._pbar = tqdm(total=file_size, unit='B', unit_divisor=1024, unit_scale=True)
         phar_pool = SimpleThreadPool(1)
         phar_pool.add_task(self.phar_listener, file_size)
         for i in range(parts_num):
