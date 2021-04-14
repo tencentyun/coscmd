@@ -18,6 +18,7 @@ import pytz
 import yaml
 import fnmatch
 import copy
+import io
 from tqdm import tqdm
 from logging.handlers import RotatingFileHandler
 from wsgiref.handlers import format_date_time
@@ -463,7 +464,7 @@ class Interface(object):
                 try:
                     with open(local_path, 'rb') as File:
                         File.seek(offset, 0)
-                        data = File.read(length)
+                        stream_data = io.BytesIO(File.read(length))
                 except Exception as e:
                     logger.warn(to_unicode(e))
                     return -1
@@ -472,9 +473,10 @@ class Interface(object):
                 for j in range(self._retry):
                     try:
                         http_header = _http_header
+                        http_header['Content-Length'] = str(length)
                         rt = self._session.put(url=url,
                                                auth=CosS3Auth(self._conf),
-                                               data=data, headers=http_header,
+                                               data=stream_data, headers=http_header,
                                                timeout=self._timeout)
                         logger.debug("Multi part result: part: {part}, round: {round}, code: {code}, headers: {headers}, text: {text}".format(
                             part=idx,
@@ -485,11 +487,16 @@ class Interface(object):
                         if rt.status_code == 200:
                             server_md5 = rt.headers[self._etag][1:-1]
                             self._md5.append({'PartNumber': idx, 'ETag': server_md5})
+                            if kwargs['skipmd5']:
+                                self._have_finished += 1
+                                self._phar_updated_size += length
+                                return 0
+                            stream_data.seek(0)
                             if self._conf._verify == "sha1":
-                                local_encryption = sha1(data).hexdigest()
+                                local_encryption = sha1(stream_data.read()).hexdigest()
                             else:
-                                local_encryption = md5(data).hexdigest()
-                            if (kwargs['skipmd5'] or server_md5 == local_encryption):
+                                local_encryption = md5(stream_data.read()).hexdigest()
+                            if server_md5 == local_encryption:
                                 self._have_finished += 1
                                 self._phar_updated_size += length
                                 return 0
@@ -540,6 +547,7 @@ class Interface(object):
                     offset += chunk_size
             pool.wait_completion()
             result = pool.get_result()
+            time.sleep(0.1)
             phar_pool.complete()
             # 让进度条加载完
             time.sleep(0.05)
@@ -1725,6 +1733,7 @@ class Interface(object):
                 offset += chunk_size
         pool.wait_completion()
         result = pool.get_result()
+        time.sleep(0.1)
         phar_pool.complete()
         # 让进度条加载完
         time.sleep(0.05)
