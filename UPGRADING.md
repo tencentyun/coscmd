@@ -1,5 +1,9 @@
 Coscmd Upgrade Guide
 ====================
+1.8.6.21 to 1.8.6.22
+--------------------
+- Fixed the bug when the upload block size exceeds 2G
+
 1.8.6.20 to 1.8.6.21
 --------------------
 - Fix deadlock in multithreading
