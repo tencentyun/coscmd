@@ -1,5 +1,9 @@
 Coscmd Upgrade Guide
 ====================
+1.8.6.22 to 1.8.6.23
+--------------------
+- Fixed the algorithm for resizing partsize
+
 1.8.6.21 to 1.8.6.22
 --------------------
 - Fixed the bug when the upload block size exceeds 2G

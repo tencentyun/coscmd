@@ -461,16 +461,16 @@ class Interface(object):
         def multiupload_parts():
 
             def multiupload_parts_data(local_path, offset, length, parts_size, idx):
-                try:
-                    with open(local_path, 'rb') as File:
-                        File.seek(offset, 0)
-                        stream_data = io.BytesIO(File.read(length))
-                except Exception as e:
-                    logger.warn(to_unicode(e))
-                    return -1
-                url = self._conf.uri(path=quote(to_printable_str(
-                    cos_path))) + "?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=self._upload_id)
                 for j in range(self._retry):
+                    try:
+                        with open(local_path, 'rb') as File:
+                            File.seek(offset, 0)
+                            stream_data = io.BytesIO(File.read(length))
+                    except Exception as e:
+                        logger.warn(to_unicode(e))
+                        return -1
+                    url = self._conf.uri(path=quote(to_printable_str(
+                        cos_path))) + "?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=self._upload_id)
                     try:
                         http_header = _http_header
                         http_header['Content-Length'] = str(length)
@@ -516,13 +516,17 @@ class Interface(object):
             file_size = path.getsize(local_path)
             logger.debug("file size: " + str(file_size))
             chunk_size = 1024 * 1024 * self._conf._part_size
-            while file_size / chunk_size > 8000:
-                chunk_size = chunk_size * 10
-            parts_num = int(file_size / chunk_size)
-            last_size = file_size - parts_num * chunk_size
-            self._have_finished = len(self._have_uploaded)
+
+            parts_num = file_size // chunk_size
+            last_size = file_size % chunk_size
             if last_size != 0:
                 parts_num += 1
+            if parts_num > 10000:
+                parts_num = 10000
+                chunk_size = file_size // parts_num
+                last_size = file_size % parts_num
+                last_size += chunk_size
+            self._have_finished = len(self._have_uploaded)
             _max_thread = min(self._conf._max_thread,
                               parts_num - self._have_finished)
             pool = SimpleThreadPool(_max_thread)
