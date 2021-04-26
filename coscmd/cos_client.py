@@ -43,7 +43,7 @@ logger = logging.getLogger("coscmd")
 class CoscmdConfig(object):
 
     def __init__(self, appid, region, endpoint, bucket, secret_id, secret_key, token=None,
-                 part_size=1, max_thread=5, schema='https', anonymous=False, verify='md5', retry=2, timeout=60,
+                 part_size=1, max_thread=5, schema='https', anonymous=False, verify='md5', retry=2, timeout=60, silence=False,
                  *args, **kwargs):
         self._appid = appid
         self._region = region
@@ -60,6 +60,7 @@ class CoscmdConfig(object):
         self._endpoint = endpoint
         self._retry = retry
         self._timeout = timeout
+        self._silence = silence
         self._ua = 'coscmd-v' + Version
         logger.debug("config parameter-> appid: {appid}, region: {region}, endpoint: {endpoint}, bucket: {bucket}, part_size: {part_size}, max_thread: {max_thread}".format(
             appid=appid,
@@ -120,6 +121,7 @@ class Interface(object):
         self._path_md5 = ""
         self._have_uploaded = []
         self._etag = 'ETag'
+        self._silence = conf._silence
         self._pbar = ''
         self._phar_updated_size = 0
         self._inner_threadpool = SimpleThreadPool(1)
@@ -200,8 +202,10 @@ class Interface(object):
                         ID = content.getElementsByTagName(
                             "PartNumber")[0].childNodes[0].data
                         self._have_uploaded.append(ID)
-                        server_md5 = content.getElementsByTagName(self._etag)[0].childNodes[0].data[1:-1]
-                        self._md5.append({'PartNumber': int(ID), 'ETag': server_md5})
+                        server_md5 = content.getElementsByTagName(
+                            self._etag)[0].childNodes[0].data[1:-1]
+                        self._md5.append(
+                            {'PartNumber': int(ID), 'ETag': server_md5})
                 else:
                     logger.debug(response_info(rt))
                     logger.debug("list parts error")
@@ -226,11 +230,11 @@ class Interface(object):
                     file_size = os.path.getsize(_local_path)
                     if file_size <= self._multiupload_threshold:
                         self._inner_threadpool.add_task(
-                                self.single_upload,
-                                _local_path,
-                                _cos_path,
-                                _http_headers,
-                                **kwargs)
+                            self.single_upload,
+                            _local_path,
+                            _cos_path,
+                            _http_headers,
+                            **kwargs)
                     else:
                         multiupload_filelist.append([_local_path, _cos_path])
                 except Exception as e:
@@ -289,9 +293,11 @@ class Interface(object):
                     if os.path.isdir(filepath):
                         q.put([filepath, cos_path + filename])
                     else:
-                        upload_filelist.append([filepath,  cos_path + filename])
+                        upload_filelist.append(
+                            [filepath,  cos_path + filename])
                         if len(upload_filelist) >= 1000:
-                            (_succ, _skip,  _fail) = upload_file_list(upload_filelist)
+                            (_succ, _skip,  _fail) = upload_file_list(
+                                upload_filelist)
                             _success_num += _succ
                             _skip_num += _skip
                             _fail_num += _fail
@@ -314,9 +320,11 @@ class Interface(object):
             logger.info(u"Synchronizing delete, please wait.")
             try:
                 src = {"Client": self._client, "Path": raw_local_path}
-                dst = {"Client": self._client, "Bucket": self._conf._bucket, "Path": raw_cos_path}
+                dst = {"Client": self._client,
+                       "Bucket": self._conf._bucket, "Path": raw_cos_path}
                 kwargs['retry'] = self._retry
-                ret, del_succ, del_fail = local2remote_sync_delete(src, dst, **kwargs)
+                ret, del_succ, del_fail = local2remote_sync_delete(
+                    src, dst, **kwargs)
                 if ret != 0:
                     logger.warn("sync delete fail")
                 else:
@@ -368,13 +376,14 @@ class Interface(object):
                 logger.info(
                     u"MD5 is being calculated, please wait. If you do not need to calculate md5, you can use --skipmd5 to skip")
             _md5 = get_file_md5(local_path)
-        ret = self.local2remote_sync_check(local_path, cos_path, _md5=_md5, _size=file_size, **kwargs)
+        ret = self.local2remote_sync_check(
+            local_path, cos_path, _md5=_md5, _size=file_size, **kwargs)
         if 0 != ret:
             return ret
         logger.info(u"Upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
-                bucket=self._conf._bucket,
-                local_path=local_path,
-                cos_path=cos_path))
+            bucket=self._conf._bucket,
+            local_path=local_path,
+            cos_path=cos_path))
         try:
             _http_header = yaml.safe_load(_http_headers)
         except Exception as e:
@@ -486,22 +495,22 @@ class Interface(object):
                             text=to_printable_str(rt.text)))
                         if rt.status_code == 200:
                             server_md5 = rt.headers[self._etag][1:-1]
-                            self._md5.append({'PartNumber': idx, 'ETag': server_md5})
-                            if kwargs['skipmd5']:
-                                self._have_finished += 1
-                                self._phar_updated_size += length
-                                return 0
+                            self._md5.append(
+                                {'PartNumber': idx, 'ETag': server_md5})
                             stream_data.seek(0)
                             if self._conf._verify == "sha1":
-                                local_encryption = sha1(stream_data.read()).hexdigest()
+                                local_encryption = sha1(
+                                    stream_data.read()).hexdigest()
                             else:
-                                local_encryption = md5(stream_data.read()).hexdigest()
+                                local_encryption = md5(
+                                    stream_data.read()).hexdigest()
                             if server_md5 == local_encryption:
                                 self._have_finished += 1
                                 self._phar_updated_size += length
                                 return 0
                             else:
-                                raise Exception("Encryption verification is inconsistent")
+                                raise Exception(
+                                    "Encryption verification is inconsistent")
                         else:
                             raise Exception(response_info(rt))
                     except Exception as e:
@@ -524,13 +533,12 @@ class Interface(object):
             if parts_num > 10000:
                 parts_num = 10000
                 chunk_size = file_size // parts_num
-                last_size = file_size % parts_num
-                last_size += chunk_size
             self._have_finished = len(self._have_uploaded)
             _max_thread = min(self._conf._max_thread,
                               parts_num - self._have_finished)
             pool = SimpleThreadPool(_max_thread)
-            self._pbar = tqdm(total=file_size, unit='B', unit_divisor=1024, unit_scale=True)
+            self._pbar = tqdm(total=file_size, unit='B', ncols=80,
+                              disable=self._silence, unit_divisor=1024, unit_scale=True)
             phar_pool = SimpleThreadPool(1)
             phar_pool.add_task(self.phar_listener, file_size)
             for i in range(parts_num):
@@ -551,10 +559,8 @@ class Interface(object):
                     offset += chunk_size
             pool.wait_completion()
             result = pool.get_result()
-            time.sleep(0.1)
             phar_pool.complete()
-            # 让进度条加载完
-            time.sleep(0.05)
+            self._pbar.update(self._phar_updated_size)
             self._pbar.close()
             _fail_num = 0
             for worker in result['detail']:
@@ -591,13 +597,14 @@ class Interface(object):
                     u"MD5 is being calculated, please wait. If you do not need to calculate md5, you can use --skipmd5 to skip")
             _md5 = get_file_md5(local_path)
 
-        ret = self.local2remote_sync_check(local_path, cos_path, _md5=_md5, _size=file_size, **kwargs)
+        ret = self.local2remote_sync_check(
+            local_path, cos_path, _md5=_md5, _size=file_size, **kwargs)
         if 0 != ret:
             return ret
         logger.info(u"Upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
-                bucket=self._conf._bucket,
-                local_path=local_path,
-                cos_path=cos_path))
+            bucket=self._conf._bucket,
+            local_path=local_path,
+            cos_path=cos_path))
         try:
             _http_header = yaml.safe_load(_http_headers)
         except Exception as e:
@@ -639,10 +646,10 @@ class Interface(object):
         ret = self.include_ignore_skip(copy_source['Key'], **kwargs)
         if 0 != ret:
             logger.debug(u"Skip cos://{src_bucket}/{src_path} => cos://{dst_bucket}/{dst_path}".format(
-                            src_bucket=copy_source['Bucket'],
-                            src_path=copy_source['Key'],
-                            dst_bucket=self._conf._bucket,
-                            dst_path=cos_path))
+                src_bucket=copy_source['Bucket'],
+                src_path=copy_source['Key'],
+                dst_bucket=self._conf._bucket,
+                dst_path=cos_path))
             return -2
         if kwargs['force'] is False:
             if kwargs['sync'] is True:
@@ -651,12 +658,14 @@ class Interface(object):
                     src_size = -1
                     dst_md5 = "."
                     dst_size = -2
-                    rt = self._session.head(url=self._conf._schema + "://" + copy_source['RawPath'], auth=CosS3Auth(self._conf))
+                    rt = self._session.head(
+                        url=self._conf._schema + "://" + copy_source['RawPath'], auth=CosS3Auth(self._conf))
                     if 'x-cos-meta-md5' in rt.headers:
                         src_md5 = rt.headers['x-cos-meta-md5']
                     if 'Content-Length' in rt.headers:
                         src_size = rt.headers['Content-Length']
-                    url = self._conf.uri(path=quote(to_printable_str(cos_path)))
+                    url = self._conf.uri(path=quote(
+                        to_printable_str(cos_path)))
                     rt = self._session.head(url,  auth=CosS3Auth(self._conf))
                     if 'x-cos-meta-md5' in rt.headers:
                         dst_md5 = rt.headers['x-cos-meta-md5']
@@ -720,7 +729,8 @@ class Interface(object):
                 self._client_source = qcloud_cos.CosS3Client(sdk_config_source)
         except Exception as e:
             logger.warn(to_unicode(e))
-            logger.warn(u"CopySource is invalid: {copysource}".format(copysource=source_path))
+            logger.warn(u"CopySource is invalid: {copysource}".format(
+                copysource=source_path))
             return -1
         source_schema = source_path.split('/')[0] + '/'
         source_path = source_path[len(source_schema):]
@@ -750,7 +760,8 @@ class Interface(object):
                             _path = to_unicode(_file['Key'])
                             _source_path = source_schema + _path
                             if source_path.endswith('/') is False and len(source_path) != 0:
-                                _cos_path = cos_path + _path[len(source_path) + 1:]
+                                _cos_path = cos_path + \
+                                    _path[len(source_path) + 1:]
                             else:
                                 _cos_path = cos_path + _path[len(source_path):]
                             self._inner_threadpool.add_task(
@@ -786,10 +797,13 @@ class Interface(object):
                     return -3
             logger.info(u"Synchronizing delete, please wait.")
             try:
-                src = {"Client": self._client_source, "Bucket": source_bucket, "Path": raw_source_path}
-                dst = {"Client": self._client, "Bucket": self._conf._bucket, "Path": raw_cos_path}
+                src = {"Client": self._client_source,
+                       "Bucket": source_bucket, "Path": raw_source_path}
+                dst = {"Client": self._client,
+                       "Bucket": self._conf._bucket, "Path": raw_cos_path}
                 kwargs['retry'] = self._retry
-                ret, del_succ, del_fail = remote2remote_sync_delete(src, dst, **kwargs)
+                ret, del_succ, del_fail = remote2remote_sync_delete(
+                    src, dst, **kwargs)
                 if ret != 0:
                     logger.warn("sync delete fail")
                 else:
@@ -835,7 +849,9 @@ class Interface(object):
                 else:
                     raise Exception("Parse Region Error")
                 copy_source['Key'] = source_key
-                copy_source['RawPath'] = copy_source['Bucket'] + ".cos." + copy_source['Region'] + ".myqcloud.com/" + copy_source['Key']
+                copy_source['RawPath'] = copy_source['Bucket'] + ".cos." + \
+                    copy_source['Region'] + \
+                    ".myqcloud.com/" + copy_source['Key']
                 sdk_config_source = qcloud_cos.CosConfig(Region=copy_source['Region'],
                                                          SecretId=self._conf._secret_id,
                                                          SecretKey=self._conf._secret_key,
@@ -845,7 +861,8 @@ class Interface(object):
                 _source_client = qcloud_cos.CosS3Client(sdk_config_source)
         except Exception as e:
             logger.warn(to_unicode(e))
-            logger.warn(u"CopySource is invalid: {copysource}".format(copysource=source_path))
+            logger.warn(u"CopySource is invalid: {copysource}".format(
+                copysource=source_path))
             return -1
         rt = self.remote2remote_sync_check(copy_source, cos_path, **kwargs)
         if 0 != rt:
@@ -875,10 +892,10 @@ class Interface(object):
                                              Key=copy_source['Key'])
             else:
                 logger.info(u"Copy cos://{src_bucket}/{src_path}   =>   cos://{dst_bucket}/{dst_path}".format(
-                        src_bucket=copy_source['Bucket'],
-                        src_path=copy_source['Key'],
-                        dst_bucket=self._conf._bucket,
-                        dst_path=cos_path))
+                    src_bucket=copy_source['Bucket'],
+                    src_path=copy_source['Key'],
+                    dst_bucket=self._conf._bucket,
+                    dst_path=cos_path))
                 rt = self._client.copy(Bucket=self._conf._bucket,
                                        Key=cos_path,
                                        CopySource=copy_source,
@@ -1000,7 +1017,8 @@ class Interface(object):
                     if 'Deleted' in rt:
                         self._have_finished += len(rt['Deleted'])
                         for file in rt['Deleted']:
-                            logger.info(u"Delete {file}".format(file=file['Key']))
+                            logger.info(
+                                u"Delete {file}".format(file=file['Key']))
                     if 'Error' in rt:
                         for file in rt['Error']:
                             logger.info(u"Delete {file} fail, code: {code}, msg: {msg}"
@@ -1193,7 +1211,7 @@ class Interface(object):
             except Exception as e:
                 logger.warn(to_unicode(e))
         logger.info(u" Parts num: {file_num}".format(
-                file_num=str(part_num)))
+            file_num=str(part_num)))
 
     def abort_parts(self, cos_path):
         NextKeyMarker = ""
@@ -1517,7 +1535,8 @@ class Interface(object):
                         _fail_num += 1
             for _cos_path, _local_path, _size in multidownload_filelist:
                 try:
-                    rt = self.multipart_download(_cos_path, _local_path, _http_headers, _size=_size, **kwargs)
+                    rt = self.multipart_download(
+                        _cos_path, _local_path, _http_headers, _size=_size, **kwargs)
                     if 0 == rt:
                         _success_num += 1
                     elif -2 == rt:
@@ -1535,10 +1554,12 @@ class Interface(object):
                     return -3
             logger.info(u"Synchronizing delete, please wait.")
             try:
-                src = {"Client": self._client, "Bucket": self._conf._bucket, "Path": raw_cos_path}
+                src = {"Client": self._client,
+                       "Bucket": self._conf._bucket, "Path": raw_cos_path}
                 dst = {"Client": self._client, "Path": raw_local_path}
                 kwargs['retry'] = self._retry
-                ret, del_succ, del_fail = remote2local_sync_delete(src, dst, **kwargs)
+                ret, del_succ, del_fail = remote2local_sync_delete(
+                    src, dst, **kwargs)
                 if ret != 0:
                     logger.warn("sync delete fail")
                 else:
@@ -1562,9 +1583,9 @@ class Interface(object):
         ret = self.include_ignore_skip(cos_path, **kwargs)
         if 0 != ret:
             logger.debug(u"Skip cos://{bucket}/{cos_path} => {local_path}".format(
-                            bucket=self._conf._bucket,
-                            local_path=local_path,
-                            cos_path=cos_path))
+                bucket=self._conf._bucket,
+                local_path=local_path,
+                cos_path=cos_path))
             return -2
         if kwargs['force'] is False:
             if os.path.isfile(local_path) is True:
@@ -1671,7 +1692,8 @@ class Interface(object):
                             part_read_len += chunk_len
                         f.flush()
                     if part_read_len != length:
-                        raise Exception("Download incomplete part of [%s]" % http_header['Range'])
+                        raise Exception(
+                            "Download incomplete part of [%s]" % http_header['Range'])
                     self._phar_updated_size += length
                     return 0
                 except Exception as e:
@@ -1724,7 +1746,8 @@ class Interface(object):
         # 需要先用'w'生成固定长度的文件
         with open(local_path, "wb") as fstream:
             fstream.write(to_bytes(""))
-        self._pbar = tqdm(total=file_size, unit='B', unit_divisor=1024, unit_scale=True)
+        self._pbar = tqdm(total=file_size, unit='B', ncols=80,
+                          disable=self._silence, unit_divisor=1024, unit_scale=True)
         phar_pool = SimpleThreadPool(1)
         phar_pool.add_task(self.phar_listener, file_size)
         for i in range(parts_num):
@@ -1737,10 +1760,8 @@ class Interface(object):
                 offset += chunk_size
         pool.wait_completion()
         result = pool.get_result()
-        time.sleep(0.1)
         phar_pool.complete()
-        # 让进度条加载完
-        time.sleep(0.05)
+        self._pbar.update(self._phar_updated_size)
         self._pbar.close()
         _fail_num = 0
         for worker in result['detail']:
@@ -1748,7 +1769,8 @@ class Interface(object):
                 if 0 != status:
                     _fail_num += 1
         if not result['success_all'] or _fail_num > 0:
-            logger.info(u"{fail_num} parts download fail".format(fail_num=str(_fail_num)))
+            logger.info(u"{fail_num} parts download fail".format(
+                fail_num=str(_fail_num)))
             try:
                 os.remove(local_path)
             except Exception as e:
@@ -1769,10 +1791,12 @@ class Interface(object):
             return -1
         try:
             if file_size <= self._multidownload_threshold or kwargs['num'] == 1:
-                rt = self.single_download(cos_path, local_path, _http_headers, **kwargs)
+                rt = self.single_download(
+                    cos_path, local_path, _http_headers, **kwargs)
                 return rt
             else:
-                rt = self.multipart_download(cos_path, local_path, _http_headers, _size=file_size, **kwargs)
+                rt = self.multipart_download(
+                    cos_path, local_path, _http_headers, _size=file_size, **kwargs)
                 return rt
         except Exception as e:
             logger.warn(to_unicode(e))
@@ -1807,7 +1831,8 @@ class Interface(object):
             if 'Contents' in rt:
                 for _file in rt['Contents']:
                     _path = _file['Key']
-                    self._inner_threadpool.add_task(self.restore_file, _path, **kwargs)
+                    self._inner_threadpool.add_task(
+                        self.restore_file, _path, **kwargs)
 
         self._inner_threadpool.wait_completion()
         result = self._inner_threadpool.get_result()
@@ -1837,17 +1862,17 @@ class Interface(object):
             logger.info(u"Restore cos://{bucket}/{path}".format(
                 bucket=self._conf._bucket,
                 path=cos_path
-                ))
+            ))
             self._client.restore_object(
-                    Bucket=self._conf._bucket,
-                    Key=cos_path,
-                    RestoreRequest=restore_request)
+                Bucket=self._conf._bucket,
+                Key=cos_path,
+                RestoreRequest=restore_request)
             return 0
         except CosServiceError as e:
             if e.get_status_code() == 409:
                 logger.warn(u"cos://{bucket}/{path} already in pogress".format(
-                        bucket=self._conf._bucket,
-                        path=cos_path
+                    bucket=self._conf._bucket,
+                    path=cos_path
                 ))
                 return -2
             logger.warn(e.get_error_code())
@@ -2221,22 +2246,32 @@ class Interface(object):
                 continue
             logger.info("[success]")
             succ_num += 1
-        logger.info("Success Rate: [{succ_num}/{test_num}]".format(succ_num=int(succ_num), test_num=int(test_num)))
+        logger.info("Success Rate: [{succ_num}/{test_num}]".format(
+            succ_num=int(succ_num), test_num=int(test_num)))
         os.remove(filename)
         if succ_num == test_num:
-            table = PrettyTable([str(filesize) + "M TEST", "Average", "Min", "Max"])
+            table = PrettyTable(
+                [str(filesize) + "M TEST", "Average", "Min", "Max"])
             table.align = "l"
             table.padding_width = 3
             table.header = True
             table.border = False
-            avg_upload_widthband = change_to_human(float(filesize) * succ_num / float(time_upload) * 1024 * 1024) + "B/s"
-            avg_download_widthband = change_to_human(float(filesize) * succ_num / float(time_download) * 1024 * 1024) + "B/s"
-            min_upload_widthband = change_to_human(float(filesize) / float(max_time_upload) * 1024 * 1024) + "B/s"
-            min_download_widthband = change_to_human(float(filesize) / float(max_time_download) * 1024 * 1024) + "B/s"
-            max_upload_widthband = change_to_human(float(filesize) / float(min_time_upload) * 1024 * 1024) + "B/s"
-            max_download_widthband = change_to_human(float(filesize) / float(min_time_download) * 1024 * 1024) + "B/s"
-            table.add_row(['Upload', avg_upload_widthband, min_upload_widthband, max_upload_widthband])
-            table.add_row(['Download', avg_download_widthband, min_download_widthband, max_download_widthband])
+            avg_upload_widthband = change_to_human(
+                float(filesize) * succ_num / float(time_upload) * 1024 * 1024) + "B/s"
+            avg_download_widthband = change_to_human(
+                float(filesize) * succ_num / float(time_download) * 1024 * 1024) + "B/s"
+            min_upload_widthband = change_to_human(
+                float(filesize) / float(max_time_upload) * 1024 * 1024) + "B/s"
+            min_download_widthband = change_to_human(
+                float(filesize) / float(max_time_download) * 1024 * 1024) + "B/s"
+            max_upload_widthband = change_to_human(
+                float(filesize) / float(min_time_upload) * 1024 * 1024) + "B/s"
+            max_download_widthband = change_to_human(
+                float(filesize) / float(min_time_download) * 1024 * 1024) + "B/s"
+            table.add_row(['Upload', avg_upload_widthband,
+                          min_upload_widthband, max_upload_widthband])
+            table.add_row(['Download', avg_download_widthband,
+                          min_download_widthband, max_download_widthband])
             logger.info(table)
             return 0
         return -1

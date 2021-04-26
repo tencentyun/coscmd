@@ -25,6 +25,7 @@ fs_coding = sys.getfilesystemencoding()
 pre_appid = ""
 pre_bucket = ""
 config_path = ""
+silence = False
 global res
 
 
@@ -189,7 +190,8 @@ def load_conf():
                 anonymous=anonymous,
                 verify=verify,
                 retry=retry,
-                timeout=timeout
+                timeout=timeout,
+                silence=silence
             )
             return conf
     except Exception as e:
@@ -724,6 +726,7 @@ def command_thread():
               try \'coscmd sub-command -h\' to learn all command usage, likes \'coscmd upload -h\'"""
     parser = ArgumentParser(description=desc)
     parser.add_argument('-d', '--debug', help="Debug mode", action="store_true", default=False)
+    parser.add_argument('-s', '--silence', help="Silence mode", action="store_true", default=False)
     parser.add_argument('-b', '--bucket', help="Specify bucket", type=str, default="")
     parser.add_argument('-r', '--region', help="Specify region", type=str, default="")
     parser.add_argument('-c', '--config_path', help="Specify config_path", type=str, default="~/.cos.conf")
@@ -900,14 +903,18 @@ def command_thread():
     if args.debug:
         logger.setLevel(logging.DEBUG)
         console.setLevel(logging.DEBUG)
+    if args.silence:
+        logger.setLevel(logging.FATAL)
+        console.setLevel(logging.INFO)
     handler = RotatingFileHandler(os.path.expanduser(args.log_path), maxBytes=args.log_size*1024*1024, backupCount=args.log_backup_count)
     handler.setFormatter(logging.Formatter('%(asctime)s - [%(levelname)s]:  %(message)s'))
     logger.addHandler(handler)
     logging.getLogger('coscmd').addHandler(console)
-    global pre_appid, pre_bucket, pre_region, config_path
+    global pre_appid, pre_bucket, pre_region, config_path, silence
     config_path = args.config_path
     pre_bucket = args.bucket
     pre_region = args.region
+    silence = args.silence
     try:
         pre_appid = pre_bucket.split('-')[-1]
         pre_bucket = pre_bucket.rstrip(pre_appid)

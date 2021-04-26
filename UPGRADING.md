@@ -1,5 +1,11 @@
 Coscmd Upgrade Guide
 ====================
+1.8.6.23 to 1.8.6.24
+--------------------
+- `--skipmd5` will only skip the md5 calculation of the entire file, and no longer skip the partial etag verification of the partial upload
+- Provide `--slience` parameter, support silent mode
+- Revised the format of the progress bar for uploading and downloading
+
 1.8.6.22 to 1.8.6.23
 --------------------
 - Fixed the algorithm for resizing partsize
