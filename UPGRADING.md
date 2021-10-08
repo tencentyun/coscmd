@@ -1,5 +1,9 @@
 Coscmd Upgrade Guide
 ====================
+1.8.6.24 to 1.8.6.25
+--------------------
+- Fix the bug that threads cannot recycle during concurrent upload and download
+
 1.8.6.23 to 1.8.6.24
 --------------------
 - `--skipmd5` will only skip the md5 calculation of the entire file, and no longer skip the partial etag verification of the partial upload
