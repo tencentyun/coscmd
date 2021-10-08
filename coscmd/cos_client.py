@@ -22,7 +22,8 @@ import io
 from tqdm import tqdm
 from logging.handlers import RotatingFileHandler
 from wsgiref.handlers import format_date_time
-import qcloud_cos
+from qcloud_cos import CosConfig
+from qcloud_cos import CosS3Client
 
 if sys.version > '3':
     from coscmd.cos_global import Version
@@ -129,25 +130,25 @@ class Interface(object):
         self._multidownload_threshold = 20 * 1024 * 1024 + 1024
         try:
             if conf._endpoint != "":
-                sdk_config = qcloud_cos.CosConfig(Endpoint=conf._endpoint,
-                                                  Region=conf._region,
-                                                  SecretId=conf._secret_id,
-                                                  SecretKey=conf._secret_key,
-                                                  Token=conf._token,
-                                                  Scheme=conf._schema,
-                                                  Anonymous=conf._anonymous,
-                                                  UA=self._ua,
-                                                  Timeout=self._timeout)
+                sdk_config = CosConfig(Endpoint=conf._endpoint,
+                                       Region=conf._region,
+                                       SecretId=conf._secret_id,
+                                       SecretKey=conf._secret_key,
+                                       Token=conf._token,
+                                       Scheme=conf._schema,
+                                       Anonymous=conf._anonymous,
+                                       UA=self._ua,
+                                       Timeout=self._timeout)
             else:
-                sdk_config = qcloud_cos.CosConfig(Region=conf._region,
-                                                  SecretId=conf._secret_id,
-                                                  SecretKey=conf._secret_key,
-                                                  Token=conf._token,
-                                                  Scheme=conf._schema,
-                                                  Anonymous=conf._anonymous,
-                                                  UA=self._ua,
-                                                  Timeout=self._timeout)
-            self._client = qcloud_cos.CosS3Client(sdk_config, self._retry)
+                sdk_config = CosConfig(Region=conf._region,
+                                       SecretId=conf._secret_id,
+                                       SecretKey=conf._secret_key,
+                                       Token=conf._token,
+                                       Scheme=conf._schema,
+                                       Anonymous=conf._anonymous,
+                                       UA=self._ua,
+                                       Timeout=self._timeout)
+            self._client = CosS3Client(sdk_config, self._retry)
         except Exception as e:
             logger.warn(to_unicode(e))
             raise(e)
@@ -156,13 +157,9 @@ class Interface(object):
         else:
             self._session = session
 
-    def phar_listener(self, file_size):
-        while file_size > 0:
-            self._pbar.update(self._phar_updated_size)
-            file_size -= self._phar_updated_size
-            self._phar_updated_size = 0
-            time.sleep(0.05)
-        return 0
+    def percentage(consumed_bytes, total_bytes):
+        if total_bytes:
+            self._pbar.update(consumed_bytes)
 
     def sign_url(self, cos_path, timeout=10000):
         cos_path = to_printable_str(cos_path)
@@ -423,172 +420,6 @@ class Interface(object):
         return -1
 
     def multipart_upload(self, local_path, cos_path, _http_headers='{}', **kwargs):
-
-        def init_multiupload():
-            self._md5 = []
-            self.c = 0
-            self._have_uploaded = []
-            self._upload_id = None
-            self._path_md5 = get_md5_filename(local_path, cos_path)
-            if not kwargs['force'] and os.path.isfile(self._path_md5):
-                try:
-                    with open(self._path_md5, 'rb') as f:
-                        self._upload_id = f.read().decode()
-                    if self.list_part(cos_path) is True:
-                        logger.info(u"Continue uploading from last breakpoint")
-                        return 0
-                except Exception:
-                    pass
-            http_headers = _http_headers
-            try:
-                http_headers = yaml.safe_load(http_headers)
-                http_headers['x-cos-meta-md5'] = _md5
-                http_headers = mapped(http_headers)
-            except Exception as e:
-                logger.warn("Http_haeder parse error.")
-                logger.warn(to_unicode(e))
-                return -1
-            try:
-                rt = self._client.create_multipart_upload(Bucket=self._conf._bucket,
-                                                          Key=cos_path,
-                                                          **http_headers)
-                logger.debug("Init resp: {rt}".format(rt=rt))
-                self._upload_id = rt['UploadId']
-                try:
-                    if os.path.isdir(os.path.expanduser("~/.tmp")) is False:
-                        os.makedirs(os.path.expanduser("~/.tmp"))
-                    with open(self._path_md5, 'wb') as f:
-                        f.write(to_bytes(self._upload_id))
-                except Exception:
-                    logger.debug("Open upload tmp file error.")
-                    pass
-                return 0
-            except Exception as e:
-                logger.warn(to_unicode(e))
-                return -1
-
-        def multiupload_parts():
-
-            def multiupload_parts_data(local_path, offset, length, parts_size, idx):
-                for j in range(self._retry):
-                    try:
-                        with open(local_path, 'rb') as File:
-                            File.seek(offset, 0)
-                            stream_data = io.BytesIO(File.read(length))
-                    except Exception as e:
-                        logger.warn(to_unicode(e))
-                        return -1
-                    url = self._conf.uri(path=quote(to_printable_str(
-                        cos_path))) + "?partNumber={partnum}&uploadId={uploadid}".format(partnum=idx, uploadid=self._upload_id)
-                    try:
-                        http_header = _http_header
-                        http_header['Content-Length'] = str(length)
-                        rt = self._session.put(url=url,
-                                               auth=CosS3Auth(self._conf),
-                                               data=stream_data, headers=http_header,
-                                               timeout=self._timeout)
-                        logger.debug("Multi part result: part: {part}, round: {round}, code: {code}, headers: {headers}, text: {text}".format(
-                            part=idx,
-                            round=j + 1,
-                            code=rt.status_code,
-                            headers=rt.headers,
-                            text=to_printable_str(rt.text)))
-                        if rt.status_code == 200:
-                            server_md5 = rt.headers[self._etag][1:-1]
-                            self._md5.append(
-                                {'PartNumber': idx, 'ETag': server_md5})
-                            stream_data.seek(0)
-                            if self._conf._verify == "sha1":
-                                local_encryption = sha1(
-                                    stream_data.read()).hexdigest()
-                            else:
-                                local_encryption = md5(
-                                    stream_data.read()).hexdigest()
-                            if server_md5 == local_encryption:
-                                self._have_finished += 1
-                                self._phar_updated_size += length
-                                return 0
-                            else:
-                                raise Exception(
-                                    "Encryption verification is inconsistent")
-                        else:
-                            raise Exception(response_info(rt))
-                    except Exception as e:
-                        self._session.close()
-                        self._session = requests.session()
-                        logger.warn(u"Upload part failed, key: {key}, partnumber: {part}, retrytimes: {round}, exception: {error}".format(
-                            key=cos_path, part=idx, round=j + 1, error=str(e)))
-                        time.sleep(2**j)
-                return -1
-
-            offset = 0
-            file_size = path.getsize(local_path)
-            logger.debug("file size: " + str(file_size))
-            chunk_size = 1024 * 1024 * self._conf._part_size
-
-            parts_num = file_size // chunk_size
-            last_size = file_size % chunk_size
-            if last_size != 0:
-                parts_num += 1
-            if parts_num > 10000:
-                parts_num = 10000
-                chunk_size = file_size // parts_num
-            self._have_finished = len(self._have_uploaded)
-            _max_thread = min(self._conf._max_thread,
-                              parts_num - self._have_finished)
-            pool = SimpleThreadPool(_max_thread)
-            self._pbar = tqdm(total=file_size, unit='B', ncols=80,
-                              disable=self._silence, unit_divisor=1024, unit_scale=True)
-            phar_pool = SimpleThreadPool(1)
-            phar_pool.add_task(self.phar_listener, file_size)
-            for i in range(parts_num):
-                if(str(i + 1) in self._have_uploaded):
-                    if i + 1 == parts_num:
-                        offset += (file_size - offset)
-                        self._phar_updated_size += (file_size - offset)
-                    else:
-                        offset += chunk_size
-                        self._phar_updated_size += chunk_size
-                    continue
-                if i + 1 == parts_num:
-                    pool.add_task(multiupload_parts_data, local_path,
-                                  offset, file_size - offset, parts_num, i + 1)
-                else:
-                    pool.add_task(multiupload_parts_data, local_path,
-                                  offset, chunk_size, parts_num, i + 1)
-                    offset += chunk_size
-            pool.wait_completion()
-            result = pool.get_result()
-            phar_pool.complete()
-            self._pbar.update(self._phar_updated_size)
-            self._pbar.close()
-            _fail_num = 0
-            for worker in result['detail']:
-                for status in worker[2]:
-                    if 0 != status:
-                        _fail_num += 1
-            if _fail_num == 0 and result['success_all']:
-                return 0
-            else:
-                return -1
-
-        def complete_multiupload():
-            logger.info('Completing multiupload, please wait')
-            lst = sorted(self._md5, key=lambda x: x['PartNumber'])
-            try:
-                self._client.complete_multipart_upload(self._conf._bucket,
-                                                       cos_path,
-                                                       self._upload_id,
-                                                       {'Part': lst})
-                try:
-                    os.remove(self._path_md5)
-                except Exception:
-                    pass
-                return 0
-            except Exception as e:
-                logger.warn(to_unicode(e))
-                return -1
-
         _md5 = ""
         file_size = os.path.getsize(local_path)
         if kwargs['skipmd5'] is False:
@@ -605,35 +436,32 @@ class Interface(object):
             bucket=self._conf._bucket,
             local_path=local_path,
             cos_path=cos_path))
+
+        http_headers = _http_headers
         try:
-            _http_header = yaml.safe_load(_http_headers)
+            http_headers = yaml.safe_load(http_headers)
+            http_headers['x-cos-meta-md5'] = _md5
+            http_headers = mapped(http_headers)
         except Exception as e:
             logger.warn("Http_haeder parse error.")
             logger.warn(to_unicode(e))
             return -1
+
         try:
-            rt = init_multiupload()
-            if 0 == rt:
-                logger.debug(u"Init multipart upload ok")
-            else:
-                logger.warn(u"Init multipart upload failed")
-                return -1
-            rt = multiupload_parts()
-            if 0 == rt:
-                logger.debug(u"Multipart upload ok")
-            else:
-                logger.warn(
-                    u"Some partial upload failed. Please retry the last command to continue.")
-                return -1
-            rt = complete_multiupload()
-            if 0 == rt:
-                logger.debug(u"Complete multipart upload ok")
-            else:
-                logger.warn(u"Complete multipart upload failed")
-                return -1
+            self._pbar = tqdm(total=file_size, unit='B', ncols=80,
+                              disable=self._silence, unit_divisor=1024, unit_scale=True)
+            self._client.upload_file(Bucket=self._conf._bucket,
+                                     Key=cos_path,
+                                     LocalFilePath=local_path,
+                                     PartSize=self._conf._part_size,
+                                     MAXThread=self._conf._max_thread,
+                                     progress_callback=self.percentage,
+                                     EnableMD5=(not kwargs['skipmd5']),
+                                     **http_headers)
         except Exception as e:
+            logger.warn("Upload file failed")
             logger.warn(to_unicode(e))
-        return 0
+            return -1
 
     def upload_file(self, local_path, cos_path, _http_headers='{}', **kwargs):
         file_size = path.getsize(local_path)
@@ -703,13 +531,13 @@ class Interface(object):
                 source_tmp_path = source_tmp_path[0].split('.')
                 source_bucket = source_tmp_path[0]
                 source_endpoint = '.'.join(source_tmp_path[1:])
-                sdk_config_source = qcloud_cos.CosConfig(SecretId=self._conf._secret_id,
-                                                         SecretKey=self._conf._secret_key,
-                                                         Token=self._conf._token,
-                                                         Endpoint=source_endpoint,
-                                                         Scheme=self._conf._schema,
-                                                         Anonymous=self._conf._anonymous)
-                self._client_source = qcloud_cos.CosS3Client(sdk_config_source)
+                sdk_config_source = CosConfig(SecretId=self._conf._secret_id,
+                                              SecretKey=self._conf._secret_key,
+                                              Token=self._conf._token,
+                                              Endpoint=source_endpoint,
+                                              Scheme=self._conf._schema,
+                                              Anonymous=self._conf._anonymous)
+                self._client_source = CosS3Client(sdk_config_source)
             else:
                 source_tmp_path = source_path.split("/")
                 source_tmp_path = source_tmp_path[0].split('.')
@@ -720,13 +548,13 @@ class Interface(object):
                     source_region = source_tmp_path[1]
                 else:
                     raise Exception("Parse Region Error")
-                sdk_config_source = qcloud_cos.CosConfig(Region=source_region,
-                                                         SecretId=self._conf._secret_id,
-                                                         SecretKey=self._conf._secret_key,
-                                                         Token=self._conf._token,
-                                                         Scheme=self._conf._schema,
-                                                         Anonymous=self._conf._anonymous)
-                self._client_source = qcloud_cos.CosS3Client(sdk_config_source)
+                sdk_config_source = CosConfig(Region=source_region,
+                                              SecretId=self._conf._secret_id,
+                                              SecretKey=self._conf._secret_key,
+                                              Token=self._conf._token,
+                                              Scheme=self._conf._schema,
+                                              Anonymous=self._conf._anonymous)
+                self._client_source = CosS3Client(sdk_config_source)
         except Exception as e:
             logger.warn(to_unicode(e))
             logger.warn(u"CopySource is invalid: {copysource}".format(
@@ -830,13 +658,13 @@ class Interface(object):
                 copy_source['Endpoint'] = '.'.join(source_tmp_path[1:])
                 copy_source['Key'] = source_key
                 copy_source['RawPath'] = source_path
-                sdk_config_source = qcloud_cos.CosConfig(SecretId=self._conf._secret_id,
-                                                         SecretKey=self._conf._secret_key,
-                                                         Token=self._conf._token,
-                                                         Endpoint=copy_source['Endpoint'],
-                                                         Scheme=self._conf._schema,
-                                                         Anonymous=self._conf._anonymous)
-                _source_client = qcloud_cos.CosS3Client(sdk_config_source)
+                sdk_config_source = CosConfig(SecretId=self._conf._secret_id,
+                                              SecretKey=self._conf._secret_key,
+                                              Token=self._conf._token,
+                                              Endpoint=copy_source['Endpoint'],
+                                              Scheme=self._conf._schema,
+                                              Anonymous=self._conf._anonymous)
+                _source_client = CosS3Client(sdk_config_source)
             else:
                 _source_path = source_path.split("/")
                 source_tmp_path = _source_path[0].split('.')
@@ -852,13 +680,13 @@ class Interface(object):
                 copy_source['RawPath'] = copy_source['Bucket'] + ".cos." + \
                     copy_source['Region'] + \
                     ".myqcloud.com/" + copy_source['Key']
-                sdk_config_source = qcloud_cos.CosConfig(Region=copy_source['Region'],
-                                                         SecretId=self._conf._secret_id,
-                                                         SecretKey=self._conf._secret_key,
-                                                         Token=self._conf._token,
-                                                         Scheme=self._conf._schema,
-                                                         Anonymous=self._conf._anonymous)
-                _source_client = qcloud_cos.CosS3Client(sdk_config_source)
+                sdk_config_source = CosConfig(Region=copy_source['Region'],
+                                              SecretId=self._conf._secret_id,
+                                              SecretKey=self._conf._secret_key,
+                                              Token=self._conf._token,
+                                              Scheme=self._conf._schema,
+                                              Anonymous=self._conf._anonymous)
+                _source_client = CosS3Client(sdk_config_source)
         except Exception as e:
             logger.warn(to_unicode(e))
             logger.warn(u"CopySource is invalid: {copysource}".format(
@@ -1666,42 +1494,6 @@ class Interface(object):
 
     # 分块下载
     def multipart_download(self, cos_path, local_path, _http_headers='{}', **kwargs):
-
-        def get_parts_data(local_path, offset, length, parts_size):
-            for j in range(self._retry):
-                try:
-                    http_header = copy.copy(_http_headers)
-                    http_header['Range'] = 'bytes=' + \
-                        str(offset) + "-" + str(offset + length - 1)
-                    rt = self._client.get_object(
-                        Bucket=self._conf._bucket,
-                        Key=cos_path,
-                        **http_header
-                    )
-                    fstream = rt['Body'].get_raw_stream()
-                    chunk_size = 1024 * 1024
-                    part_read_len = 0
-                    with open(local_path, 'rb+') as f:
-                        f.seek(offset)
-                        while True:
-                            chunk_data = fstream.read(chunk_size)
-                            chunk_len = len(chunk_data)
-                            if (chunk_len == 0):
-                                break
-                            f.write(chunk_data)
-                            part_read_len += chunk_len
-                        f.flush()
-                    if part_read_len != length:
-                        raise Exception(
-                            "Download incomplete part of [%s]" % http_header['Range'])
-                    self._phar_updated_size += length
-                    return 0
-                except Exception as e:
-                    time.sleep(1 << j)
-                    logger.warn(str(e))
-                    continue
-            return -1
-
         cos_path = cos_path.lstrip('/')
         rt = self.remote2local_sync_check(cos_path, local_path, **kwargs)
         if 0 != rt:
@@ -1722,19 +1514,6 @@ class Interface(object):
         except Exception as e:
             logger.warn(to_unicode(e))
             return -1
-        offset = 0
-        parts_num = kwargs['num']
-        chunk_size = int(file_size / parts_num)
-        last_size = file_size - parts_num * chunk_size
-        self._have_finished = 0
-        if last_size != 0:
-            parts_num += 1
-        _max_thread = min(self._conf._max_thread,
-                          parts_num - self._have_finished)
-        pool = SimpleThreadPool(_max_thread)
-        logger.debug(u"chunk_size: " + str(chunk_size))
-        logger.debug(u'download file concurrently')
-        logger.info(u"Downloading {file}".format(file=local_path))
 
         # 如果路径不存在，则创建文件夹
         dir_path = os.path.dirname(local_path)
@@ -1743,38 +1522,22 @@ class Interface(object):
                 os.makedirs(dir_path, 0o755)
             except Exception as e:
                 pass
-        # 需要先用'w'生成固定长度的文件
-        with open(local_path, "wb") as fstream:
-            fstream.write(to_bytes(""))
-        self._pbar = tqdm(total=file_size, unit='B', ncols=80,
-                          disable=self._silence, unit_divisor=1024, unit_scale=True)
-        phar_pool = SimpleThreadPool(1)
-        phar_pool.add_task(self.phar_listener, file_size)
-        for i in range(parts_num):
-            if i + 1 == parts_num:
-                pool.add_task(get_parts_data, local_path, offset,
-                              file_size - offset, i + 1)
-            else:
-                pool.add_task(get_parts_data, local_path, offset,
-                              chunk_size, i + 1)
-                offset += chunk_size
-        pool.wait_completion()
-        result = pool.get_result()
-        phar_pool.complete()
-        self._pbar.update(self._phar_updated_size)
-        self._pbar.close()
-        _fail_num = 0
-        for worker in result['detail']:
-            for status in worker[2]:
-                if 0 != status:
-                    _fail_num += 1
-        if not result['success_all'] or _fail_num > 0:
-            logger.info(u"{fail_num} parts download fail".format(
-                fail_num=str(_fail_num)))
-            try:
-                os.remove(local_path)
-            except Exception as e:
-                pass
+        try:
+            self._pbar = tqdm(total=file_size, unit='B', ncols=80,
+                              disable=self._silence, unit_divisor=1024, unit_scale=True)
+            self._client.download_file(
+                Bucket=self._conf._bucket,
+                Key=cos_path,
+                DestFilePath=local_path,
+                PartSize=self._conf._part_size,
+                MAXThread=self._conf._max_thread,
+                EnableCRC=True,
+                progress_callback=self.percentage,
+                **_http_headers
+            )
+        except Exception as e:
+            logger.warn()
+            logger.warn(to_unicode(e))
             return -1
         return 0
 
