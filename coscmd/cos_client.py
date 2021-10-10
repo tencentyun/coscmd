@@ -22,8 +22,7 @@ import io
 from tqdm import tqdm
 from logging.handlers import RotatingFileHandler
 from wsgiref.handlers import format_date_time
-from qcloud_cos import CosConfig
-from qcloud_cos import CosS3Client
+import qcloud_cos
 
 if sys.version > '3':
     from coscmd.cos_global import Version
@@ -39,7 +38,6 @@ else:
     from cos_sync import *
 
 logger = logging.getLogger("coscmd")
-
 
 class CoscmdConfig(object):
 
@@ -128,27 +126,28 @@ class Interface(object):
         self._inner_threadpool = SimpleThreadPool(1)
         self._multiupload_threshold = 20 * 1024 * 1024 + 1024
         self._multidownload_threshold = 20 * 1024 * 1024 + 1024
+        self.consumed_bytes = 0
         try:
             if conf._endpoint != "":
-                sdk_config = CosConfig(Endpoint=conf._endpoint,
-                                       Region=conf._region,
-                                       SecretId=conf._secret_id,
-                                       SecretKey=conf._secret_key,
-                                       Token=conf._token,
-                                       Scheme=conf._schema,
-                                       Anonymous=conf._anonymous,
-                                       UA=self._ua,
-                                       Timeout=self._timeout)
+                sdk_config = qcloud_cos.CosConfig(Endpoint=conf._endpoint,
+                                                  Region=conf._region,
+                                                  SecretId=conf._secret_id,
+                                                  SecretKey=conf._secret_key,
+                                                  Token=conf._token,
+                                                  Scheme=conf._schema,
+                                                  Anonymous=conf._anonymous,
+                                                  UA=self._ua,
+                                                  Timeout=self._timeout)
             else:
-                sdk_config = CosConfig(Region=conf._region,
-                                       SecretId=conf._secret_id,
-                                       SecretKey=conf._secret_key,
-                                       Token=conf._token,
-                                       Scheme=conf._schema,
-                                       Anonymous=conf._anonymous,
-                                       UA=self._ua,
-                                       Timeout=self._timeout)
-            self._client = CosS3Client(sdk_config, self._retry)
+                sdk_config = qcloud_cos.CosConfig(Region=conf._region,
+                                                  SecretId=conf._secret_id,
+                                                  SecretKey=conf._secret_key,
+                                                  Token=conf._token,
+                                                  Scheme=conf._schema,
+                                                  Anonymous=conf._anonymous,
+                                                  UA=self._ua,
+                                                  Timeout=self._timeout)
+            self._client = qcloud_cos.CosS3Client(sdk_config, self._retry)
         except Exception as e:
             logger.warn(to_unicode(e))
             raise(e)
@@ -157,9 +156,10 @@ class Interface(object):
         else:
             self._session = session
 
-    def percentage(consumed_bytes, total_bytes):
+    def percentage(self, consumed_bytes, total_bytes):
         if total_bytes:
-            self._pbar.update(consumed_bytes)
+            self._pbar.update(consumed_bytes - self.consumed_bytes)
+            self.consumed_bytes = consumed_bytes
 
     def sign_url(self, cos_path, timeout=10000):
         cos_path = to_printable_str(cos_path)
@@ -450,6 +450,7 @@ class Interface(object):
         try:
             self._pbar = tqdm(total=file_size, unit='B', ncols=80,
                               disable=self._silence, unit_divisor=1024, unit_scale=True)
+            self.consumed_bytes = 0
             self._client.upload_file(Bucket=self._conf._bucket,
                                      Key=cos_path,
                                      LocalFilePath=local_path,
@@ -462,6 +463,9 @@ class Interface(object):
             logger.warn("Upload file failed")
             logger.warn(to_unicode(e))
             return -1
+        finally:
+            self._pbar.close()
+        return 0
 
     def upload_file(self, local_path, cos_path, _http_headers='{}', **kwargs):
         file_size = path.getsize(local_path)
@@ -531,13 +535,13 @@ class Interface(object):
                 source_tmp_path = source_tmp_path[0].split('.')
                 source_bucket = source_tmp_path[0]
                 source_endpoint = '.'.join(source_tmp_path[1:])
-                sdk_config_source = CosConfig(SecretId=self._conf._secret_id,
-                                              SecretKey=self._conf._secret_key,
-                                              Token=self._conf._token,
-                                              Endpoint=source_endpoint,
-                                              Scheme=self._conf._schema,
-                                              Anonymous=self._conf._anonymous)
-                self._client_source = CosS3Client(sdk_config_source)
+                sdk_config_source = qcloud_cos.CosConfig(SecretId=self._conf._secret_id,
+                                                         SecretKey=self._conf._secret_key,
+                                                         Token=self._conf._token,
+                                                         Endpoint=source_endpoint,
+                                                         Scheme=self._conf._schema,
+                                                         Anonymous=self._conf._anonymous)
+                self._client_source = qcloud_cos.CosS3Client(sdk_config_source)
             else:
                 source_tmp_path = source_path.split("/")
                 source_tmp_path = source_tmp_path[0].split('.')
@@ -548,13 +552,13 @@ class Interface(object):
                     source_region = source_tmp_path[1]
                 else:
                     raise Exception("Parse Region Error")
-                sdk_config_source = CosConfig(Region=source_region,
-                                              SecretId=self._conf._secret_id,
-                                              SecretKey=self._conf._secret_key,
-                                              Token=self._conf._token,
-                                              Scheme=self._conf._schema,
-                                              Anonymous=self._conf._anonymous)
-                self._client_source = CosS3Client(sdk_config_source)
+                sdk_config_source = qcloud_cos.CosConfig(Region=source_region,
+                                                         SecretId=self._conf._secret_id,
+                                                         SecretKey=self._conf._secret_key,
+                                                         Token=self._conf._token,
+                                                         Scheme=self._conf._schema,
+                                                         Anonymous=self._conf._anonymous)
+                self._client_source = qcloud_cos.CosS3Client(sdk_config_source)
         except Exception as e:
             logger.warn(to_unicode(e))
             logger.warn(u"CopySource is invalid: {copysource}".format(
@@ -658,13 +662,13 @@ class Interface(object):
                 copy_source['Endpoint'] = '.'.join(source_tmp_path[1:])
                 copy_source['Key'] = source_key
                 copy_source['RawPath'] = source_path
-                sdk_config_source = CosConfig(SecretId=self._conf._secret_id,
-                                              SecretKey=self._conf._secret_key,
-                                              Token=self._conf._token,
-                                              Endpoint=copy_source['Endpoint'],
-                                              Scheme=self._conf._schema,
-                                              Anonymous=self._conf._anonymous)
-                _source_client = CosS3Client(sdk_config_source)
+                sdk_config_source = qcloud_cos.CosConfig(SecretId=self._conf._secret_id,
+                                                         SecretKey=self._conf._secret_key,
+                                                         Token=self._conf._token,
+                                                         Endpoint=copy_source['Endpoint'],
+                                                         Scheme=self._conf._schema,
+                                                         Anonymous=self._conf._anonymous)
+                _source_client = qcloud_cos.CosS3Client(sdk_config_source)
             else:
                 _source_path = source_path.split("/")
                 source_tmp_path = _source_path[0].split('.')
@@ -680,13 +684,13 @@ class Interface(object):
                 copy_source['RawPath'] = copy_source['Bucket'] + ".cos." + \
                     copy_source['Region'] + \
                     ".myqcloud.com/" + copy_source['Key']
-                sdk_config_source = CosConfig(Region=copy_source['Region'],
-                                              SecretId=self._conf._secret_id,
-                                              SecretKey=self._conf._secret_key,
-                                              Token=self._conf._token,
-                                              Scheme=self._conf._schema,
-                                              Anonymous=self._conf._anonymous)
-                _source_client = CosS3Client(sdk_config_source)
+                sdk_config_source = qcloud_cos.CosConfig(Region=copy_source['Region'],
+                                                         SecretId=self._conf._secret_id,
+                                                         SecretKey=self._conf._secret_key,
+                                                         Token=self._conf._token,
+                                                         Scheme=self._conf._schema,
+                                                         Anonymous=self._conf._anonymous)
+                _source_client = qcloud_cos.CosS3Client(sdk_config_source)
         except Exception as e:
             logger.warn(to_unicode(e))
             logger.warn(u"CopySource is invalid: {copysource}".format(
@@ -1490,7 +1494,6 @@ class Interface(object):
         except Exception as e:
             logger.warn(str(e))
             return -1
-        return 0
 
     # 分块下载
     def multipart_download(self, cos_path, local_path, _http_headers='{}', **kwargs):
@@ -1525,6 +1528,7 @@ class Interface(object):
         try:
             self._pbar = tqdm(total=file_size, unit='B', ncols=80,
                               disable=self._silence, unit_divisor=1024, unit_scale=True)
+            self.consumed_bytes = 0
             self._client.download_file(
                 Bucket=self._conf._bucket,
                 Key=cos_path,
@@ -1539,6 +1543,8 @@ class Interface(object):
             logger.warn()
             logger.warn(to_unicode(e))
             return -1
+        finally:
+            self._pbar.close()
         return 0
 
     def download_file(self, cos_path, local_path, _http_headers='{}', **kwargs):
