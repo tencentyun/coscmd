@@ -8,6 +8,7 @@ import logging
 import os
 import json
 import requests
+import qcloud_cos
 from threading import Thread
 from coscmd import cos_global
 
@@ -900,16 +901,21 @@ def command_thread():
     logger.setLevel(logging.INFO)
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
+    logger_qcloud_cos = logging.getLogger('qcloud_cos')
+    logger_qcloud_cos.setLevel(logging.WARN)
     if args.debug:
         logger.setLevel(logging.DEBUG)
         console.setLevel(logging.DEBUG)
+        logger_qcloud_cos.setLevel(logging.DEBUG)
     if args.silence:
         logger.setLevel(logging.FATAL)
         console.setLevel(logging.INFO)
     handler = RotatingFileHandler(os.path.expanduser(args.log_path), maxBytes=args.log_size*1024*1024, backupCount=args.log_backup_count)
     handler.setFormatter(logging.Formatter('%(asctime)s - [%(levelname)s]:  %(message)s'))
     logger.addHandler(handler)
-    logging.getLogger('coscmd').addHandler(console)
+    logger_qcloud_cos.addHandler(handler)
+    logger.addHandler(console)
+    logger_qcloud_cos.addHandler(console)
     global pre_appid, pre_bucket, pre_region, config_path, silence
     config_path = args.config_path
     pre_bucket = args.bucket
