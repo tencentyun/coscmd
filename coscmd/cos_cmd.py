@@ -909,6 +909,7 @@ def command_thread():
         logger_qcloud_cos.setLevel(logging.DEBUG)
     if args.silence:
         logger.setLevel(logging.FATAL)
+        logger_qcloud_cos.setLevel(logging.FATAL)
         console.setLevel(logging.INFO)
     handler = RotatingFileHandler(os.path.expanduser(args.log_path), maxBytes=args.log_size*1024*1024, backupCount=args.log_backup_count)
     handler.setFormatter(logging.Formatter('%(asctime)s - [%(levelname)s]:  %(message)s'))
