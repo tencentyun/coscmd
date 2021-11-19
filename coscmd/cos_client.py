@@ -39,6 +39,7 @@ else:
 
 logger = logging.getLogger("coscmd")
 
+
 class CoscmdConfig(object):
 
     def __init__(self, appid, region, endpoint, bucket, secret_id, secret_key, token=None,
@@ -225,7 +226,7 @@ class Interface(object):
                 _cos_path = _path[1]
                 try:
                     file_size = os.path.getsize(_local_path)
-                    if file_size <= self._multiupload_threshold:
+                    if file_size <= self._conf._part_size * 1024 * 1024 + 1024 or file_size <= self._multiupload_threshold:
                         self._inner_threadpool.add_task(
                             self.single_upload,
                             _local_path,

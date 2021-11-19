@@ -1,5 +1,9 @@
 Coscmd Upgrade Guide
 ====================
+1.8.6.25 to 1.8.6.26
+--------------------
+- Fix file size threshold error when uploading folders
+
 1.8.6.24 to 1.8.6.25
 --------------------
 - Fix the bug that threads cannot recycle during concurrent upload and download
