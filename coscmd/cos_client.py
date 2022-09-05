@@ -24,6 +24,8 @@ from logging.handlers import RotatingFileHandler
 from wsgiref.handlers import format_date_time
 import qcloud_cos
 
+from coscmd.cos_rename import CosMoveConfig
+
 if sys.version > '3':
     from coscmd.cos_global import Version
     from coscmd.cos_auth import CosS3Auth
@@ -1466,7 +1468,7 @@ class Interface(object):
             http_headers = yaml.safe_load(http_headers)
             http_headers = mapped(http_headers)
         except Exception as e:
-            logger.warn("Http_haeder parse error.")
+            logger.warn("Http_header parse error.")
             logger.warn(to_unicode(e))
             return -1
         try:
@@ -1570,6 +1572,48 @@ class Interface(object):
                 return rt
         except Exception as e:
             logger.warn(to_unicode(e))
+
+    def move_file(self, source_path, dst_path, _http_headers='{}', **kwargs):
+        move_source = {}
+        try:
+            _source_path = source_path.split('/')
+            source_tmp_path = _source_path[0].split('.')
+            source_key = '/'.join(_source_path[1:])
+            move_source['Bucket'] = source_tmp_path[0]
+            if len(source_tmp_path) == 5 and source_tmp_path[1] == 'cos':
+                source_region = source_tmp_path[2]
+            elif len(source_tmp_path) == 4:
+                source_region = source_tmp_path[1]
+            else:
+                raise Exception("Parse Region Error")
+            move_source['Key'] = source_key
+            move_source['RawPath'] = move_source['Bucket'] + ".cos." + \
+                                     source_region + \
+                                     ".myqcloud.com/" + move_source['Key']
+            logger.info(u"move log move_source={move_source}".format(move_source=move_source))
+            source_path = '/' + '/'.join(_source_path[1:])
+            url = self._conf.uri(quote(to_printable_str(dst_path)) + "?rename")
+            try:
+                _http_headers = yaml.safe_load(_http_headers)
+            except Exception as e:
+                logger.warn("Http_haeder parse error.")
+                logger.warn(to_unicode(e))
+                return -1
+            logger.info(u"Move cos://{source_bucket}/{source_path}    =>    cos://{dst_bucket}/{dst_path}".format(
+                source_bucket=source_tmp_path[0],
+                source_path=source_path,
+                dst_bucket=source_tmp_path[0],
+                dst_path=dst_path
+            ))
+            if not CosMoveConfig.move_object(self, source_path, url, _http_headers):
+                return 0
+            else:
+                return -1
+        except Exception as e:
+            logger.warn(to_unicode(e))
+            logger.warn(u"MoveSource is invalid: {movesource}".format(
+                movesource=source_path))
+        return -1
 
     def restore_folder(self, cos_path, **kwargs):
         self._inner_threadpool = SimpleThreadPool(self._conf._max_thread)
@@ -1759,11 +1803,16 @@ class Interface(object):
             return False
         return False
 
-    def create_bucket(self):
+    def create_bucket(self, ofs):
         url = self._conf.uri(path='')
         self._have_finished = 0
         try:
-            rt = self._session.put(url=url, auth=CosS3Auth(self._conf))
+            data = '''
+        <CreateBucketConfiguration>
+    <BucketArchConfig>{ofs}</BucketArchConfig>
+</CreateBucketConfiguration>
+'''.format(ofs=ofs)
+            rt = self._session.put(url=url, auth=CosS3Auth(self._conf), data=data)
             logger.debug(u"put resp, status code: {code}, headers: {headers}, text: {text}".format(
                 code=rt.status_code,
                 headers=rt.headers,
@@ -1775,6 +1824,7 @@ class Interface(object):
             else:
                 logger.warn(response_info(rt))
                 return False
+            self._session.get()
         except Exception as e:
             logger.warn(str(e))
             return False
@@ -2059,3 +2109,4 @@ class CosS3Client(object):
 
 if __name__ == "__main__":
     pass
+

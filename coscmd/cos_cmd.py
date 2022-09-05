@@ -380,6 +380,8 @@ class Op(object):
             client = CosS3Client(conf)
             Interface = client.op_int()
             _, args.cos_path = concat_path(args.source_path, args.cos_path)
+            logger.info(u"====move log source_path={source_path}, cos_path={cos_path}".format(
+                source_path=args.source_path, cos_path=args.cos_path))
             while args.cos_path.startswith('/'):
                 args.cos_path = args.cos_path[1:]
             if not isinstance(args.source_path, text_type):
@@ -397,20 +399,32 @@ class Op(object):
             kwargs['delete'] = False
             kwargs['move'] = True
             if args.recursive:
-                _, args.cos_path = concat_path(args.source_path, args.cos_path)
-                if args.cos_path.endswith('/') is False:
-                    args.cos_path += '/'
                 if args.cos_path.startswith('/'):
                     args.cos_path = args.cos_path[1:]
-                if not Interface.copy_folder(args.source_path, args.cos_path, args.headers, **kwargs):
-                    return 0
+                if args.ofs:
+                    #融合桶 头部添加
+                    if not Interface.move_file(args.source_path, args.cos_path, args.headers, **kwargs):
+                        return 0
+                    else:
+                        return 1
                 else:
-                    return 1
+                    if args.cos_path.endswith('/') is False:
+                        args.cos_path += '/'
+                    if not Interface.copy_folder(args.source_path, args.cos_path, args.headers, **kwargs):
+                        return 0
+                    else:
+                        return 1
             else:
-                if not Interface.copy_file(args.source_path, args.cos_path, args.headers, **kwargs):
-                    return 0
+                if args.ofs:
+                    if not Interface.move_file(args.source_path, args.cos_path, args.headers, **kwargs):
+                        return 0
+                    else:
+                        return 1
                 else:
-                    return -1
+                    if not Interface.copy_file(args.source_path, args.cos_path, args.headers, **kwargs):
+                        return 0
+                    else:
+                        return -1
         except Exception as e:
             logger.warn(e)
             return -2
@@ -588,8 +602,12 @@ class Op(object):
         try:
             conf = load_conf()
             client = CosS3Client(conf)
+            if args.ofs:
+                ofs = "OFS"
+            else:
+                ofs = ""
             Interface = client.op_int()
-            if Interface.create_bucket():
+            if Interface.create_bucket(ofs):
                 return 0
             else:
                 logger.warn("Create bucket fail")
@@ -725,6 +743,7 @@ def command_thread():
     desc = """an easy-to-use but powerful command-line tool.
               try \'coscmd -h\' to get more informations.
               try \'coscmd sub-command -h\' to learn all command usage, likes \'coscmd upload -h\'"""
+    #ArgumentParser命令行解析的主要入口点，add_argument()方法为解析器填充可选参数和位置参数的动作
     parser = ArgumentParser(description=desc)
     parser.add_argument('-d', '--debug', help="Debug mode", action="store_true", default=False)
     parser.add_argument('-s', '--silence', help="Silence mode", action="store_true", default=False)
@@ -735,13 +754,16 @@ def command_thread():
     parser.add_argument('--log_size', help='specify max log size in MB (default 1MB)', type=int, default=128)
     parser.add_argument('--log_backup_count', help='specify log backup num', type=int, default=1)
 
+    #add_subparsers()方法去创建子命令
     sub_parser = parser.add_subparsers()
+    #sub_parser.add_parser()添加子命令
     parser_config = sub_parser.add_parser("config", help="Config your information at first")
     parser_config.add_argument('-a', '--secret_id', help='Specify your secret id', type=str, required=True)
     parser_config.add_argument('-s', '--secret_key', help='Specify your secret key', type=str, required=True)
     parser_config.add_argument('-t', '--token', help='Set x-cos-security-token header', type=str, default="")
     parser_config.add_argument('-b', '--bucket', help='Specify your bucket', type=str, required=True)
 
+    #add_mutually_exclusive_gruop()方法也接受一个required参数，表示在互斥组中至少有一个参数是需要的
     group = parser_config.add_mutually_exclusive_group(required=True)
     group.add_argument('-r', '--region', help='Specify your region', type=str)
     group.add_argument('-e', '--endpoint', help='Specify COS endpoint', type=str)
@@ -820,6 +842,7 @@ def command_thread():
     parser_move.add_argument('-H', '--headers', help="Specify HTTP headers", type=str, default='{}')
     parser_move.add_argument('-d', '--directive', help="if Overwrite headers", type=str, choices=['Copy', 'Replaced'], default="Copy")
     parser_move.add_argument('-r', '--recursive', help="Copy files recursively", action="store_true", default=False)
+    parser_move.add_argument('-o', "--ofs", help="Move bucket files", action="store_true", default=False)
     parser_move.add_argument('--include', help='Specify filter rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="*")
     parser_move.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
     parser_move.set_defaults(func=Op.move)
@@ -855,6 +878,7 @@ def command_thread():
     parser_signurl.set_defaults(func=Op.signurl)
 
     parser_create_bucket = sub_parser.add_parser("createbucket", help='Create bucket')
+    parser_create_bucket.add_argument('-o', "--ofs", help="create ofs bucket", action="store_true", default=False)
     parser_create_bucket.set_defaults(func=Op.create_bucket)
 
     parser_delete_bucket = sub_parser.add_parser("deletebucket", help='Delete bucket')
@@ -970,3 +994,5 @@ if __name__ == '__main__':
     _main()
     global res
     sys.exit(res)
+
+
