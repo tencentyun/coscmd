@@ -1,12 +1,12 @@
 # COSCMD
-#######################
 
-.. image:: https://img.shields.io/pypi/v/coscmd.svg
-   :target: https://pypi.org/search/?q=coscmd
-   :alt: Pypi
-.. image:: https://travis-ci.org/tencentyun/coscmd.svg?branch=master
-   :target: https://travis-ci.org/tencentyun/coscmd
-   :alt: Travis CI 
+[![pypi][pypi-img]][pypi-url]
+[![travis][travis-img]][travis-url]
+
+[pypi-img]:https://img.shields.io/pypi/v/coscmd.svg
+[pypi-url]:https://pypi.org/search/?q=coscmd
+[travis-img]:https://travis-ci.org/tencentyun/coscmd.svg?branch=master
+[travis-url]:https://travis-ci.org/tencentyun/coscmd
 
 ## 介绍
 _______
