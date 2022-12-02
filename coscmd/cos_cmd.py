@@ -895,7 +895,11 @@ def command_thread():
 
     parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + Version)
 
-    args = parser.parse_args()
+    try:
+        args = parser.parse_args()
+    except SystemExit as exc:
+        res = exc.code
+        return 0
 
     logger = logging.getLogger('coscmd')
     logger.setLevel(logging.INFO)
