@@ -1,5 +1,11 @@
 Coscmd Upgrade Guide
 ====================
+1.8.6.26 to 1.8.6.28
+--------------------
+- Add file size threshold when downloading folder
+- Fix incorrect path when synchronizing files
+- Delete the crc64 verification parameters when downloading
+====================
 1.8.6.25 to 1.8.6.26
 --------------------
 - Fix file size threshold error when uploading folders
