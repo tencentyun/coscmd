@@ -166,6 +166,19 @@ def load_conf():
                 timeout = int(cp.get('common', 'timeout'))
             except Exception:
                 timeout = 60
+            
+            try:
+                multiupload_threshold = int(cp.get('common', 'multiupload_threshold'))
+            except Exception:
+                multiupload_threshold = 100
+            if multiupload_threshold < 20:
+                multiupload_threshold = 20
+            try:
+                multidownload_threshold = int(cp.get('common', 'multidownload_threshold'))
+            except Exception:
+                multidownload_threshold = 100
+            if multidownload_threshold < 20:
+                multidownload_threshold = 20
             region, endpoint = None, None
             if cp.has_option('common', 'region'):
                 region = cp.get('common', 'region')
@@ -192,7 +205,9 @@ def load_conf():
                 verify=verify,
                 retry=retry,
                 timeout=timeout,
-                silence=silence
+                silence=silence,
+                multiupload_threshold=multiupload_threshold,
+                multidownload_threshold=multidownload_threshold
             )
             return conf
     except Exception as e:
