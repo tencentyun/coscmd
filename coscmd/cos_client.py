@@ -19,6 +19,7 @@ import yaml
 import fnmatch
 import copy
 import io
+import traceback
 from tqdm import tqdm
 from logging.handlers import RotatingFileHandler
 from wsgiref.handlers import format_date_time
@@ -43,7 +44,8 @@ logger = logging.getLogger("coscmd")
 class CoscmdConfig(object):
 
     def __init__(self, appid, region, endpoint, bucket, secret_id, secret_key, token=None,
-                 part_size=1, max_thread=5, schema='https', anonymous=False, verify='md5', retry=2, timeout=60, silence=False,
+                 part_size=1, max_thread=5, schema='https', anonymous=False, verify='md5', retry=2, timeout=60, silence=False, 
+                 multiupload_threshold=100, multidownload_threshold=100,
                  *args, **kwargs):
         self._appid = appid
         self._region = region
@@ -61,6 +63,8 @@ class CoscmdConfig(object):
         self._retry = retry
         self._timeout = timeout
         self._silence = silence
+        self._multiupload_threshold=multiupload_threshold
+        self._multidownload_threshold=multidownload_threshold
         self._ua = 'coscmd-v' + Version
         logger.debug("config parameter-> appid: {appid}, region: {region}, endpoint: {endpoint}, bucket: {bucket}, part_size: {part_size}, max_thread: {max_thread}".format(
             appid=appid,
@@ -125,8 +129,8 @@ class Interface(object):
         self._pbar = ''
         self._phar_updated_size = 0
         self._inner_threadpool = SimpleThreadPool(1)
-        self._multiupload_threshold = 20 * 1024 * 1024 + 1024
-        self._multidownload_threshold = 20 * 1024 * 1024 + 1024
+        self._multiupload_threshold = conf._multiupload_threshold * 1024 * 1024
+        self._multidownload_threshold = conf._multidownload_threshold * 1024 * 1024
         self.consumed_bytes = 0
         try:
             if conf._endpoint != "":
@@ -1348,7 +1352,7 @@ class Interface(object):
                             continue
                         if _size <= self._multidownload_threshold:
                             self._inner_threadpool.add_task(
-                                self.single_download, _cos_path, _local_path, _http_headers, **kwargs)
+                                self.download_file, _cos_path, _local_path, _http_headers, **kwargs)
                         else:
                             multidownload_filelist.append(
                                 [_cos_path, _local_path, _size])
@@ -1368,7 +1372,7 @@ class Interface(object):
                         _fail_num += 1
             for _cos_path, _local_path, _size in multidownload_filelist:
                 try:
-                    rt = self.multipart_download(
+                    rt = self.download_file(
                         _cos_path, _local_path, _http_headers, _size=_size, **kwargs)
                     if 0 == rt:
                         _success_num += 1
@@ -1451,53 +1455,20 @@ class Interface(object):
                     return -1
         return 0
 
-    # 简单下载
-    def single_download(self, cos_path, local_path, _http_headers='{}', **kwargs):
-        cos_path = cos_path.lstrip('/')
-        rt = self.remote2local_sync_check(cos_path, local_path, **kwargs)
-        if 0 != rt:
-            return rt
-        logger.info(u"Download cos://{bucket}/{cos_path}   =>   {local_path}".format(
-            bucket=self._conf._bucket,
-            local_path=local_path,
-            cos_path=cos_path))
-        http_headers = copy.copy(_http_headers)
-        try:
-            http_headers = yaml.safe_load(http_headers)
-            http_headers = mapped(http_headers)
-        except Exception as e:
-            logger.warn("Http_haeder parse error.")
-            logger.warn(to_unicode(e))
-            return -1
-        try:
-            rt = self._client.get_object(
-                Bucket=self._conf._bucket,
-                Key=cos_path,
-                **http_headers
-            )
-            dir_path = os.path.dirname(local_path)
-            if os.path.isdir(dir_path) is False and dir_path != '':
-                try:
-                    os.makedirs(dir_path, 0o755)
-                except Exception as e:
-                    pass
-            fstream = rt['Body'].get_raw_stream()
-            chunk_size = 1024 * 1024
-            with open(local_path, 'wb') as f:
-                while True:
-                    chunk_data = fstream.read(chunk_size)
-                    chunk_len = len(chunk_data)
-                    if (chunk_len == 0):
-                        break
-                    f.write(chunk_data)
-                f.flush()
-            return 0
-        except Exception as e:
-            logger.warn(str(e))
-            return -1
-
-    # 分块下载
-    def multipart_download(self, cos_path, local_path, _http_headers='{}', **kwargs):
+    def download_file(self, cos_path, local_path, _http_headers='{}', **kwargs):
+        if "_size" in kwargs:
+            file_size = int(kwargs["_size"])
+        else:
+            # head操作获取文件大小
+            try:
+                rt = self._client.head_object(
+                    Bucket=self._conf._bucket,
+                    Key=cos_path
+                )
+                file_size = int(rt['Content-Length'])
+            except Exception as e:
+                logger.warn(str(e))
+                return -1
         cos_path = cos_path.lstrip('/')
         rt = self.remote2local_sync_check(cos_path, local_path, **kwargs)
         if 0 != rt:
@@ -1510,12 +1481,7 @@ class Interface(object):
             _http_headers = yaml.safe_load(_http_headers)
             _http_headers = mapped(_http_headers)
         except Exception as e:
-            logger.warn("Http_haeder parse error.")
-            logger.warn(to_unicode(e))
-            return -1
-        try:
-            file_size = kwargs['_size']
-        except Exception as e:
+            logger.warn("Http_header parse error.")
             logger.warn(to_unicode(e))
             return -1
 
@@ -1526,50 +1492,57 @@ class Interface(object):
                 os.makedirs(dir_path, 0o755)
             except Exception as e:
                 pass
-        try:
-            self._pbar = tqdm(total=file_size, unit='B', ncols=80,
-                              disable=self._silence, unit_divisor=1024, unit_scale=True)
-            self.consumed_bytes = 0
-            self._client.download_file(
-                Bucket=self._conf._bucket,
-                Key=cos_path,
-                DestFilePath=local_path,
-                PartSize=self._conf._part_size,
-                MAXThread=self._conf._max_thread,
-                EnableCRC=True,
-                progress_callback=self.percentage,
-                **_http_headers
-            )
-        except Exception as e:
-            logger.warn()
-            logger.warn(to_unicode(e))
-            return -1
-        finally:
-            self._pbar.close()
+        if file_size <= self._multidownload_threshold:
+            try:
+                self._client.download_file(
+                        Bucket=self._conf._bucket,
+                        Key=cos_path,
+                        DestFilePath=local_path,
+                        PartSize=self._conf._part_size,
+                        MAXThread=self._conf._max_thread,
+                        EnableCRC=False,
+                        **_http_headers
+                    )
+            except CosServiceError as e:
+                logger.info(u"Download cos://{bucket}/{cos_path}   =>   {local_path} failed".format(
+                    bucket=self._conf._bucket,
+                    local_path=local_path,
+                    cos_path=cos_path))
+                logger.warn(e.get_error_code())
+                return -1
+            except Exception as e:
+                logger.warn(e)
+                return -1
+        else:
+            try:
+                self._pbar = tqdm(total=file_size, unit='B', ncols=80,
+                                    disable=self._silence, unit_divisor=1024, unit_scale=True)
+                self.consumed_bytes = 0  
+                self._client.download_file(
+                    Bucket=self._conf._bucket,
+                    Key=cos_path,
+                    DestFilePath=local_path,
+                    PartSize=self._conf._part_size,
+                    MAXThread=self._conf._max_thread,
+                    EnableCRC=False,
+                    progress_callback=self.percentage,
+                    **_http_headers
+                )
+            except CosServiceError as e:
+                logger.info(u"Download cos://{bucket}/{cos_path}   =>   {local_path} failed".format(
+                    bucket=self._conf._bucket,
+                    local_path=local_path,
+                    cos_path=cos_path))
+                traceback.print_exc(file=sys.stdout)
+                logger.warn(e.get_error_code())
+                return -1
+            except Exception as e:
+                traceback.print_exc(file=sys.stdout)
+                logger.warn(e)
+                return -1
+            finally:
+                self._pbar.close()
         return 0
-
-    def download_file(self, cos_path, local_path, _http_headers='{}', **kwargs):
-        # head操作获取文件大小
-        try:
-            rt = self._client.head_object(
-                Bucket=self._conf._bucket,
-                Key=cos_path
-            )
-            file_size = int(rt['Content-Length'])
-        except Exception as e:
-            logger.warn(str(e))
-            return -1
-        try:
-            if file_size <= self._multidownload_threshold or kwargs['num'] == 1:
-                rt = self.single_download(
-                    cos_path, local_path, _http_headers, **kwargs)
-                return rt
-            else:
-                rt = self.multipart_download(
-                    cos_path, local_path, _http_headers, _size=file_size, **kwargs)
-                return rt
-        except Exception as e:
-            logger.warn(to_unicode(e))
 
     def restore_folder(self, cos_path, **kwargs):
         self._inner_threadpool = SimpleThreadPool(self._conf._max_thread)
