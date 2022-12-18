@@ -340,7 +340,7 @@ class Interface(object):
             return -1
 
     def local2remote_sync_check(self, local_path, cos_path, **kwargs):
-        is_include = is_include_file(cos_path, kwargs['include'])
+        is_include = is_include_file(local_path, kwargs['include'])
         is_ignore = is_ignore_file(local_path, kwargs['ignore'])
         if not is_include or is_ignore:
             logger.debug(u"Skip {local_path}".format(
