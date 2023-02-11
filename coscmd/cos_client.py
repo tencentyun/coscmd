@@ -355,6 +355,7 @@ class Interface(object):
                 )
             except Exception:
                 return 0
+            rt = {}
             _size = 0
             _md5 = "-"
             if 'x-cos-meta-md5' in rt:
@@ -389,7 +390,7 @@ class Interface(object):
         try:
             _http_header = yaml.safe_load(_http_headers)
         except Exception as e:
-            logger.warn("Http_haeder parse error.")
+            logger.warn("Http_header parse error.")
             logger.warn(to_unicode(e))
             return -1
         try:
@@ -448,7 +449,7 @@ class Interface(object):
             http_headers['x-cos-meta-md5'] = _md5
             http_headers = mapped(http_headers)
         except Exception as e:
-            logger.warn("Http_haeder parse error.")
+            logger.warn("Http_header parse error.")
             logger.warn(to_unicode(e))
             return -1
 
@@ -709,7 +710,7 @@ class Interface(object):
             _http_header = yaml.safe_load(_http_headers)
             kwargs = mapped(_http_header)
         except Exception as e:
-            logger.warn("Http_haeder parse error.")
+            logger.warn("Http_header parse error.")
             logger.warn(to_unicode(e))
             return -1
         try:

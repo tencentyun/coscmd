@@ -71,7 +71,7 @@ def mapped(headers):
         elif i.startswith('x-cos-meta-'):
             _meta[i] = headers[i]
         else:
-            raise Exception('No Parameter Named ' + i + ' Please Check It')
+            _headers[headers[i]] = headers[i]
     if len(_meta) > 0:
         _headers['Metadata'] = _meta
     return _headers

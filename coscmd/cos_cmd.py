@@ -921,7 +921,7 @@ def command_thread():
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
     logger_qcloud_cos = logging.getLogger('qcloud_cos')
-    logger_qcloud_cos.setLevel(logging.WARN)
+    logger_qcloud_cos.setLevel(logging.ERROR)
     if args.debug:
         logger.setLevel(logging.DEBUG)
         console.setLevel(logging.DEBUG)
