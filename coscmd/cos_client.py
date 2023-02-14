@@ -348,6 +348,7 @@ class Interface(object):
                 local_path=local_path))
             return -2
         if kwargs['sync'] is True:
+            rt = {}
             try:
                 rt = self._client.head_object(
                     Bucket=self._conf._bucket,
@@ -355,7 +356,6 @@ class Interface(object):
                 )
             except Exception:
                 return 0
-            rt = {}
             _size = 0
             _md5 = "-"
             if 'x-cos-meta-md5' in rt:
