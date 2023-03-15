@@ -68,10 +68,8 @@ def mapped(headers):
     for i in headers:
         if i in maplist:
             _headers[maplist[i]] = headers[i]
-        elif i.startswith('x-cos-meta-'):
-            _meta[i] = headers[i]
         else:
-            _headers[headers[i]] = headers[i]
+            _meta[i] = headers[i]
     if len(_meta) > 0:
         _headers['Metadata'] = _meta
     return _headers
