@@ -79,8 +79,8 @@ class CosS3Auth(AuthBase):
 
 
 if __name__ == "__main__":
-    url = 'http://Lewzylu01-1252448703.cn-south.myqcloud.com/a.txt'
+    url = 'http://test-1234567890.region.myqcloud.com/a.txt'
     request = requests.session()
-    secret_id = 'AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00'
-    secret_key = 'ciivKvnnrMvSvQpMAWuIz12pThGGlWRW'
+    secret_id = ''
+    secret_key = ''
     rt = request.get(url=url+"", auth=CosS3Auth(secret_id, secret_key))
