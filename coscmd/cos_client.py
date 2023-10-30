@@ -1493,6 +1493,8 @@ class Interface(object):
                 os.makedirs(dir_path, 0o755)
             except Exception as e:
                 pass
+        if kwargs["versionId"] != "":
+            _http_headers["VersionId"] = kwargs["versionId"]
         if file_size <= self._multidownload_threshold:
             try:
                 self._client.download_file(

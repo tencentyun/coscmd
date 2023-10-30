@@ -291,6 +291,7 @@ class Op(object):
             kwargs['include'] = args.include.split(',')
             kwargs['skipmd5'] = args.skipmd5
             kwargs['delete'] = args.delete
+            kwargs['versionId'] = args.versionId
             kwargs['yes'] = args.yes
             if args.recursive:
                 rt = Interface.download_folder(args.cos_path, args.local_path, args.headers, **kwargs)
@@ -793,7 +794,7 @@ def command_thread():
     parser_download.add_argument('-r', '--recursive', help="Download recursively when upload directory", action="store_true", default=False)
     parser_download.add_argument('-s', '--sync', help="Download and skip the same file", action="store_true", default=False)
     parser_download.add_argument('-H', '--headers', help="Specify HTTP headers", type=str, default='{}')
-    parser_download.add_argument('--versionId', help='Specify versionId of object to list', type=str, default="")
+    parser_download.add_argument('--versionId', help='Specify versionId of object to download', type=str, default="")
     parser_download.add_argument('--include', help='Specify filter rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="*")
     parser_download.add_argument('--ignore', help='Specify ignored rules, separated by commas; Example: *.txt,*.docx,*.ppt', type=str, default="")
     parser_download.add_argument('--skipmd5', help='Download sync without check md5, only check filename and filesize', action="store_true", default=False)
