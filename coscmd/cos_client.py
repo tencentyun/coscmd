@@ -44,8 +44,8 @@ logger = logging.getLogger("coscmd")
 class CoscmdConfig(object):
 
     def __init__(self, appid, region, endpoint, bucket, secret_id, secret_key, token=None,
-                 part_size=1, max_thread=5, schema='https', anonymous=False, verify='md5', retry=2, timeout=60, silence=False, 
-                 multiupload_threshold=100, multidownload_threshold=100,
+                 part_size=1, max_thread=5, schema='https', anonymous=False, verify='md5', retry=2, timeout=60, silence=False,
+                 multiupload_threshold=100, multidownload_threshold=100, enable_old_domain=True, enable_internal_domain=True,
                  *args, **kwargs):
         self._appid = appid
         self._region = region
@@ -63,8 +63,10 @@ class CoscmdConfig(object):
         self._retry = retry
         self._timeout = timeout
         self._silence = silence
-        self._multiupload_threshold=multiupload_threshold
-        self._multidownload_threshold=multidownload_threshold
+        self._multiupload_threshold = multiupload_threshold
+        self._multidownload_threshold = multidownload_threshold
+        self._enable_old_domain = enable_old_domain
+        self._enable_internal_domain = enable_internal_domain,
         self._ua = 'coscmd-v' + Version
         logger.debug("config parameter-> appid: {appid}, region: {region}, endpoint: {endpoint}, bucket: {bucket}, part_size: {part_size}, max_thread: {max_thread}".format(
             appid=appid,
@@ -131,6 +133,8 @@ class Interface(object):
         self._inner_threadpool = SimpleThreadPool(1)
         self._multiupload_threshold = conf._multiupload_threshold * 1024 * 1024
         self._multidownload_threshold = conf._multidownload_threshold * 1024 * 1024
+        self._enable_old_domain = True
+        self._enable_internal_domain = True,
         self.consumed_bytes = 0
         try:
             if conf._endpoint != "":
@@ -155,7 +159,7 @@ class Interface(object):
             self._client = qcloud_cos.CosS3Client(sdk_config, self._retry)
         except Exception as e:
             logger.warn(to_unicode(e))
-            raise(e)
+            raise (e)
         if session is None:
             self._session = requests.session()
         else:
@@ -279,7 +283,7 @@ class Interface(object):
         upload_filelist = []
         # BFS上传文件夹
         try:
-            while(not q.empty()):
+            while (not q.empty()):
                 [local_path, cos_path] = q.get()
                 local_path = to_unicode(local_path)
                 cos_path = to_unicode(cos_path)
@@ -394,35 +398,20 @@ class Interface(object):
             logger.warn(to_unicode(e))
             return -1
         try:
-            if len(local_path) == 0:
-                data = ""
-            else:
-                with open(local_path, 'rb') as File:
-                    data = File.read()
+            http_header = _http_header
+            http_header['x-cos-meta-md5'] = _md5
+            http_headers = mapped(http_header)
+            self._client.put_object_from_local_file(
+                Bucket=self._conf._bucket,
+                LocalFilePath=local_path,
+                Key=cos_path,
+                EnableMD5=(not kwargs['skipmd5']),
+                **http_headers
+            )
         except Exception as e:
+            logger.warn("Upload file failed")
             logger.warn(to_unicode(e))
-            return 0
-        url = self._conf.uri(path=quote(to_printable_str(cos_path)))
-        for j in range(self._retry):
-            try:
-                if j > 0:
-                    logger.info(u"Retry to upload {local_path}   =>   cos://{bucket}/{cos_path}".format(
-                        bucket=self._conf._bucket,
-                        local_path=local_path,
-                        cos_path=cos_path))
-                http_header = _http_header
-                http_header['x-cos-meta-md5'] = _md5
-                rt = self._session.put(url=url,
-                                       auth=CosS3Auth(self._conf), data=data, headers=http_header, timeout=self._timeout)
-                if rt.status_code == 200:
-                    return 0
-                else:
-                    raise Exception(response_info(rt))
-            except Exception as e:
-                self._session.close()
-                self._session = requests.session()
-                logger.warn(to_unicode(e))
-                time.sleep(2**j)
+            return -1
         return -1
 
     def multipart_upload(self, local_path, cos_path, _http_headers='{}', **kwargs):
@@ -1498,14 +1487,14 @@ class Interface(object):
         if file_size <= self._multidownload_threshold:
             try:
                 self._client.download_file(
-                        Bucket=self._conf._bucket,
-                        Key=cos_path,
-                        DestFilePath=local_path,
-                        PartSize=self._conf._part_size,
-                        MAXThread=self._conf._max_thread,
-                        EnableCRC=False,
-                        **_http_headers
-                    )
+                    Bucket=self._conf._bucket,
+                    Key=cos_path,
+                    DestFilePath=local_path,
+                    PartSize=self._conf._part_size,
+                    MAXThread=self._conf._max_thread,
+                    EnableCRC=False,
+                    **_http_headers
+                )
             except CosServiceError as e:
                 logger.info(u"Download cos://{bucket}/{cos_path}   =>   {local_path} failed".format(
                     bucket=self._conf._bucket,
@@ -1519,8 +1508,8 @@ class Interface(object):
         else:
             try:
                 self._pbar = tqdm(total=file_size, unit='B', ncols=80,
-                                    disable=self._silence, unit_divisor=1024, unit_scale=True)
-                self.consumed_bytes = 0  
+                                  disable=self._silence, unit_divisor=1024, unit_scale=True)
+                self.consumed_bytes = 0
                 self._client.download_file(
                     Bucket=self._conf._bucket,
                     Key=cos_path,
