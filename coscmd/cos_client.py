@@ -45,7 +45,7 @@ class CoscmdConfig(object):
 
     def __init__(self, appid, region, endpoint, bucket, secret_id, secret_key, token=None,
                  part_size=1, max_thread=5, schema='https', anonymous=False, verify='md5', retry=2, timeout=60, silence=False,
-                 multiupload_threshold=100, multidownload_threshold=100, enable_old_domain=True, enable_internal_domain=True,
+                 multiupload_threshold=100, multidownload_threshold=100, enable_old_domain=True, enable_internal_domain=True, auto_switch_domain=True,
                  *args, **kwargs):
         self._appid = appid
         self._region = region
@@ -67,6 +67,7 @@ class CoscmdConfig(object):
         self._multidownload_threshold = multidownload_threshold
         self._enable_old_domain = enable_old_domain
         self._enable_internal_domain = enable_internal_domain,
+        self._auto_switch_domain = auto_switch_domain
         self._ua = 'coscmd-v' + Version
         logger.debug("config parameter-> appid: {appid}, region: {region}, endpoint: {endpoint}, bucket: {bucket}, part_size: {part_size}, max_thread: {max_thread}".format(
             appid=appid,
@@ -133,8 +134,10 @@ class Interface(object):
         self._inner_threadpool = SimpleThreadPool(1)
         self._multiupload_threshold = conf._multiupload_threshold * 1024 * 1024
         self._multidownload_threshold = conf._multidownload_threshold * 1024 * 1024
-        self._enable_old_domain = True
-        self._enable_internal_domain = True,
+        self._enable_old_domain = conf._enable_old_domain,
+        self._enable_internal_domain = conf._enable_internal_domain,
+        self._auto_switch_domain = conf._auto_switch_domain
+
         self.consumed_bytes = 0
         try:
             if conf._endpoint != "":
@@ -146,7 +149,10 @@ class Interface(object):
                                                   Scheme=conf._schema,
                                                   Anonymous=conf._anonymous,
                                                   UA=self._ua,
-                                                  Timeout=self._timeout)
+                                                  Timeout=self._timeout,
+                                                  EnableOldDomain=self._enable_old_domain,
+                                                  EnableInternalDomain=self._enable_internal_domain,
+                                                  AutoSwitchDomainOnRetry=self._auto_switch_domain)
             else:
                 sdk_config = qcloud_cos.CosConfig(Region=conf._region,
                                                   SecretId=conf._secret_id,
@@ -155,7 +161,10 @@ class Interface(object):
                                                   Scheme=conf._schema,
                                                   Anonymous=conf._anonymous,
                                                   UA=self._ua,
-                                                  Timeout=self._timeout)
+                                                  Timeout=self._timeout,
+                                                  EnableOldDomain=self._enable_old_domain,
+                                                  EnableInternalDomain=self._enable_internal_domain,
+                                                  AutoSwitchDomainOnRetry=self._auto_switch_domain)
             self._client = qcloud_cos.CosS3Client(sdk_config, self._retry)
         except Exception as e:
             logger.warn(to_unicode(e))
