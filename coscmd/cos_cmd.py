@@ -170,15 +170,25 @@ def load_conf():
                 else:
                     enable_old_domain = False
             except Exception:
-                enable_old_domain = False
+                enable_old_domain = True
             try:
-                enable_internal_domain = cp.get('common', 'enable_internal_domain')
+                enable_internal_domain = cp.get(
+                    'common', 'enable_internal_domain')
                 if enable_internal_domain == 'True' or enable_internal_domain == 'true':
                     enable_internal_domain = True
                 else:
                     enable_internal_domain = False
             except Exception:
-                enable_internal_domain = False
+                enable_internal_domain = True
+            try:
+                auto_switch_domain = cp.get(
+                    'common', 'auto_switch_domain')
+                if auto_switch_domain == 'True' or auto_switch_domain == 'true':
+                    auto_switch_domain = True
+                else:
+                    auto_switch_domain = False
+            except Exception:
+                auto_switch_domain = True
             try:
                 retry = int(cp.get('common', 'retry'))
             except Exception:
@@ -232,7 +242,8 @@ def load_conf():
                 multiupload_threshold=multiupload_threshold,
                 multidownload_threshold=multidownload_threshold,
                 enable_old_domain=enable_old_domain,
-                enable_internal_domain=enable_internal_domain
+                enable_internal_domain=enable_internal_domain,
+                auto_switch_domain=auto_switch_domain,
             )
             return conf
     except Exception as e:
