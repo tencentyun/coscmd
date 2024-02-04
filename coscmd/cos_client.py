@@ -985,31 +985,27 @@ class Interface(object):
             if query_yes_no(u"WARN: you are deleting the file in the '{cos_path}' cos_path, please make sure".format(cos_path=cos_path)) is False:
                 return -3
         _versionId = kwargs["versionId"]
-        url = self._conf.uri(path="{path}?versionId={versionId}"
-                             .format(path=quote(to_printable_str(cos_path)), versionId=_versionId))
         try:
-            rt = self._session.delete(url=url, auth=CosS3Auth(self._conf))
-            logger.debug(u"init resp, status code: {code}, headers: {headers}".format(
-                code=rt.status_code,
-                headers=rt.headers))
-            if rt.status_code == 204 or rt.status_code == 200:
-                if _versionId == "":
-                    logger.info(u"Delete cos://{bucket}/{cos_path}".format(
-                        bucket=self._conf._bucket,
-                        cos_path=cos_path))
-                else:
-                    logger.info(u"Delete cos://{bucket}/{cos_path}?versionId={versionId}".format(
-                        bucket=self._conf._bucket,
-                        cos_path=cos_path,
-                        versionId=_versionId))
-                return 0
+            if _versionId == "":
+                self._client.delete_object(
+                    Bucket=self._conf._bucket,
+                    Key=cos_path)
+                logger.info(u"Delete cos://{bucket}/{cos_path}".format(
+                    bucket=self._conf._bucket,
+                    cos_path=cos_path))
             else:
-                logger.warn(response_info(rt))
-                return -1
+                self._client.delete_object(
+                    Bucket=self._conf._bucket,
+                    Key=cos_path,
+                    VersionId=_versionId)
+                logger.info(u"Delete cos://{bucket}/{cos_path}?versionId={versionId}".format(
+                    bucket=self._conf._bucket,
+                    cos_path=cos_path,
+                    versionId=_versionId))
+            return 0
         except Exception as e:
             logger.warn(str(e))
             return -1
-        return -1
 
     def list_multipart_uploads(self, cos_path):
         logger.debug("getting uploaded parts")
