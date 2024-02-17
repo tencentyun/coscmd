@@ -847,7 +847,7 @@ class Interface(object):
         # delete the remaining files
         if self._file_num == 0:
             logger.info(u"The directory does not exist")
-            return -1
+            return 0
         logger.info(u"Delete the remaining files again")
         self.delete_folder_redo(cos_path, **kwargs)
         self._fail_num = self._file_num - self._have_finished
