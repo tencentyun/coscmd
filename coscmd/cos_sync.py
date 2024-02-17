@@ -2,9 +2,12 @@
 import fnmatch
 import os
 import sys
-from queue import Queue
+from six.moves.queue import Queue
 from qcloud_cos import CosServiceError
-from coscmd.cos_comm import *
+if sys.version > '3':
+    from coscmd.cos_comm import *
+else:
+    from cos_comm import *
 
 logger = logging.getLogger("coscmd")
 
@@ -98,8 +101,7 @@ def local2remote_sync_delete(src, dst, **kwargs):
                 if 'Contents' in rt:
                     for _file in rt['Contents']:
                         _cos_path = to_unicode(_file['Key'])
-                        _local_path = src['Path'] + \
-                            _cos_path[len(dst['Path']):]
+                        _local_path = src['Path'] + _cos_path[len(dst['Path']):]
                         _local_path = to_unicode(_local_path)
                         if os.path.isfile(_local_path) is False:
                             deleteList['Object'].append({'Key': _cos_path})
@@ -125,7 +127,7 @@ def remote2local_sync_delete(src, dst, **kwargs):
     fail_num = 0
     # BFS上传文件夹
     try:
-        while (not q.empty()):
+        while(not q.empty()):
             [local_path, cos_path] = q.get()
             local_path = to_unicode(local_path)
             cos_path = to_unicode(cos_path)
@@ -189,8 +191,7 @@ def remote2remote_sync_delete(src, dst, **kwargs):
                 if 'Contents' in rt:
                     for _file in rt['Contents']:
                         _cos_path = to_unicode(_file['Key'])
-                        _source_path = src['Path'] + \
-                            _cos_path[len(dst['Path']):]
+                        _source_path = src['Path'] + _cos_path[len(dst['Path']):]
                         _source_path = to_unicode(_source_path)
                         try:
                             src['Client'].head_object(

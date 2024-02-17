@@ -1,53 +1,64 @@
 # -*- coding: utf-8 -*-
+from six import text_type, binary_type
+from prettytable import PrettyTable
+from os import path
+from contextlib import closing
 from xml.dom import minidom
+from six import text_type
 from hashlib import md5, sha1
+from tqdm import tqdm
 import time
+import requests
+import logging
 import sys
 import os
+import base64
 import datetime
 import pytz
-import logging
+import yaml
+import fnmatch
+import copy
 
 maplist = {
-    'x-cos-copy-source-If-Modified-Since': 'CopySourceIfModifiedSince',
-    'Content-Length': 'ContentLength',
-    'x-cos-server-side-encryption-cos-kms-key-id': 'SSEKMSKeyId',
-    'x-cos-server-side-encryption-customer-algorithm': 'SSECustomerAlgorithm',
-    'If-Unmodified-Since': 'IfUnmodifiedSince',
-    'response-content-language': 'ResponseContentLanguage',
-    'Metadata': 'Metadata',
-    'x-cos-grant-read': 'GrantRead',
-    'x-cos-copy-source-If-None-Match': 'CopySourceIfNoneMatch',
-    'Content-Language': 'ContentLanguage',
-    'x-cos-server-side-encryption': 'ServerSideEncryption',
-    'response-expires': 'ResponseExpires',
-    'Expires': 'Expires',
-    'Content-MD5': 'ContentMD5',
-    'response-content-disposition': 'ResponseContentDisposition',
-    'Referer': 'Referer',
-    'x-cos-grant-full-control': 'GrantFullControl',
-    'response-content-encoding': 'ResponseContentEncoding',
-    'Content-Disposition': 'ContentDisposition',
-    'If-Modified-Since': 'IfModifiedSince',
-    'versionId': 'VersionId',
-    'response-content-type': 'ResponseContentType',
-    'Range': 'Range',
-    'x-cos-server-side-encryption-customer-key-MD5': 'SSECustomerKeyMD5',
-    'x-cos-acl': 'ACL',
-    'x-cos-copy-source-If-Match': 'CopySourceIfMatch',
-    'Content-Encoding': 'ContentEncoding',
-    'x-cos-copy-source-If-Unmodified-Since': 'CopySourceIfUnmodifiedSince',
-    'response-cache-control': 'ResponseCacheControl',
-    'x-cos-server-side-encryption-customer-key': 'SSECustomerKey',
-    'x-cos-grant-write': 'GrantWrite',
-    'If-Match': 'IfMatch',
-    'x-cos-storage-class': 'StorageClass',
-    'Cache-Control': 'CacheControl',
-    'If-None-Match': 'IfNoneMatch',
-    'Content-Type': 'ContentType',
-    'Pic-Operations': 'PicOperations',
-    'x-cos-traffic-limit': 'TrafficLimit',
-}
+            'x-cos-copy-source-If-Modified-Since': 'CopySourceIfModifiedSince',
+            'Content-Length': 'ContentLength',
+            'x-cos-server-side-encryption-cos-kms-key-id': 'SSEKMSKeyId',
+            'x-cos-server-side-encryption-customer-algorithm': 'SSECustomerAlgorithm',
+            'If-Unmodified-Since': 'IfUnmodifiedSince',
+            'response-content-language': 'ResponseContentLanguage',
+            'Metadata': 'Metadata',
+            'x-cos-grant-read': 'GrantRead',
+            'x-cos-copy-source-If-None-Match': 'CopySourceIfNoneMatch',
+            'Content-Language': 'ContentLanguage',
+            'x-cos-server-side-encryption': 'ServerSideEncryption',
+            'response-expires': 'ResponseExpires',
+            'Expires': 'Expires',
+            'Content-MD5': 'ContentMD5',
+            'response-content-disposition': 'ResponseContentDisposition',
+            'Referer': 'Referer',
+            'x-cos-grant-full-control': 'GrantFullControl',
+            'response-content-encoding': 'ResponseContentEncoding',
+            'Content-Disposition': 'ContentDisposition',
+            'If-Modified-Since': 'IfModifiedSince',
+            'versionId': 'VersionId',
+            'response-content-type': 'ResponseContentType',
+            'Range': 'Range',
+            'x-cos-server-side-encryption-customer-key-MD5': 'SSECustomerKeyMD5',
+            'x-cos-acl': 'ACL',
+            'x-cos-copy-source-If-Match': 'CopySourceIfMatch',
+            'Content-Encoding': 'ContentEncoding',
+            'x-cos-copy-source-If-Unmodified-Since': 'CopySourceIfUnmodifiedSince',
+            'response-cache-control': 'ResponseCacheControl',
+            'x-cos-server-side-encryption-customer-key': 'SSECustomerKey',
+            'x-cos-grant-write': 'GrantWrite',
+            'If-Match': 'IfMatch',
+            'x-cos-storage-class': 'StorageClass',
+            'Cache-Control': 'CacheControl',
+            'If-None-Match': 'IfNoneMatch',
+            'Content-Type': 'ContentType',
+            'Pic-Operations': 'PicOperations',
+            'x-cos-traffic-limit': 'TrafficLimit',
+        }
 
 
 def mapped(headers):
@@ -66,23 +77,21 @@ def mapped(headers):
 
 def to_bytes(s):
     """将字符串转为bytes"""
-    if isinstance(s, str):
+    if isinstance(s, text_type):
         try:
             return s.encode('utf-8')
         except UnicodeEncodeError as e:
-            raise Exception(
-                'your unicode strings can not encoded in utf8, utf8 support only!')
+            raise Exception('your unicode strings can not encoded in utf8, utf8 support only!')
     return s
 
 
 def to_unicode(s):
     """将字符串转为unicode"""
-    if isinstance(s, bytes):
+    if isinstance(s, binary_type):
         try:
             return s.decode('utf-8')
         except UnicodeDecodeError as e:
-            raise Exception(
-                'your bytes strings can not be decoded in utf8, utf8 support only!')
+            raise Exception('your bytes strings can not be decoded in utf8, utf8 support only!')
     return s
 
 
@@ -105,7 +114,7 @@ def gen_local_file(filename, filesize):
 
 
 def to_printable_str(s):
-    if isinstance(s, str):
+    if isinstance(s, text_type):
         return s.encode('utf-8')
     else:
         return s
@@ -141,7 +150,10 @@ def query_yes_no(question, default="no"):
     while True:
         sys.stdout.write(question + prompt)
         sys.stdout.flush()
-        choice = input()
+        if sys.version > '3':
+            choice = input()
+        else:
+            choice = raw_input()
         if default is not None and choice == '':
             return valid[default]
         elif choice in valid:

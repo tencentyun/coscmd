@@ -1,23 +1,42 @@
 # -*- coding=utf-8
 from prettytable import PrettyTable
 from os import path
+from contextlib import closing
 from xml.dom import minidom
+from six import text_type
+from six.moves.queue import Queue
+from six.moves.urllib.parse import quote, unquote
 from hashlib import md5, sha1
 import time
 import requests
 import logging
 import sys
 import os
+import base64
+import datetime
+import pytz
 import yaml
-import qcloud_cos
+import fnmatch
+import copy
+import io
 import traceback
 from tqdm import tqdm
-from urllib.parse import quote
-from coscmd.cos_global import Version
-from coscmd.cos_auth import CosS3Auth
-from coscmd.cos_threadpool import SimpleThreadPool
-from coscmd.cos_comm import *
-from coscmd.cos_sync import *
+from logging.handlers import RotatingFileHandler
+from wsgiref.handlers import format_date_time
+import qcloud_cos
+
+if sys.version > '3':
+    from coscmd.cos_global import Version
+    from coscmd.cos_auth import CosS3Auth
+    from coscmd.cos_threadpool import SimpleThreadPool
+    from coscmd.cos_comm import *
+    from coscmd.cos_sync import *
+else:
+    from cos_global import Version
+    from cos_auth import CosS3Auth
+    from cos_threadpool import SimpleThreadPool
+    from cos_comm import *
+    from cos_sync import *
 
 logger = logging.getLogger("coscmd")
 
@@ -148,7 +167,7 @@ class Interface(object):
                                                   AutoSwitchDomainOnRetry=self._auto_switch_domain)
             self._client = qcloud_cos.CosS3Client(sdk_config, self._retry)
         except Exception as e:
-            logger.warning(to_unicode(e))
+            logger.warn(to_unicode(e))
             raise (e)
         if session is None:
             self._session = requests.session()
@@ -235,7 +254,7 @@ class Interface(object):
                         multiupload_filelist.append([_local_path, _cos_path])
                 except Exception as e:
                     _fail_num += 1
-                    logger.warning(to_unicode(e))
+                    logger.warn(to_unicode(e))
             self._inner_threadpool.wait_completion()
             result = self._inner_threadpool.get_result()
             for worker in result['detail']:
@@ -304,7 +323,7 @@ class Interface(object):
                 _skip_num += _skip
                 _fail_num += _fail
         except Exception as e:
-            logger.warning(to_unicode(e))
+            logger.warn(to_unicode(e))
             return -1
         logger.info(u"{success_files} files uploaded, {skip_files} files skipped, {fail_files} files failed"
                     .format(success_files=_success_num, skip_files=_skip_num, fail_files=_fail_num))
@@ -322,12 +341,12 @@ class Interface(object):
                 ret, del_succ, del_fail = local2remote_sync_delete(
                     src, dst, **kwargs)
                 if ret != 0:
-                    logger.warning("sync delete fail")
+                    logger.warn("sync delete fail")
                 else:
                     logger.info(u"{succ_files} files sync deleted, {fail_files} files sync failed"
                                 .format(succ_files=del_succ, fail_files=del_fail))
             except Exception as e:
-                logger.warning(to_unicode(e))
+                logger.warn(to_unicode(e))
         if _fail_num == 0:
             return 0
         else:
@@ -384,8 +403,8 @@ class Interface(object):
         try:
             _http_header = yaml.safe_load(_http_headers)
         except Exception as e:
-            logger.warning("Http_header parse error.")
-            logger.warning(to_unicode(e))
+            logger.warn("Http_header parse error.")
+            logger.warn(to_unicode(e))
             return -1
         try:
             http_header = _http_header
@@ -399,10 +418,10 @@ class Interface(object):
                 **http_headers
             )
         except Exception as e:
-            logger.warning("Upload file failed")
-            logger.warning(to_unicode(e))
+            logger.warn("Upload file failed")
+            logger.warn(to_unicode(e))
             return -1
-        return 0
+        return -1
 
     def multipart_upload(self, local_path, cos_path, _http_headers='{}', **kwargs):
         _md5 = ""
@@ -428,8 +447,8 @@ class Interface(object):
             http_headers['x-cos-meta-md5'] = _md5
             http_headers = mapped(http_headers)
         except Exception as e:
-            logger.warning("Http_header parse error.")
-            logger.warning(to_unicode(e))
+            logger.warn("Http_header parse error.")
+            logger.warn(to_unicode(e))
             return -1
 
         try:
@@ -445,8 +464,8 @@ class Interface(object):
                                      EnableMD5=(not kwargs['skipmd5']),
                                      **http_headers)
         except Exception as e:
-            logger.warning("Upload file failed")
-            logger.warning(to_unicode(e))
+            logger.warn("Upload file failed")
+            logger.warn(to_unicode(e))
             return -1
         finally:
             self._pbar.close()
@@ -496,7 +515,7 @@ class Interface(object):
                             dst_path=cos_path))
                         return -2
                 except Exception as e:
-                    logger.warning(to_unicode(e))
+                    logger.warn(to_unicode(e))
                     pass
         return 0
 
@@ -545,8 +564,8 @@ class Interface(object):
                                                          Anonymous=self._conf._anonymous)
                 self._client_source = qcloud_cos.CosS3Client(sdk_config_source)
         except Exception as e:
-            logger.warning(to_unicode(e))
-            logger.warning(u"CopySource is invalid: {copysource}".format(
+            logger.warn(to_unicode(e))
+            logger.warn(u"CopySource is invalid: {copysource}".format(
                 copysource=source_path))
             return -1
         source_schema = source_path.split('/')[0] + '/'
@@ -586,9 +605,9 @@ class Interface(object):
                     break
                 except Exception as e:
                     time.sleep(1 << i)
-                    logger.warning(to_unicode(e))
+                    logger.warn(to_unicode(e))
                 if i + 1 == self._retry:
-                    logger.warning("ListObjects fail")
+                    logger.warn("ListObjects fail")
                     return -1
 
         self._inner_threadpool.wait_completion()
@@ -622,12 +641,12 @@ class Interface(object):
                 ret, del_succ, del_fail = remote2remote_sync_delete(
                     src, dst, **kwargs)
                 if ret != 0:
-                    logger.warning("sync delete fail")
+                    logger.warn("sync delete fail")
                 else:
                     logger.info(u"{succ_files} files sync deleted, {fail_files} files sync failed"
                                 .format(succ_files=del_succ, fail_files=del_fail))
             except Exception as e:
-                logger.warning(to_unicode(e))
+                logger.warn(to_unicode(e))
         if _fail_num == 0:
             return 0
         else:
@@ -677,8 +696,8 @@ class Interface(object):
                                                          Anonymous=self._conf._anonymous)
                 _source_client = qcloud_cos.CosS3Client(sdk_config_source)
         except Exception as e:
-            logger.warning(to_unicode(e))
-            logger.warning(u"CopySource is invalid: {copysource}".format(
+            logger.warn(to_unicode(e))
+            logger.warn(u"CopySource is invalid: {copysource}".format(
                 copysource=source_path))
             return -1
         rt = self.remote2remote_sync_check(copy_source, cos_path, **kwargs)
@@ -689,8 +708,8 @@ class Interface(object):
             _http_header = yaml.safe_load(_http_headers)
             kwargs = mapped(_http_header)
         except Exception as e:
-            logger.warning("Http_header parse error.")
-            logger.warning(to_unicode(e))
+            logger.warn("Http_header parse error.")
+            logger.warn(to_unicode(e))
             return -1
         try:
             if _move:
@@ -721,7 +740,7 @@ class Interface(object):
                                        MAXThread=self._conf._max_thread, **kwargs)
             return 0
         except Exception as e:
-            logger.warning(to_unicode(e))
+            logger.warn(to_unicode(e))
             return -1
 
     def delete_folder(self, cos_path, **kwargs):
@@ -759,7 +778,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warning(to_unicode(e))
+                        logger.warn(to_unicode(e))
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -815,7 +834,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warning(to_unicode(e))
+                        logger.warn(to_unicode(e))
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -885,7 +904,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warning(to_unicode(e))
+                        logger.warn(to_unicode(e))
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -936,7 +955,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warning(to_unicode(e))
+                        logger.warn(to_unicode(e))
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -985,7 +1004,7 @@ class Interface(object):
                     versionId=_versionId))
             return 0
         except Exception as e:
-            logger.warning(str(e))
+            logger.warn(str(e))
             return -1
 
     def list_multipart_uploads(self, cos_path):
@@ -1022,7 +1041,7 @@ class Interface(object):
                         logger.info(u"Key:{key}, UploadId:{uploadid}".format(
                             key=to_unicode(_key), uploadid=_uploadid))
             except Exception as e:
-                logger.warning(to_unicode(e))
+                logger.warn(to_unicode(e))
         logger.info(u" Parts num: {file_num}".format(
             file_num=str(part_num)))
 
@@ -1048,7 +1067,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warning(to_unicode(e))
+                        logger.warn(to_unicode(e))
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -1075,7 +1094,7 @@ class Interface(object):
                                 key=file['Key'],
                                 uploadid=file['UploadId']))
                         except Exception as e:
-                            logger.warning(to_unicode(e))
+                            logger.warn(to_unicode(e))
                             logger.info(u"Abort Key: {key}, UploadId: {uploadid} fail".format(
                                 key=file['Key'],
                                 uploadid=file['UploadId']))
@@ -1087,7 +1106,7 @@ class Interface(object):
             else:
                 return -1
         except Exception as e:
-            logger.warning(to_unicode(e))
+            logger.warn(to_unicode(e))
             return -1
 
     def list_objects(self, cos_path, **kwargs):
@@ -1130,7 +1149,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warning(to_unicode(e))
+                        logger.warn(to_unicode(e))
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -1212,7 +1231,7 @@ class Interface(object):
                         break
                     except Exception as e:
                         time.sleep(1 << i)
-                        logger.warning(to_unicode(e))
+                        logger.warn(to_unicode(e))
                     if i + 1 == self._retry:
                         return -1
                 if 'IsTruncated' in rt:
@@ -1282,7 +1301,7 @@ class Interface(object):
             return 0
         except Exception as e:
             # head请求没有xml body
-            logger.warning(str(e))
+            logger.warn(str(e))
         return -1
 
     def download_folder(self, cos_path, local_path, _http_headers='{}', **kwargs):
@@ -1333,8 +1352,8 @@ class Interface(object):
                             multidownload_filelist.append(
                                 [_cos_path, _local_path, _size])
             except Exception as e:
-                logger.warning(to_unicode(e))
-                logger.warning("List objects failed")
+                logger.warn(to_unicode(e))
+                logger.warn("List objects failed")
                 return -1
             self._inner_threadpool.wait_completion()
             result = self._inner_threadpool.get_result()
@@ -1374,12 +1393,12 @@ class Interface(object):
                 ret, del_succ, del_fail = remote2local_sync_delete(
                     src, dst, **kwargs)
                 if ret != 0:
-                    logger.warning("sync delete fail")
+                    logger.warn("sync delete fail")
                 else:
                     logger.info(u"{succ_files} files sync deleted, {fail_files} files sync failed"
                                 .format(succ_files=del_succ, fail_files=del_fail))
             except Exception as e:
-                logger.warning(to_unicode(e))
+                logger.warn(to_unicode(e))
         if _fail_num == 0:
             return 0
         else:
@@ -1409,7 +1428,7 @@ class Interface(object):
                             Key=cos_path
                         )
                     except Exception as e:
-                        logger.warning(str(e))
+                        logger.warn(str(e))
                         return -1
                     _size = 0
                     _md5 = "-"
@@ -1426,7 +1445,7 @@ class Interface(object):
                             cos_path=cos_path))
                         return -2
                 else:
-                    logger.warning(
+                    logger.warn(
                         u"The file {file} already exists, please use -f to overwrite the file".format(file=local_path))
                     return -1
         return 0
@@ -1443,7 +1462,7 @@ class Interface(object):
                 )
                 file_size = int(rt['Content-Length'])
             except Exception as e:
-                logger.warning(str(e))
+                logger.warn(str(e))
                 return -1
         cos_path = cos_path.lstrip('/')
         rt = self.remote2local_sync_check(cos_path, local_path, **kwargs)
@@ -1457,8 +1476,8 @@ class Interface(object):
             _http_headers = yaml.safe_load(_http_headers)
             _http_headers = mapped(_http_headers)
         except Exception as e:
-            logger.warning("Http_header parse error.")
-            logger.warning(to_unicode(e))
+            logger.warn("Http_header parse error.")
+            logger.warn(to_unicode(e))
             return -1
 
         # 如果路径不存在，则创建文件夹
@@ -1486,10 +1505,10 @@ class Interface(object):
                     bucket=self._conf._bucket,
                     local_path=local_path,
                     cos_path=cos_path))
-                logger.warning(e.get_error_code())
+                logger.warn(e.get_error_code())
                 return -1
             except Exception as e:
-                logger.warning(e)
+                logger.warn(e)
                 return -1
         else:
             try:
@@ -1512,11 +1531,11 @@ class Interface(object):
                     local_path=local_path,
                     cos_path=cos_path))
                 traceback.print_exc(file=sys.stdout)
-                logger.warning(e.get_error_code())
+                logger.warn(e.get_error_code())
                 return -1
             except Exception as e:
                 traceback.print_exc(file=sys.stdout)
-                logger.warning(e)
+                logger.warn(e)
                 return -1
             finally:
                 self._pbar.close()
@@ -1542,7 +1561,7 @@ class Interface(object):
                     break
                 except Exception as e:
                     time.sleep(1 << i)
-                    logger.warning(to_unicode(e))
+                    logger.warn(to_unicode(e))
                 if i + 1 == self._retry:
                     return -1
             if 'IsTruncated' in rt:
@@ -1591,12 +1610,12 @@ class Interface(object):
             return 0
         except CosServiceError as e:
             if e.get_status_code() == 409:
-                logger.warning(u"cos://{bucket}/{path} already in pogress".format(
+                logger.warn(u"cos://{bucket}/{path} already in pogress".format(
                     bucket=self._conf._bucket,
                     path=cos_path
                 ))
                 return -2
-            logger.warning(e.get_error_code())
+            logger.warn(e.get_error_code())
             return -1
 
     def put_object_acl(self, grant_read, grant_write, grant_full_control, cos_path):
@@ -1617,7 +1636,7 @@ class Interface(object):
         try:
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
             if rt.status_code != 200:
-                logger.warning(response_info(rt))
+                logger.warn(response_info(rt))
                 return False
             root = minidom.parseString(rt.content).documentElement
             owner_id = root.getElementsByTagName("ID")[0].childNodes[0].data
@@ -1634,7 +1653,7 @@ class Interface(object):
                     rootid = ID.split("/")[0]
                     subid = ID.split("/")[1]
                 else:
-                    logger.warning("ID format error!")
+                    logger.warn("ID format error!")
                     return False
                 id = ""
                 if subid != "anyone":
@@ -1670,10 +1689,10 @@ class Interface(object):
             if rt.status_code == 200:
                 return True
             else:
-                logger.warning(response_info(rt))
+                logger.warn(response_info(rt))
                 return False
         except Exception as e:
-            logger.warning(str(e))
+            logger.warn(str(e))
             return False
         return False
 
@@ -1703,10 +1722,10 @@ class Interface(object):
                     print(table)
                 return True
             else:
-                logger.warning(response_info(rt))
+                logger.warn(response_info(rt))
                 return False
         except Exception as e:
-            logger.warning(str(e))
+            logger.warn(str(e))
             return False
         return False
 
@@ -1724,10 +1743,10 @@ class Interface(object):
                     u"Create cos://{bucket}".format(bucket=self._conf._bucket))
                 return True
             else:
-                logger.warning(response_info(rt))
+                logger.warn(response_info(rt))
                 return False
         except Exception as e:
-            logger.warning(str(e))
+            logger.warn(str(e))
             return False
         return True
 
@@ -1753,10 +1772,10 @@ class Interface(object):
                     u"Delete cos://{bucket}".format(bucket=self._conf._bucket))
                 return True
             else:
-                logger.warning(response_info(rt))
+                logger.warn(response_info(rt))
                 return False
         except Exception as e:
-            logger.warning(str(e))
+            logger.warn(str(e))
             return False
         return True
 
@@ -1778,7 +1797,7 @@ class Interface(object):
         try:
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
             if rt.status_code != 200:
-                logger.warning(response_info(rt))
+                logger.warn(response_info(rt))
                 return False
             root = minidom.parseString(rt.content).documentElement
             owner_id = root.getElementsByTagName("ID")[0].childNodes[0].data
@@ -1795,7 +1814,7 @@ class Interface(object):
                     rootid = ID.split("/")[0]
                     subid = ID.split("/")[1]
                 else:
-                    logger.warning(u"ID format error!")
+                    logger.warn(u"ID format error!")
                     return False
                 id = ""
                 if subid != "anyone":
@@ -1831,10 +1850,10 @@ class Interface(object):
             if rt.status_code == 200:
                 return True
             else:
-                logger.warning(response_info(rt))
+                logger.warn(response_info(rt))
                 return False
         except Exception as e:
-            logger.warning(str(e))
+            logger.warn(str(e))
             return False
         return False
 
@@ -1864,10 +1883,10 @@ class Interface(object):
                     print(table)
                 return True
             else:
-                logger.warning(response_info(rt))
+                logger.warn(response_info(rt))
                 return False
         except Exception as e:
-            logger.warning(str(e))
+            logger.warn(str(e))
             return False
         return False
 
@@ -1887,10 +1906,10 @@ class Interface(object):
             if rt.status_code == 200:
                 return True
             else:
-                logger.warning(response_info(rt))
+                logger.warn(response_info(rt))
                 return False
         except Exception as e:
-            logger.warning(str(e))
+            logger.warn(str(e))
             return False
         return False
 
@@ -1908,10 +1927,10 @@ class Interface(object):
                 logger.info(status)
                 return True
             else:
-                logger.warning(response_info(rt))
+                logger.warn(response_info(rt))
                 return False
         except Exception as e:
-            logger.warning(str(e))
+            logger.warn(str(e))
             return False
         return False
 
@@ -1928,7 +1947,7 @@ class Interface(object):
         succ_num = 0
         rt = gen_local_file(filename, filesize)
         if 0 != rt:
-            logger.warning("Create testfile failed")
+            logger.warn("Create testfile failed")
             logger.info("[failure]")
             return -1
         for i in range(test_num):

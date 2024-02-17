@@ -1,13 +1,20 @@
 # -*- coding: utf-8 -*-
 import hmac
 import time
+import urllib
 import hashlib
 import logging
 import requests
-from urllib.parse import urlparse, urlencode, quote, unquote
+import sys
+from six.moves.urllib.parse import quote, urlparse, unquote, urlencode
 from requests.auth import AuthBase
-from coscmd.cos_global import Version
-from coscmd.cos_comm import to_bytes
+
+if sys.version > '3':
+    from coscmd.cos_global import Version
+    from coscmd.cos_comm import to_bytes
+else:
+    from cos_global import Version
+    from cos_comm import to_bytes
 
 logger = logging.getLogger("coscmd")
 
@@ -28,8 +35,7 @@ class CosS3Auth(AuthBase):
         tmp_r = {}
         rt = urlparse(uri)
         if rt.query != "" and ("&" in rt.query or '=' in rt.query):
-            uri_params = dict(
-                map(lambda s: s.lower().split('='), rt.query.split('&')))
+            uri_params = dict(map(lambda s: s.lower().split('='), rt.query.split('&')))
         elif rt.query != "":
             uri_params = {rt.query: ""}
         else:
@@ -38,36 +44,29 @@ class CosS3Auth(AuthBase):
         tmp_r = r.headers
         r.headers = {}
         r.headers['Host'] = rt.netloc
-        headers = dict([(k.lower(), quote(v).lower())
-                       for k, v in r.headers.items()])
+        headers = dict([(k.lower(), quote(v).lower()) for k, v in r.headers.items()])
         format_str = "{method}\n{host}\n{params}\n{headers}\n".format(
             method=method.lower(),
             host=unquote(rt.path),
             params=urlencode(uri_params),
-            headers='&'.join(map(lambda p: (lambda x, y: "%s=%s" %
-                             (x, y))(*p), sorted(headers.items())))
-        )
+            headers='&'.join(map(lambda p: (lambda x, y: "%s=%s" % (x, y))(*p), sorted(headers.items())))
+         )
         start_sign_time = int(time.time())
-        sign_time = "{bg_time};{ed_time}".format(
-            bg_time=start_sign_time-60, ed_time=start_sign_time + self._expire)
+        sign_time = "{bg_time};{ed_time}".format(bg_time=start_sign_time-60, ed_time=start_sign_time + self._expire)
         sha1 = hashlib.sha1()
         sha1.update(to_bytes(format_str))
 
-        str_to_sign = "sha1\n{time}\n{sha1}\n".format(
-            time=sign_time, sha1=sha1.hexdigest())
+        str_to_sign = "sha1\n{time}\n{sha1}\n".format(time=sign_time, sha1=sha1.hexdigest())
 
-        sign_key = hmac.new(to_bytes(self._secret_key), to_bytes(
-            sign_time), hashlib.sha1).hexdigest()
-        sign = hmac.new(to_bytes(sign_key), to_bytes(
-            str_to_sign), hashlib.sha1).hexdigest()
+        sign_key = hmac.new(to_bytes(self._secret_key), to_bytes(sign_time), hashlib.sha1).hexdigest()
+        sign = hmac.new(to_bytes(sign_key), to_bytes(str_to_sign), hashlib.sha1).hexdigest()
         sign_tpl = "q-sign-algorithm=sha1&q-ak={ak}&q-sign-time={sign_time}&q-key-time={key_time}&q-header-list={headers}&q-url-param-list={params}&q-signature={sign}"
         r.headers = tmp_r
         r.headers['Authorization'] = sign_tpl.format(
             ak=self._access_id,
             sign_time=sign_time,
             key_time=sign_time,
-            params=';'.join(
-                sorted(map(lambda k: k.lower(), uri_params.keys()))),
+            params=';'.join(sorted(map(lambda k: k.lower(), uri_params.keys()))),
             headers=';'.join(sorted(headers.keys())),
             sign=sign
         )

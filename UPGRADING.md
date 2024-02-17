@@ -1,19 +1,10 @@
 Coscmd Upgrade Guide
 ====================
-1.9.0.0
---------------------
-- Compatible with and supports Python 3.11 and Python 3.12.
-- No longer supports Python 2.x.
-- Integrate the deleteobject interface with the Python SDK and fix the issue of deleting object with empty versionid.
-- Domain auto-switching is enabled by default. You can disable it by setting auto_switch_domain to false in the configuration file.
-
-====================
 1.8.6.26 to 1.8.6.28
 --------------------
 - Add file size threshold when downloading folder
 - Fix incorrect path when synchronizing files
 - Delete the crc64 verification parameters when downloading
-
 ====================
 1.8.6.25 to 1.8.6.26
 --------------------
