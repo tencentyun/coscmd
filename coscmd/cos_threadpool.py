@@ -2,7 +2,7 @@
 
 from threading import Thread
 from logging import getLogger
-from six.moves.queue import Queue
+from queue import Queue
 from threading import Lock
 import gc
 import time

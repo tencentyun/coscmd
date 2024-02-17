@@ -11,7 +11,7 @@
 ## 介绍
 _______
 
-腾讯云COS命令行工具, 目前可以支持 Python2.6 与 Python2.7 以及 Python3.x。
+腾讯云COS命令行工具, 最新版本支持Python3.x, 1.8.x版本支持Python2.6/Python2.7。
 
 ## 在 Docker 上使用
 

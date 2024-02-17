@@ -11,7 +11,7 @@ COSCMD
 介绍
 _______
 
-腾讯云COS命令行工具, 目前可以支持Python2.6与Python2.7以及Python3.x。
+腾讯云COS命令行工具, 最新版本支持Python3.x, 1.8.x版本支持Python2.6/Python2.7。
 
 安装指南
 __________
