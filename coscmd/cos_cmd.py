@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-from six.moves.configparser import SafeConfigParser
-from six import text_type
+
 from argparse import ArgumentParser
 from logging.handlers import RotatingFileHandler
 import sys
@@ -8,16 +7,16 @@ import logging
 import os
 import json
 import requests
-import qcloud_cos
 from threading import Thread
 from coscmd import cos_global
 
 if sys.version > '3':
+    from configparser import ConfigParser
     from coscmd.cos_client import CoscmdConfig, CosS3Client
     from coscmd.cos_global import Version
 else:
-    from cos_client import CoscmdConfig, CosS3Client
-    from cos_global import Version
+    print("[ERROR]: coscmd 1.9.x no longer supports Python 2.x. Please upgrade your Python version to Python 3 or use coscmd 1.8.x.")
+    sys.exit()
 
 logger = logging.getLogger("coscmd")
 
@@ -40,7 +39,7 @@ def concat_path(sorce_path, target_path):
 
 
 def to_printable_str(s):
-    if isinstance(s, text_type):
+    if isinstance(s, str):
         return s.encode(fs_coding)
     else:
         return s
@@ -52,7 +51,7 @@ def config(args):
     conf_path = os.path.expanduser(config_path)
 
     with open(conf_path, 'w+') as f:
-        cp = SafeConfigParser()
+        cp = ConfigParser()
         cp.add_section("common")
         cp.set('common', 'secret_id', args.secret_id)
         cp.set('common', 'secret_key', args.secret_key)
@@ -97,10 +96,9 @@ def compatible(region):
 
 
 def load_conf():
-
     conf_path = os.path.expanduser(config_path)
     if not os.path.exists(conf_path):
-        logger.warn("{conf} couldn't be found, please use \'coscmd config -h\' to learn how to config coscmd!".format(
+        logger.warning("{conf} couldn't be found, please use \'coscmd config -h\' to learn how to config coscmd!".format(
             conf=to_printable_str(conf_path)))
         raise IOError
     else:
@@ -108,144 +106,143 @@ def load_conf():
             conf=to_printable_str(conf_path)))
 
     try:
-        with open(conf_path, 'r') as f:
-            cp = SafeConfigParser()
-            cp.readfp(fp=f)
-            if not cp.has_section('common'):
-                raise Exception(
-                    "[common] section could't be found, please check your config file.")
-            if cp.has_option('common', 'part_size'):
-                part_size = cp.getint('common', 'part_size')
-            else:
-                part_size = 1
-            if cp.has_option('common', 'max_thread'):
-                max_thread = cp.getint('common', 'max_thread')
-            else:
-                max_thread = 5
+        cp = ConfigParser()
+        cp.read(conf_path)
+        if not cp.has_section('common'):
+            raise Exception(
+                "[common] section could't be found, please check your config file.")
+        if cp.has_option('common', 'part_size'):
+            part_size = cp.getint('common', 'part_size')
+        else:
+            part_size = 1
+        if cp.has_option('common', 'max_thread'):
+            max_thread = cp.getint('common', 'max_thread')
+        else:
+            max_thread = 5
+        try:
+            secret_id = cp.get('common', 'secret_id')
+        except Exception:
+            secret_id = cp.get('common', 'access_id')
+        try:
+            appid = cp.get('common', 'appid')
+            bucket = cp.get('common', 'bucket')
+            if bucket.endswith("-"+str(appid)):
+                bucket = bucket.rstrip(appid)
+                bucket = bucket[:-1]
+        except Exception:
             try:
-                secret_id = cp.get('common', 'secret_id')
-            except Exception:
-                secret_id = cp.get('common', 'access_id')
-            try:
-                appid = cp.get('common', 'appid')
                 bucket = cp.get('common', 'bucket')
-                if bucket.endswith("-"+str(appid)):
-                    bucket = bucket.rstrip(appid)
-                    bucket = bucket[:-1]
+                appid = bucket.split('-')[-1]
+                bucket = bucket.rstrip(appid)
+                bucket = bucket[:-1]
             except Exception:
-                try:
-                    bucket = cp.get('common', 'bucket')
-                    appid = bucket.split('-')[-1]
-                    bucket = bucket.rstrip(appid)
-                    bucket = bucket[:-1]
-                except Exception:
-                    # check if user use -b bucket
-                    if (pre_bucket == ""):
-                        logger.error(
-                            "The configuration file is wrong. Please reconfirm")
-            try:
-                schema = cp.get('common', 'schema')
-            except Exception:
-                schema = 'https'
-            try:
-                verify = cp.get('common', 'verify')
-            except Exception:
-                verify = 'md5'
-            try:
-                token = cp.get('common', 'token')
-            except Exception:
-                token = None
-            try:
-                anonymous = cp.get('common', 'anonymous')
-                if anonymous == 'True' or anonymous == 'true':
-                    anonymous = True
-                else:
-                    anonymous = False
-            except Exception:
+                # check if user use -b bucket
+                if (pre_bucket == ""):
+                    logger.error(
+                        "The configuration file is wrong. Please reconfirm")
+        try:
+            schema = cp.get('common', 'schema')
+        except Exception:
+            schema = 'https'
+        try:
+            verify = cp.get('common', 'verify')
+        except Exception:
+            verify = 'md5'
+        try:
+            token = cp.get('common', 'token')
+        except Exception:
+            token = None
+        try:
+            anonymous = cp.get('common', 'anonymous')
+            if anonymous == 'True' or anonymous == 'true':
+                anonymous = True
+            else:
                 anonymous = False
-            try:
-                enable_old_domain = cp.get('common', 'enable_old_domain')
-                if enable_old_domain == 'True' or enable_old_domain == 'true':
-                    enable_old_domain = True
-                else:
-                    enable_old_domain = False
-            except Exception:
+        except Exception:
+            anonymous = False
+        try:
+            enable_old_domain = cp.get('common', 'enable_old_domain')
+            if enable_old_domain == 'True' or enable_old_domain == 'true':
                 enable_old_domain = True
-            try:
-                enable_internal_domain = cp.get(
-                    'common', 'enable_internal_domain')
-                if enable_internal_domain == 'True' or enable_internal_domain == 'true':
-                    enable_internal_domain = True
-                else:
-                    enable_internal_domain = False
-            except Exception:
+            else:
+                enable_old_domain = False
+        except Exception:
+            enable_old_domain = True
+        try:
+            enable_internal_domain = cp.get(
+                'common', 'enable_internal_domain')
+            if enable_internal_domain == 'True' or enable_internal_domain == 'true':
                 enable_internal_domain = True
-            try:
-                auto_switch_domain = cp.get(
-                    'common', 'auto_switch_domain')
-                if auto_switch_domain == 'True' or auto_switch_domain == 'true':
-                    auto_switch_domain = True
-                else:
-                    auto_switch_domain = False
-            except Exception:
+            else:
+                enable_internal_domain = False
+        except Exception:
+            enable_internal_domain = True
+        try:
+            auto_switch_domain = cp.get(
+                'common', 'auto_switch_domain')
+            if auto_switch_domain == 'True' or auto_switch_domain == 'true':
                 auto_switch_domain = True
-            try:
-                retry = int(cp.get('common', 'retry'))
-            except Exception:
-                retry = 2
-            try:
-                timeout = int(cp.get('common', 'timeout'))
-            except Exception:
-                timeout = 60
+            else:
+                auto_switch_domain = False
+        except Exception:
+            auto_switch_domain = True
+        try:
+            retry = int(cp.get('common', 'retry'))
+        except Exception:
+            retry = 2
+        try:
+            timeout = int(cp.get('common', 'timeout'))
+        except Exception:
+            timeout = 60
 
-            try:
-                multiupload_threshold = int(
-                    cp.get('common', 'multiupload_threshold'))
-            except Exception:
-                multiupload_threshold = 100
-            if multiupload_threshold < 20:
-                multiupload_threshold = 20
-            try:
-                multidownload_threshold = int(
-                    cp.get('common', 'multidownload_threshold'))
-            except Exception:
-                multidownload_threshold = 100
-            if multidownload_threshold < 20:
-                multidownload_threshold = 20
-            region, endpoint = None, None
-            if cp.has_option('common', 'region'):
-                region = cp.get('common', 'region')
-            if cp.has_option('common', 'endpoint'):
-                endpoint = cp.get('common', 'endpoint')
-            if pre_appid != "":
-                appid = pre_appid
-            if pre_bucket != "":
-                bucket = pre_bucket
-            if pre_region != "":
-                region = pre_region
-            conf = CoscmdConfig(
-                appid=appid,
-                secret_id=secret_id,
-                secret_key=cp.get('common', 'secret_key'),
-                token=token,
-                region=compatible(region),
-                endpoint=endpoint,
-                bucket=bucket,
-                part_size=part_size,
-                max_thread=max_thread,
-                schema=schema,
-                anonymous=anonymous,
-                verify=verify,
-                retry=retry,
-                timeout=timeout,
-                silence=silence,
-                multiupload_threshold=multiupload_threshold,
-                multidownload_threshold=multidownload_threshold,
-                enable_old_domain=enable_old_domain,
-                enable_internal_domain=enable_internal_domain,
-                auto_switch_domain=auto_switch_domain,
-            )
-            return conf
+        try:
+            multiupload_threshold = int(
+                cp.get('common', 'multiupload_threshold'))
+        except Exception:
+            multiupload_threshold = 100
+        if multiupload_threshold < 20:
+            multiupload_threshold = 20
+        try:
+            multidownload_threshold = int(
+                cp.get('common', 'multidownload_threshold'))
+        except Exception:
+            multidownload_threshold = 100
+        if multidownload_threshold < 20:
+            multidownload_threshold = 20
+        region, endpoint = None, None
+        if cp.has_option('common', 'region'):
+            region = cp.get('common', 'region')
+        if cp.has_option('common', 'endpoint'):
+            endpoint = cp.get('common', 'endpoint')
+        if pre_appid != "":
+            appid = pre_appid
+        if pre_bucket != "":
+            bucket = pre_bucket
+        if pre_region != "":
+            region = pre_region
+        conf = CoscmdConfig(
+            appid=appid,
+            secret_id=secret_id,
+            secret_key=cp.get('common', 'secret_key'),
+            token=token,
+            region=compatible(region),
+            endpoint=endpoint,
+            bucket=bucket,
+            part_size=part_size,
+            max_thread=max_thread,
+            schema=schema,
+            anonymous=anonymous,
+            verify=verify,
+            retry=retry,
+            timeout=timeout,
+            silence=silence,
+            multiupload_threshold=multiupload_threshold,
+            multidownload_threshold=multidownload_threshold,
+            enable_old_domain=enable_old_domain,
+            enable_internal_domain=enable_internal_domain,
+            auto_switch_domain=auto_switch_domain,
+        )
+        return conf
     except Exception as e:
         raise (e)
 
@@ -262,19 +259,19 @@ class Op(object):
                 args.cos_path = "/"
             Interface = client.op_int()
 
-            if not isinstance(args.local_path, text_type):
+            if not isinstance(args.local_path, str):
                 args.local_path = args.local_path.decode(fs_coding)
-            if not isinstance(args.cos_path, text_type):
+            if not isinstance(args.cos_path, str):
                 args.cos_path = args.cos_path.decode(fs_coding)
 
             if not os.path.exists(args.local_path):
-                logger.warn("cannot stat '%s': No such file or directory" % to_printable_str(
+                logger.warning("cannot stat '%s': No such file or directory" % to_printable_str(
                     args.local_path))
                 return -1
 
             if not os.access(args.local_path, os.R_OK):
-                logger.warn('local_path %s is not readable!' %
-                            to_printable_str(args.local_path))
+                logger.warning('local_path %s is not readable!' %
+                               to_printable_str(args.local_path))
                 return -1
             args.local_path, args.cos_path = concat_path(
                 args.local_path, args.cos_path)
@@ -299,11 +296,11 @@ class Op(object):
                     return rt
             else:
                 if os.path.isdir(args.local_path):
-                    logger.warn("\"{path}\" is a directory, use \'-r\' option to upload it please".format(
+                    logger.warning("\"{path}\" is a directory, use \'-r\' option to upload it please".format(
                         path=to_printable_str(args.local_path)))
                     return -1
                 if os.path.isfile(args.local_path) is False:
-                    logger.warn("cannot stat '%s': No such file or directory" % to_printable_str(
+                    logger.warning("cannot stat '%s': No such file or directory" % to_printable_str(
                         args.local_path))
                     return -1
                 rt = Interface.upload_file(
@@ -311,7 +308,8 @@ class Op(object):
                 return rt
             return -1
         except Exception as e:
-            logger.wran(e)
+            traceback.print_exc()
+            logger.warning(e)
             return -2
 
     @staticmethod
@@ -320,9 +318,9 @@ class Op(object):
             conf = load_conf()
             client = CosS3Client(conf)
             Interface = client.op_int()
-            if not isinstance(args.local_path, text_type):
+            if not isinstance(args.local_path, str):
                 args.local_path = args.local_path.decode(fs_coding)
-            if not isinstance(args.cos_path, text_type):
+            if not isinstance(args.cos_path, str):
                 args.cos_path = args.cos_path.decode(fs_coding)
             args.cos_path, args.local_path = concat_path(
                 args.cos_path, args.local_path)
@@ -348,7 +346,7 @@ class Op(object):
                 return rt
             return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return -2
 
     @staticmethod
@@ -360,7 +358,7 @@ class Op(object):
                 args.cos_path = args.cos_path[1:]
             Interface = client.op_int()
 
-            if not isinstance(args. cos_path, text_type):
+            if not isinstance(args. cos_path, str):
                 args.cos_path = args.cos_path.decode(fs_coding)
 
             kwargs = {}
@@ -383,7 +381,7 @@ class Op(object):
                     return -1
             else:
                 if args.cos_path == '':
-                    logger.warn("not support delete empty path")
+                    logger.warning("not support delete empty path")
                     return -1
                 if not Interface.delete_file(args.cos_path, **kwargs):
                     logger.debug("delete all files under {cos_path} successfully!".format(
@@ -394,7 +392,7 @@ class Op(object):
                         cos_path=to_printable_str(args.cos_path)))
                     return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return -2
 
     @staticmethod
@@ -406,9 +404,9 @@ class Op(object):
             _, args.cos_path = concat_path(args.source_path, args.cos_path)
             while args.cos_path.startswith('/'):
                 args.cos_path = args.cos_path[1:]
-            if not isinstance(args.source_path, text_type):
+            if not isinstance(args.source_path, str):
                 args.source_path = args.source_path.decode(fs_coding)
-            if not isinstance(args.cos_path, text_type):
+            if not isinstance(args.cos_path, str):
                 args.cos_path = args.cos_path.decode(fs_coding)
 
             kwargs = {}
@@ -437,7 +435,7 @@ class Op(object):
                 else:
                     return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return -2
 
     @staticmethod
@@ -449,9 +447,9 @@ class Op(object):
             _, args.cos_path = concat_path(args.source_path, args.cos_path)
             while args.cos_path.startswith('/'):
                 args.cos_path = args.cos_path[1:]
-            if not isinstance(args.source_path, text_type):
+            if not isinstance(args.source_path, str):
                 args.source_path = args.source_path.decode(fs_coding)
-            if not isinstance(args.cos_path, text_type):
+            if not isinstance(args.cos_path, str):
                 args.cos_path = args.cos_path.decode(fs_coding)
 
             kwargs = {}
@@ -479,7 +477,7 @@ class Op(object):
                 else:
                     return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return -2
 
     @staticmethod
@@ -489,7 +487,7 @@ class Op(object):
             client = CosS3Client(conf)
             while args.cos_path.startswith('/'):
                 args.cos_path = args.cos_path[1:]
-            if not isinstance(args. cos_path, text_type):
+            if not isinstance(args. cos_path, str):
                 args.cos_path = args.cos_path.decode(fs_coding)
             Interface = client.op_int()
             kwargs = {}
@@ -503,7 +501,7 @@ class Op(object):
             else:
                 return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return -2
 
     @staticmethod
@@ -517,7 +515,7 @@ class Op(object):
             else:
                 return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return -2
 
     @staticmethod
@@ -528,7 +526,7 @@ class Op(object):
             while args.cos_path.startswith('/'):
                 args.cos_path = args.cos_path[1:]
 
-            if not isinstance(args. cos_path, text_type):
+            if not isinstance(args. cos_path, str):
                 args.cos_path = args.cos_path.decode(fs_coding)
             Interface = client.op_int()
             if not Interface.abort_parts(cos_path=args.cos_path):
@@ -536,7 +534,7 @@ class Op(object):
             else:
                 return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return -2
 
     @staticmethod
@@ -547,7 +545,7 @@ class Op(object):
             while args.cos_path.startswith('/'):
                 args.cos_path = args.cos_path[1:]
 
-            if not isinstance(args. cos_path, text_type):
+            if not isinstance(args. cos_path, str):
                 args.cos_path = args.cos_path.decode(fs_coding)
             Interface = client.op_int()
             if not Interface.info_object(args.cos_path, _human=args.human):
@@ -555,7 +553,7 @@ class Op(object):
             else:
                 return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return -2
 
     @staticmethod
@@ -566,7 +564,7 @@ class Op(object):
             while args.cos_path.startswith('/'):
                 args.cos_path = args.cos_path[1:]
 
-            if not isinstance(args. cos_path, text_type):
+            if not isinstance(args. cos_path, str):
                 args.cos_path = args.cos_path.decode(fs_coding)
             Interface = client.op_int()
             kwargs = {}
@@ -583,7 +581,7 @@ class Op(object):
                 else:
                     return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return -2
 
     @staticmethod
@@ -591,7 +589,7 @@ class Op(object):
         try:
             conf = load_conf()
             client = CosS3Client(conf)
-            if not isinstance(args.cos_path, text_type):
+            if not isinstance(args.cos_path, str):
                 args.cos_path = args.cos_path.decode(fs_coding)
             while args.cos_path.startswith('/'):
                 args.cos_path = args.cos_path[1:]
@@ -603,10 +601,10 @@ class Op(object):
                 else:
                     return -1
             except Exception:
-                logger.warn('Geturl fail')
+                logger.warning('Geturl fail')
                 return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return -2
 
     @staticmethod
@@ -616,7 +614,7 @@ class Op(object):
             client = CosS3Client(conf)
             while args.cos_path.startswith('/'):
                 args.cos_path = args.cos_path[1:]
-            if not isinstance(args. cos_path, text_type):
+            if not isinstance(args. cos_path, str):
                 args.cos_path = args.cos_path.decode(fs_coding)
             Interface = client.op_int()
             rt = Interface.put_object_acl(
@@ -624,10 +622,10 @@ class Op(object):
             if rt is True:
                 return 0
             else:
-                logger.warn("Put object acl fail")
+                logger.warning("Put object acl fail")
                 return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return -2
 
     @staticmethod
@@ -637,7 +635,7 @@ class Op(object):
             client = CosS3Client(conf)
             while args.cos_path.startswith('/'):
                 args.cos_path = args.cos_path[1:]
-            if not isinstance(args. cos_path, text_type):
+            if not isinstance(args. cos_path, str):
                 args.cos_path = args.cos_path.decode(fs_coding)
             Interface = client.op_int()
 
@@ -645,10 +643,10 @@ class Op(object):
             if rt is True:
                 return 0
             else:
-                logger.warn("Get object acl fail")
+                logger.warning("Get object acl fail")
                 return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return -2
 
     @staticmethod
@@ -660,10 +658,10 @@ class Op(object):
             if Interface.create_bucket():
                 return 0
             else:
-                logger.warn("Create bucket fail")
+                logger.warning("Create bucket fail")
                 return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return -2
 
     @staticmethod
@@ -677,10 +675,10 @@ class Op(object):
             if Interface.delete_bucket(**kwargs):
                 return 0
             else:
-                logger.warn("Delete bucket fail")
+                logger.warning("Delete bucket fail")
                 return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return -2
 
     @staticmethod
@@ -694,10 +692,10 @@ class Op(object):
             if rt is True:
                 return 0
             else:
-                logger.warn("put bucket acl fail")
+                logger.warning("put bucket acl fail")
                 return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return -2
 
     @staticmethod
@@ -710,10 +708,10 @@ class Op(object):
             if rt is True:
                 return 0
             else:
-                logger.warn("Get bucket acl fail")
+                logger.warning("Get bucket acl fail")
                 return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return -2
 
     @staticmethod
@@ -726,10 +724,10 @@ class Op(object):
             if rt is True:
                 return 0
             else:
-                logger.warn("Put bucket versioning fail")
+                logger.warning("Put bucket versioning fail")
                 return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return -2
 
     @staticmethod
@@ -742,10 +740,10 @@ class Op(object):
             if rt is True:
                 return 0
             else:
-                logger.warn("Get bucket versioning fail")
+                logger.warning("Get bucket versioning fail")
                 return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return -2
 
     @staticmethod
@@ -761,10 +759,10 @@ class Op(object):
             if 0 == rt:
                 return 0
             else:
-                logger.warn("probe failed")
+                logger.warning("probe failed")
                 return -1
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return -2
 
 
@@ -1115,7 +1113,7 @@ def command_thread():
         pre_bucket = pre_bucket.rstrip(pre_appid)
         pre_bucket = pre_bucket[:-1]
     except Exception:
-        logger.warn("set bucket error")
+        logger.warning("set bucket error")
     try:
         res = args.func(args)
         return res

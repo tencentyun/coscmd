@@ -50,7 +50,7 @@ def gen_folder(num=1024):
 def setUp():
     """create testbucket"""
     os.system("python3 setup.py install")
-    os.system("python3 coscmd/cos_cmd.py config -a %s -s %s -b %s -r %s" % (access_id, access_key, bucket_name, region))
+    os.system("python3 coscmd/cos_cmd.py config --do-not-use-ssl -a %s -s %s -b %s -r %s" % (access_id, access_key, bucket_name, region))
     print("创建bucket")
     os.system("python3 coscmd/cos_cmd.py createbucket >/dev/null 2>&1")
     time.sleep(5)
