@@ -31,6 +31,7 @@ setup(
     description='simple command for cos',
     long_description=long_description(),
     packages=find_packages(),
+    python_requires='>=3.6',
     install_requires=requirements(),
     entry_points={
         'console_scripts': [
