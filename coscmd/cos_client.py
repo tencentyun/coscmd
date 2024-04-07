@@ -1466,7 +1466,9 @@ class Interface(object):
                 return -1
         cos_path = cos_path.lstrip('/')
         rt = self.remote2local_sync_check(cos_path, local_path, **kwargs)
-        if 0 != rt:
+        if -2 == rt:
+            return 0
+        elif 0 != rt:
             return rt
         logger.info(u"Download cos://{bucket}/{cos_path}   =>   {local_path}".format(
             bucket=self._conf._bucket,
