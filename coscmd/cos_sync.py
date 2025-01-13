@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import fnmatch
 import os
-import sys
-from queue import Queue
+import logging
 from qcloud_cos import CosServiceError
 from coscmd.cos_comm import *
+
 
 logger = logging.getLogger("coscmd")
 
