@@ -14,6 +14,7 @@ from tqdm import tqdm
 
 from coscmd.cos_global import Version
 from coscmd.cos_threadpool import SimpleThreadPool
+from six.moves.queue import Queue
 from coscmd.cos_comm import *
 from coscmd.cos_sync import *
 

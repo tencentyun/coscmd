@@ -3,6 +3,7 @@ import fnmatch
 import os
 import logging
 from qcloud_cos import CosServiceError
+from six.moves.queue import Queue
 from coscmd.cos_comm import *
 
 

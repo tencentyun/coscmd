@@ -143,17 +143,25 @@ def query_yes_no(question, default="no"):
         prompt = " [y/N] "
     else:
         raise ValueError("invalid default answer: '%s'" % default)
+
     while True:
-        sys.stdout.write(question + prompt)
-        sys.stdout.flush()
-        choice = input()
-        if default is not None and choice == '':
-            return valid[default]
-        elif choice in valid:
-            return valid[choice]
-        else:
-            sys.stdout.write("Please respond with 'yes' or 'no' "
-                             "(or 'y' or 'n').\n")
+        try:
+            sys.stdout.write(question + prompt)
+            sys.stdout.flush()
+            if PY2:
+                choice = raw_input().lower()
+            else:
+                choice = input().lower()
+            if default is not None and choice == '':
+                return valid[default]
+            elif choice in valid:
+                return valid[choice]
+            else:
+                sys.stdout.write("Please respond with 'yes' or 'no' "
+                                "(or 'y' or 'n').\n")
+        except (KeyboardInterrupt, EOFError):
+            sys.stdout.write('\n')
+            return False
 
 def response_info(rt):
     request_id = "null"
