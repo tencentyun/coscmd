@@ -5,4 +5,4 @@ pytz>=2017.2
 datetime>=4.2		
 tqdm>=4.15.0
 pyyaml>=3
-cos-python-sdk-v5>=1.9.27
+cos-python-sdk-v5>=1.9.35

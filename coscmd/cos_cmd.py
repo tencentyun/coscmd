@@ -1,25 +1,37 @@
 # -*- coding: utf-8 -*-
 
-from argparse import ArgumentParser
-from logging.handlers import RotatingFileHandler
+# 标准库导入
 import sys
-import logging
 import os
 import json
-import requests
+import logging
 from threading import Thread
-from coscmd import cos_global
+from argparse import ArgumentParser
+from logging.handlers import RotatingFileHandler
 
-if sys.version > '3':
-    from configparser import ConfigParser
+# 第三方库导入
+import requests
+try:
+    from configparser import ConfigParser  # Python 3
+except ImportError:
+    from ConfigParser import ConfigParser  # Python 2
+
+# 内部模块导入
+from coscmd import cos_global
+if sys.version_info[0] >= 3:
     from coscmd.cos_client import CoscmdConfig, CosS3Client
     from coscmd.cos_global import Version
 else:
-    print("[ERROR]: coscmd 1.9.x no longer supports Python 2.x. Please upgrade your Python version to Python 3 or use coscmd 1.8.x.")
-    sys.exit()
+    from cos_client import CoscmdConfig, CosS3Client
+    from cos_global import Version
+
+# Python 2/3 兼容性处理
+try:
+    input = raw_input  # Python 2
+except NameError:
+    pass  # Python 3
 
 logger = logging.getLogger("coscmd")
-
 fs_coding = sys.getfilesystemencoding()
 
 pre_appid = ""

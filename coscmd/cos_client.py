@@ -1,8 +1,7 @@
-# -*- coding=utf-8
+# -*- coding: utf-8 -*-
+
 from prettytable import PrettyTable
 from os import path
-from xml.dom import minidom
-from hashlib import md5, sha1
 import time
 import requests
 import logging
@@ -12,10 +11,10 @@ import yaml
 import qcloud_cos
 import traceback
 from tqdm import tqdm
-from urllib.parse import quote
+
 from coscmd.cos_global import Version
-from coscmd.cos_auth import CosS3Auth
 from coscmd.cos_threadpool import SimpleThreadPool
+from six.moves.queue import Queue
 from coscmd.cos_comm import *
 from coscmd.cos_sync import *
 
@@ -23,7 +22,6 @@ logger = logging.getLogger("coscmd")
 
 
 class CoscmdConfig(object):
-
     def __init__(self, appid, region, endpoint, bucket, secret_id, secret_key, token=None,
                  part_size=1, max_thread=5, schema='https', anonymous=False, verify='md5', retry=2, timeout=60, silence=False,
                  multiupload_threshold=100, multidownload_threshold=100, enable_old_domain=True, enable_internal_domain=True, auto_switch_domain=True,
@@ -162,54 +160,18 @@ class Interface(object):
 
     def sign_url(self, cos_path, timeout=10000):
         cos_path = to_printable_str(cos_path)
-        url = self._conf.uri(path=quote(to_printable_str(cos_path)))
-        s = requests.Session()
-        req = requests.Request('GET',  url)
-        prepped = s.prepare_request(req)
-        signature = CosS3Auth(self._conf, timeout).__call__(
-            prepped).headers['Authorization']
-        print(to_printable_str(url + '?sign=' + quote(signature)))
-        return True
-
-    def list_part(self, cos_path):
-        logger.debug("getting uploaded parts")
-        NextMarker = ""
-        IsTruncated = "true"
-        cos_path = to_printable_str(cos_path)
         try:
-            while IsTruncated == "true":
-                url = self._conf.uri(path=quote(to_printable_str(cos_path)) + '?uploadId={UploadId}&upload&max-parts=1000&part-number-marker={nextmarker}'.format(
-                    UploadId=self._upload_id,
-                    nextmarker=NextMarker))
-                rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-                if rt.status_code == 200:
-                    root = minidom.parseString(rt.content).documentElement
-                    IsTruncated = root.getElementsByTagName(
-                        "IsTruncated")[0].childNodes[0].data
-                    if IsTruncated == 'true':
-                        NextMarker = root.getElementsByTagName("NextPartNumberMarker")[
-                            0].childNodes[0].data
-                    logger.debug("list resp, status code: {code}, headers: {headers}, text: {text}".format(
-                        code=rt.status_code,
-                        headers=rt.headers,
-                        text=to_printable_str(rt.text)))
-                    contentset = root.getElementsByTagName("Part")
-                    for content in contentset:
-                        ID = content.getElementsByTagName(
-                            "PartNumber")[0].childNodes[0].data
-                        self._have_uploaded.append(ID)
-                        server_md5 = content.getElementsByTagName(
-                            self._etag)[0].childNodes[0].data[1:-1]
-                        self._md5.append(
-                            {'PartNumber': int(ID), 'ETag': server_md5})
-                else:
-                    logger.debug(response_info(rt))
-                    logger.debug("list parts error")
-                    return False
-        except Exception:
-            logger.debug("list parts error")
+            signed_url = self._client.get_presigned_url(
+                Method='GET',
+                Bucket=self._conf._bucket,
+                Key=cos_path,
+                Expired=timeout
+            )
+            print(to_printable_str(signed_url))
+            return True
+        except Exception as e:
+            logger.warning(to_unicode(e))
             return False
-        return True
 
     def upload_folder(self, local_path, cos_path, _http_headers='{}', **kwargs):
 
@@ -475,19 +437,26 @@ class Interface(object):
                     src_size = -1
                     dst_md5 = "."
                     dst_size = -2
-                    rt = self._session.head(
-                        url=self._conf._schema + "://" + copy_source['RawPath'], auth=CosS3Auth(self._conf))
-                    if 'x-cos-meta-md5' in rt.headers:
-                        src_md5 = rt.headers['x-cos-meta-md5']
-                    if 'Content-Length' in rt.headers:
-                        src_size = rt.headers['Content-Length']
-                    url = self._conf.uri(path=quote(
-                        to_printable_str(cos_path)))
-                    rt = self._session.head(url,  auth=CosS3Auth(self._conf))
-                    if 'x-cos-meta-md5' in rt.headers:
-                        dst_md5 = rt.headers['x-cos-meta-md5']
-                    if 'Content-Length' in rt.headers:
-                        dst_size = rt.headers['Content-Length']
+
+                    # 使用 SDK head_object 替代直接的 head 请求
+                    rt = self._client_source.head_object(
+                        Bucket=copy_source['Bucket'],
+                        Key=copy_source['Key']
+                    )
+                    if 'x-cos-meta-md5' in rt:
+                        src_md5 = rt['x-cos-meta-md5']
+                    if 'Content-Length' in rt:
+                        src_size = rt['Content-Length']
+
+                    rt = self._client.head_object(
+                        Bucket=self._conf._bucket,
+                        Key=cos_path
+                    )
+                    if 'x-cos-meta-md5' in rt:
+                        dst_md5 = rt['x-cos-meta-md5']
+                    if 'Content-Length' in rt:
+                        dst_size = rt['Content-Length']
+
                     if dst_md5 == src_md5 or (kwargs['skipmd5'] and dst_size == src_size):
                         logger.debug(u"Skip cos://{src_bucket}/{src_path} => cos://{dst_bucket}/{dst_path}".format(
                             src_bucket=copy_source['Bucket'],
@@ -891,7 +860,7 @@ class Interface(object):
                 if 'IsTruncated' in rt:
                     IsTruncated = rt['IsTruncated']
                 if 'NextKeyMarker' in rt:
-                    NextMarker = rt['NextKeyMarker']
+                    NextMarker = rt['NextMarker']
                 if 'NextVersionIdMarker' in rt:
                     VersionIdMarker = rt['NextVersionIdMarker']
                 if 'DeleteMarker' in rt:
@@ -989,97 +958,96 @@ class Interface(object):
             return -1
 
     def list_multipart_uploads(self, cos_path):
-        logger.debug("getting uploaded parts")
-        KeyMarker = ""
-        UploadIdMarker = ""
-        IsTruncated = "true"
+        logger.debug("getting uploaded parts111")
         cos_path = to_printable_str(cos_path)
+        key_marker = ""
+        upload_id_marker = ""
         part_num = 0
-        while IsTruncated == "true":
-            IsTruncated = 'false'
-            try:
-                rt = self._client.list_multipart_uploads(
+        try:
+            while True:
+                response = self._client.list_multipart_uploads(
                     Bucket=self._conf._bucket,
                     Prefix=cos_path,
-                    Delimiter='',
-                    KeyMarker=KeyMarker,
-                    UploadIdMarker=UploadIdMarker,
-                    MaxUploads=10,
+                    KeyMarker=key_marker,
+                    UploadIdMarker=upload_id_marker,
+                    MaxUploads=10
                 )
-                if "NextKeyMarker" in rt:
-                    KeyMarker = rt['NextKeyMarker']
-                if "NextUploadIdMarker" in rt:
-                    UploadIdMarker = rt['NextUploadIdMarker']
-                if 'IsTruncated' in rt:
-                    IsTruncated = rt['IsTruncated']
-                if "Upload" in rt:
-                    for upload in rt['Upload']:
+
+                # 处理返回结果
+                if "Upload" in response:
+                    for upload in response['Upload']:
                         part_num += 1
-                        if 'Key' in upload:
-                            _key = upload['Key']
-                        if 'UploadId' in upload:
-                            _uploadid = upload['UploadId']
+                        _key = upload.get('Key', '')
+                        _uploadid = upload.get('UploadId', '')
                         logger.info(u"Key:{key}, UploadId:{uploadid}".format(
                             key=to_unicode(_key), uploadid=_uploadid))
-            except Exception as e:
-                logger.warning(to_unicode(e))
-        logger.info(u" Parts num: {file_num}".format(
-            file_num=str(part_num)))
+
+                # 检查是否需要继续获取
+                if response.get('IsTruncated') == 'true':
+                    key_marker = response.get('NextKeyMarker')
+                    upload_id_marker = response.get('NextUploadIdMarker')
+                else:
+                    break
+
+            logger.info(u" Parts num: {file_num}".format(
+                file_num=str(part_num)))
+            return True
+        except Exception as e:
+            logger.warning(to_unicode(e))
+            return False
 
     def abort_parts(self, cos_path):
-        NextKeyMarker = ""
-        NextUploadIdMarker = ""
-        IsTruncated = "true"
         _success_num = 0
         _fail_num = 0
         cos_path = to_printable_str(cos_path)
         try:
-            while IsTruncated == "true":
-                abortList = []
+            # 使用 SDK list_multipart_uploads 接口，支持分页
+            key_marker = ""
+            upload_id_marker = ""
+            while True:
                 for i in range(self._retry):
                     try:
-                        rt = self._client.list_multipart_uploads(
+                        response = self._client.list_multipart_uploads(
                             Bucket=self._conf._bucket,
-                            KeyMarker=NextKeyMarker,
-                            UploadIdMarker=NextUploadIdMarker,
-                            MaxUploads=1000,
                             Prefix=cos_path,
+                            KeyMarker=key_marker,
+                            UploadIdMarker=upload_id_marker,
+                            MaxUploads=1000
                         )
                         break
                     except Exception as e:
+                        if i + 1 == self._retry:
+                            raise e
                         time.sleep(1 << i)
                         logger.warning(to_unicode(e))
-                    if i + 1 == self._retry:
-                        return -1
-                if 'IsTruncated' in rt:
-                    IsTruncated = rt['IsTruncated']
-                if 'NextUploadIdMarker' in rt:
-                    NextUploadIdMarker = rt['NextUploadIdMarker']
-                if 'NextKeyMarker' in rt:
-                    NextKeyMarker = rt['NextKeyMarker']
-                if 'Upload' in rt:
-                    for _file in rt['Upload']:
-                        _path = to_unicode(_file['Key'])
-                        _uploadid = _file['UploadId']
-                        abortList.append({'Key': _path,
-                                          'UploadId': _uploadid})
-                if len(abortList) > 0:
-                    for file in abortList:
+
+                # 处理未完成的分块上传
+                if 'Upload' in response:
+                    for upload in response['Upload']:
                         try:
-                            rt = self._client.abort_multipart_upload(
+                            self._client.abort_multipart_upload(
                                 Bucket=self._conf._bucket,
-                                Key=file['Key'],
-                                UploadId=file['UploadId'])
+                                Key=upload['Key'],
+                                UploadId=upload['UploadId']
+                            )
                             _success_num += 1
                             logger.info(u"Abort Key: {key}, UploadId: {uploadid}".format(
-                                key=file['Key'],
-                                uploadid=file['UploadId']))
+                                key=upload['Key'],
+                                uploadid=upload['UploadId']))
                         except Exception as e:
                             logger.warning(to_unicode(e))
                             logger.info(u"Abort Key: {key}, UploadId: {uploadid} fail".format(
-                                key=file['Key'],
-                                uploadid=file['UploadId']))
+                                key=upload['Key'],
+                                uploadid=upload['UploadId']))
                             _fail_num += 1
+
+                # 检查是否需要继续获取
+                if response.get('IsTruncated') == 'true':
+                    key_marker = response.get('NextKeyMarker')
+                    upload_id_marker = response.get('NextUploadIdMarker')
+                else:
+                    break
+
             logger.info(u"{files} files successful, {fail_files} files failed"
                         .format(files=_success_num, fail_files=_fail_num))
             if _fail_num == 0:
@@ -1441,7 +1409,11 @@ class Interface(object):
                     Bucket=self._conf._bucket,
                     Key=cos_path
                 )
-                file_size = int(rt['Content-Length'])
+                if 'Content-Length' in rt:
+                    file_size = int(rt['Content-Length'])
+                else:
+                    logger.warning("Content-Length not found in head_object response")
+                    file_size = 0
             except Exception as e:
                 logger.warning(str(e))
                 return -1
@@ -1602,140 +1574,130 @@ class Interface(object):
             return -1
 
     def put_object_acl(self, grant_read, grant_write, grant_full_control, cos_path):
-        acl = []
-        if grant_read is not None:
-            for i in grant_read.split(","):
-                if len(i) > 0:
-                    acl.append([i, "READ"])
-        if grant_write is not None:
-            for i in grant_write.split(","):
-                if len(i) > 0:
-                    acl.append([i, "WRITE"])
-        if grant_full_control is not None:
-            for i in grant_full_control.split(","):
-                if len(i) > 0:
-                    acl.append([i, "FULL_CONTROL"])
-        url = self._conf.uri(quote(to_printable_str(cos_path)) + "?acl")
         try:
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-            if rt.status_code != 200:
-                logger.warning(response_info(rt))
-                return False
-            root = minidom.parseString(rt.content).documentElement
-            owner_id = root.getElementsByTagName("ID")[0].childNodes[0].data
-            grants = ''
-            subid = ''
-            rootid = ''
-            for ID, Type in acl:
-                if len(ID.split("/")) == 1:
-                    accounttype = "RootAccount"
-                    rootid = ID.split("/")[0]
-                    subid = ID.split("/")[0]
-                elif len(ID.split("/")) == 2:
-                    accounttype = "SubAccount"
-                    rootid = ID.split("/")[0]
-                    subid = ID.split("/")[1]
-                else:
-                    logger.warning("ID format error!")
-                    return False
-                id = ""
-                if subid != "anyone":
-                    if subid == rootid:
-                        id = rootid
-                    else:
-                        id = rootid + "/" + subid
-                else:
-                    id = "qcs::cam::anyone:anyone"
-                grants += '''
-        <Grant>
-            <Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="{accounttype}">
-                <ID>{id}</ID>
-            </Grantee>
-            <Permission>{permissiontype}</Permission>
-        </Grant>'''.format(id=id, accounttype=accounttype, permissiontype=Type)
+            # 先获取当前的 ACL 以获取 Owner ID
+            response = self._client.get_object_acl(
+                Bucket=self._conf._bucket,
+                Key=cos_path
+            )
 
-            data = '''<AccessControlPolicy>
-    <Owner>
-        <ID>{id}</ID>
-    </Owner>
-    <AccessControlList>'''.format(id=owner_id) + grants + '''
-    </AccessControlList>
-</AccessControlPolicy>
-'''
-
-            logger.debug(data)
-            rt = self._session.put(
-                url=url, auth=CosS3Auth(self._conf), data=data)
-            logger.debug(u"put resp, status code: {code}, headers: {headers}".format(
-                code=rt.status_code,
-                headers=rt.headers))
-            if rt.status_code == 200:
-                return True
-            else:
-                logger.warning(response_info(rt))
+            # 获取 Owner ID
+            owner_id = response.get('Owner', {}).get('ID', '')
+            if not owner_id:
+                logger.warning("Failed to retrieve Owner ID")
                 return False
+
+            # 构建 AccessControlPolicy 参数
+            access_control_policy = {
+                'Owner': {
+                    'ID': owner_id
+                },
+                'AccessControlList': {
+                    'Grant': []
+                }
+            }
+
+            # 处理所有权限
+            permission_configs = [
+                (grant_read, 'READ'),
+                (grant_write, 'WRITE'),
+                (grant_full_control, 'FULL_CONTROL')
+            ]
+
+            for grant_str, permission in permission_configs:
+                if grant_str is not None:
+                    for i in grant_str.split(","):
+                        if len(i) > 0:
+                            # 获取标准化的 ID
+                            if i == "anyone":
+                                id = "qcs::cam::anyone:anyone"
+                            elif len(i.split("/")) == 1:
+                                # RootAccount
+                                id = "qcs::cam::uin/{0}:uin/{0}".format(i)
+                            elif len(i.split("/")) == 2:
+                                root_id, sub_id = i.split("/")
+                                # SubAccount
+                                id = "qcs::cam::uin/{0}:uin/{1}".format(
+                                    root_id, sub_id)
+                            else:
+                                logger.warning(to_unicode("ID format error!"))
+                                return False
+
+                            # 添加权限配置
+                            grantee = {
+                                'Grantee': {
+                                    'Type': 'CanonicalUser',
+                                    'ID': id
+                                },
+                                'Permission': permission
+                            }
+                            access_control_policy['AccessControlList']['Grant'].append(
+                                grantee)
+
+            # 使用 SDK put_object_acl 接口
+            self._client.put_object_acl(
+                Bucket=self._conf._bucket,
+                Key=cos_path,
+                AccessControlPolicy=access_control_policy
+            )
+            return True
         except Exception as e:
             logger.warning(str(e))
             return False
-        return False
 
     def get_object_acl(self, cos_path):
-        url = self._conf.uri(quote(to_printable_str(cos_path)) + "?acl")
         table = PrettyTable([cos_path, ""])
         table.align = "l"
         table.padding_width = 3
         try:
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-            logger.debug(u"get resp, status code: {code}, headers: {headers}".format(
-                code=rt.status_code,
-                headers=rt.headers))
-            root = minidom.parseString(rt.content).documentElement
-            grants = root.getElementsByTagName("Grant")
-            for grant in grants:
-                try:
-                    table.add_row(['ACL', ("%s: %s" % (grant.getElementsByTagName("ID")[
-                                  0].childNodes[0].data, grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
-                except Exception:
-                    table.add_row(['ACL', ("%s: %s" % (
-                        'anyone', grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
-            if rt.status_code == 200:
-                try:
-                    print(unicode(table))
-                except Exception as e:
-                    print(table)
-                return True
-            else:
-                logger.warning(response_info(rt))
-                return False
+            # 使用 SDK get_object_acl 接口
+            response = self._client.get_object_acl(
+                Bucket=self._conf._bucket,
+                Key=cos_path
+            )
+
+            # 从 AccessControlList 中获取 ACL 信息
+            if 'AccessControlList' in response:
+                acl_list = response['AccessControlList']
+                if 'Grant' in acl_list:
+                    for grant in acl_list['Grant']:
+                        try:
+                            grantee = grant.get('Grantee', {})
+                            permission = grant.get('Permission', '')
+
+                            if 'ID' in grantee:
+                                table.add_row(
+                                    ['ACL', "{0}: {1}".format(grantee['ID'], permission)])
+                            else:
+                                table.add_row(
+                                    ['ACL', "anyone: {0}".format(permission)])
+                        except Exception:
+                            # 如果是 anyone 权限
+                            table.add_row(
+                                ['ACL', "anyone: {0}".format(grant.get('Permission', ''))])
+
+            try:
+                print(unicode(table))
+            except Exception:
+                print(table)
+            return True
         except Exception as e:
             logger.warning(str(e))
             return False
-        return False
 
     def create_bucket(self):
-        url = self._conf.uri(path='')
-        self._have_finished = 0
         try:
-            rt = self._session.put(url=url, auth=CosS3Auth(self._conf))
-            logger.debug(u"put resp, status code: {code}, headers: {headers}, text: {text}".format(
-                code=rt.status_code,
-                headers=rt.headers,
-                text=rt.text))
-            if rt.status_code == 200:
-                logger.info(
-                    u"Create cos://{bucket}".format(bucket=self._conf._bucket))
-                return True
-            else:
-                logger.warning(response_info(rt))
-                return False
+            self._client.create_bucket(
+                Bucket=self._conf._bucket
+            )
+            logger.info(
+                u"Create cos://{bucket}".format(bucket=self._conf._bucket))
+            return True
         except Exception as e:
             logger.warning(str(e))
             return False
-        return True
 
     def delete_bucket(self, **kwargs):
-        url = self._conf.uri(path='')
-        self._have_finished = 0
         _force = kwargs["force"]
         try:
             if _force:
@@ -1745,177 +1707,151 @@ class Interface(object):
                 self.delete_folder("", **kwargs)
                 kwargs['versions'] = True
                 self.delete_folder("", **kwargs)
-            rt = self._session.delete(url=url, auth=CosS3Auth(self._conf))
-            logger.debug(u"delete resp, status code: {code}, headers: {headers}, text: {text}".format(
-                code=rt.status_code,
-                headers=rt.headers,
-                text=rt.text))
-            if rt.status_code == 204:
-                logger.info(
-                    u"Delete cos://{bucket}".format(bucket=self._conf._bucket))
-                return True
-            else:
-                logger.warning(response_info(rt))
-                return False
+
+            self._client.delete_bucket(
+                Bucket=self._conf._bucket
+            )
+            logger.info(
+                u"Delete cos://{bucket}".format(bucket=self._conf._bucket))
+            return True
         except Exception as e:
             logger.warning(str(e))
             return False
-        return True
 
     def put_bucket_acl(self, grant_read, grant_write, grant_full_control):
-        acl = []
-        if grant_read is not None:
-            for i in grant_read.split(","):
-                if len(i) > 0:
-                    acl.append([i, "READ"])
-        if grant_write is not None:
-            for i in grant_write.split(","):
-                if len(i) > 0:
-                    acl.append([i, "WRITE"])
-        if grant_full_control is not None:
-            for i in grant_full_control.split(","):
-                if len(i) > 0:
-                    acl.append([i, "FULL_CONTROL"])
-        url = self._conf.uri("?acl")
         try:
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-            if rt.status_code != 200:
-                logger.warning(response_info(rt))
-                return False
-            root = minidom.parseString(rt.content).documentElement
-            owner_id = root.getElementsByTagName("ID")[0].childNodes[0].data
-            grants = ''
-            subid = ''
-            rootid = ''
-            for ID, Type in acl:
-                if len(ID.split("/")) == 1:
-                    accounttype = "RootAccount"
-                    rootid = ID.split("/")[0]
-                    subid = ID.split("/")[0]
-                elif len(ID.split("/")) == 2:
-                    accounttype = "SubAccount"
-                    rootid = ID.split("/")[0]
-                    subid = ID.split("/")[1]
-                else:
-                    logger.warning(u"ID format error!")
-                    return False
-                id = ""
-                if subid != "anyone":
-                    if subid == rootid:
-                        id = rootid
-                    else:
-                        id = rootid + "/" + subid
-                else:
-                    id = "qcs::cam::anyone:anyone"
-                grants += '''
-        <Grant>
-            <Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="{accounttype}">
-                <ID>{id}</ID>
-            </Grantee>
-            <Permission>{permissiontype}</Permission>
-        </Grant>'''.format(id=id, accounttype=accounttype, permissiontype=Type)
+            # 先获取当前的 ACL 以获取 Owner ID
+            response = self._client.get_bucket_acl(
+                Bucket=self._conf._bucket
+            )
 
-            data = '''<AccessControlPolicy>
-    <Owner>
-        <ID>{id}</ID>
-    </Owner>
-    <AccessControlList>'''.format(id=owner_id) + grants + '''
-    </AccessControlList>
-</AccessControlPolicy>
-'''
-
-            logger.debug(data)
-            rt = self._session.put(
-                url=url, auth=CosS3Auth(self._conf), data=data)
-            logger.debug(u"put resp, status code: {code}, headers: {headers}".format(
-                code=rt.status_code,
-                headers=rt.headers))
-            if rt.status_code == 200:
-                return True
-            else:
-                logger.warning(response_info(rt))
+            # 获取 Owner ID
+            owner_id = response.get('Owner', {}).get('ID', '')
+            if not owner_id:
+                logger.warning("Failed to retrieve Owner ID")
                 return False
+
+            # 构建 AccessControlPolicy 参数
+            access_control_policy = {
+                'Owner': {
+                    'ID': owner_id
+                },
+                'AccessControlList': {
+                    'Grant': []
+                }
+            }
+
+            # 处理所有权限
+            permission_configs = [
+                (grant_read, 'READ'),
+                (grant_write, 'WRITE'),
+                (grant_full_control, 'FULL_CONTROL')
+            ]
+
+            for grant_str, permission in permission_configs:
+                if grant_str is not None:
+                    for i in grant_str.split(","):
+                        if len(i) > 0:
+                            # 获取标准化的 ID
+                            if i == "anyone":
+                                id = "qcs::cam::anyone:anyone"
+                            elif len(i.split("/")) == 1:
+                                # 使用 format 替代 f-string
+                                # RootAccount
+                                id = "qcs::cam::uin/{0}:uin/{0}".format(i)
+                            elif len(i.split("/")) == 2:
+                                root_id, sub_id = i.split("/")
+                                # 使用 format 替代 f-string
+                                # SubAccount
+                                id = "qcs::cam::uin/{0}:uin/{1}".format(
+                                    root_id, sub_id)
+                            else:
+                                logger.warning(to_unicode("ID format error!"))
+                                return False
+
+                            # 添加权限配置
+                            grantee = {
+                                'Grantee': {
+                                    'Type': 'CanonicalUser',
+                                    'ID': id
+                                },
+                                'Permission': permission
+                            }
+                            access_control_policy['AccessControlList']['Grant'].append(
+                                grantee)
+
+            # 使用 SDK put_bucket_acl 接口
+            self._client.put_bucket_acl(
+                Bucket=self._conf._bucket,
+                AccessControlPolicy=access_control_policy
+            )
+            return True
         except Exception as e:
-            logger.warning(str(e))
+            logger.warning(to_unicode(str(e)))
             return False
-        return False
 
     def get_bucket_acl(self):
-        url = self._conf.uri("?acl")
         table = PrettyTable([self._conf._bucket, ""])
         table.align = "l"
         table.padding_width = 3
         try:
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-            logger.debug(u"get resp, status code: {code}, headers: {headers}".format(
-                code=rt.status_code,
-                headers=rt.headers))
-            root = minidom.parseString(rt.content).documentElement
-            grants = root.getElementsByTagName("Grant")
-            for grant in grants:
-                try:
-                    table.add_row(['ACL', ("%s: %s" % (grant.getElementsByTagName("ID")[
-                                  0].childNodes[0].data, grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
-                except Exception:
-                    table.add_row(['ACL', ("%s: %s" % (
-                        'anyone', grant.getElementsByTagName("Permission")[0].childNodes[0].data))])
-            if rt.status_code == 200:
-                try:
-                    print(unicode(table))
-                except Exception as e:
-                    print(table)
-                return True
-            else:
-                logger.warning(response_info(rt))
-                return False
+            # 使用 SDK get_bucket_acl 接口
+            response = self._client.get_bucket_acl(
+                Bucket=self._conf._bucket
+            )
+
+            # 从 AccessControlList 中获取 ACL 信息
+            if 'AccessControlList' in response:
+                acl_list = response['AccessControlList']
+                if 'Grant' in acl_list:
+                    for grant in acl_list['Grant']:
+                        try:
+                            grantee = grant.get('Grantee', {})
+                            permission = grant.get('Permission', '')
+
+                            if 'ID' in grantee:
+                                # 使用 format 替代 f-string
+                                table.add_row(
+                                    ['ACL', "{0}: {1}".format(grantee['ID'], permission)])
+                            else:
+                                table.add_row(
+                                    ['ACL', "anyone: {0}".format(permission)])
+                        except Exception:
+                            # 如果是 anyone 权限
+                            table.add_row(
+                                ['ACL', "anyone: {0}".format(grant.get('Permission', ''))])
+
+            try:
+                print(unicode(table))
+            except Exception:
+                print(table)
+            return True
         except Exception as e:
-            logger.warning(str(e))
+            logger.warning(to_unicode(str(e)))
             return False
-        return False
 
     def put_bucket_versioning(self, status):
-        url = self._conf.uri("?versioning")
         try:
-            data = '''
-        <VersioningConfiguration>
-  <Status>{status}</Status>
-</VersioningConfiguration>
-'''.format(status=status)
-            rt = self._session.put(
-                url=url, auth=CosS3Auth(self._conf), data=data)
-            logger.debug(u"put resp, status code: {code}, headers: {headers}".format(
-                code=rt.status_code,
-                headers=rt.headers))
-            if rt.status_code == 200:
-                return True
-            else:
-                logger.warning(response_info(rt))
-                return False
+            self._client.put_bucket_versioning(
+                Bucket=self._conf._bucket,
+                Status=status
+            )
+            return True
         except Exception as e:
             logger.warning(str(e))
             return False
-        return False
 
     def get_bucket_versioning(self):
-        url = self._conf.uri("?versioning")
         try:
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf))
-            if rt.status_code == 200:
-                try:
-                    root = minidom.parseString(rt.content).documentElement
-                    status = root.getElementsByTagName(
-                        "Status")[0].childNodes[0].data
-                except Exception:
-                    status = "Not configured"
-                logger.info(status)
-                return True
-            else:
-                logger.warning(response_info(rt))
-                return False
+            response = self._client.get_bucket_versioning(
+                Bucket=self._conf._bucket
+            )
+            status = response.get('Status', 'Not configured')
+            logger.info(status)
+            return True
         except Exception as e:
             logger.warning(str(e))
             return False
-        return False
 
     def probe(self, **kwargs):
         test_num = int(kwargs['test_num'])

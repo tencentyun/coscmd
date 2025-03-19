@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 from xml.dom import minidom
-from hashlib import md5, sha1
+from hashlib import md5
 import time
 import sys
 import os
 import datetime
 import pytz
-import logging
+from six import text_type, binary_type
 
 maplist = {
     'x-cos-copy-source-If-Modified-Since': 'CopySourceIfModifiedSince',
@@ -49,6 +49,39 @@ maplist = {
     'x-cos-traffic-limit': 'TrafficLimit',
 }
 
+# Python 2/3 兼容性定义
+PY2 = sys.version_info[0] == 2
+PY3 = sys.version_info[0] == 3
+
+if PY2:
+    str = unicode
+
+def to_bytes(s):
+    """将字符串转为bytes"""
+    if isinstance(s, binary_type):
+        return s
+    if isinstance(s, text_type):
+        return s.encode('utf-8')
+    return s
+
+def to_unicode(s):
+    """将字符串转为unicode"""
+    if isinstance(s, text_type):
+        return s
+    if isinstance(s, binary_type):
+        return s.decode('utf-8')
+    return text_type(s)
+
+def to_str(s):
+    """将字符串转为str"""
+    if sys.version_info[0] >= 3:
+        if isinstance(s, binary_type):
+            return s.decode('utf-8')
+        return s
+    else:
+        if isinstance(s, text_type):
+            return s.encode('utf-8')
+        return str(s)
 
 def mapped(headers):
     """coscmd到pythonsdk参数的一个映射"""
@@ -63,29 +96,6 @@ def mapped(headers):
         _headers['Metadata'] = _meta
     return _headers
 
-
-def to_bytes(s):
-    """将字符串转为bytes"""
-    if isinstance(s, str):
-        try:
-            return s.encode('utf-8')
-        except UnicodeEncodeError as e:
-            raise Exception(
-                'your unicode strings can not encoded in utf8, utf8 support only!')
-    return s
-
-
-def to_unicode(s):
-    """将字符串转为unicode"""
-    if isinstance(s, bytes):
-        try:
-            return s.decode('utf-8')
-        except UnicodeDecodeError as e:
-            raise Exception(
-                'your bytes strings can not be decoded in utf8, utf8 support only!')
-    return s
-
-
 def get_file_md5(local_path):
     """获取文件md5"""
     md5_value = md5()
@@ -97,19 +107,16 @@ def get_file_md5(local_path):
             md5_value.update(data)
     return md5_value.hexdigest()
 
-
 def gen_local_file(filename, filesize):
     with open(filename, 'wb') as f:
         f.write(os.urandom(filesize * 1024 * 1024))
     return 0
-
 
 def to_printable_str(s):
     if isinstance(s, str):
         return s.encode('utf-8')
     else:
         return s
-
 
 def getTagText(root, tag):
     node = root.getElementsByTagName(tag)[0]
@@ -118,14 +125,12 @@ def getTagText(root, tag):
         if node.nodeType in (node.TEXT_NODE, node.CDATA_SECTION_NODE):
             rc = rc + node.data
 
-
 def get_md5_filename(local_path, cos_path):
     ori_file = os.path.abspath(os.path.dirname(
         local_path)) + "!!!" + str(os.path.getsize(local_path)) + "!!!" + cos_path
     m = md5()
     m.update(to_bytes(ori_file))
     return os.path.expanduser('~/.tmp/' + m.hexdigest())
-
 
 def query_yes_no(question, default="no"):
     valid = {"yes": True, "y": True, "ye": True,
@@ -138,18 +143,25 @@ def query_yes_no(question, default="no"):
         prompt = " [y/N] "
     else:
         raise ValueError("invalid default answer: '%s'" % default)
-    while True:
-        sys.stdout.write(question + prompt)
-        sys.stdout.flush()
-        choice = input()
-        if default is not None and choice == '':
-            return valid[default]
-        elif choice in valid:
-            return valid[choice]
-        else:
-            sys.stdout.write("Please respond with 'yes' or 'no' "
-                             "(or 'y' or 'n').\n")
 
+    while True:
+        try:
+            sys.stdout.write(question + prompt)
+            sys.stdout.flush()
+            if PY2:
+                choice = raw_input().lower()
+            else:
+                choice = input().lower()
+            if default is not None and choice == '':
+                return valid[default]
+            elif choice in valid:
+                return valid[choice]
+            else:
+                sys.stdout.write("Please respond with 'yes' or 'no' "
+                                "(or 'y' or 'n').\n")
+        except (KeyboardInterrupt, EOFError):
+            sys.stdout.write('\n')
+            return False
 
 def response_info(rt):
     request_id = "null"
@@ -173,7 +185,6 @@ RequestId: {request_id}'''.format(
         message=message,
         request_id=to_printable_str(request_id)))
 
-
 def utc_to_local(utc_time_str, utc_format='%Y-%m-%dT%H:%M:%S.%fZ'):
     local_tz = pytz.timezone('Asia/Chongqing')
     local_format = "%Y-%m-%d %H:%M:%S"
@@ -181,7 +192,6 @@ def utc_to_local(utc_time_str, utc_format='%Y-%m-%dT%H:%M:%S.%fZ'):
     local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(local_tz)
     time_str = local_dt.strftime(local_format)
     return int(time.mktime(time.strptime(time_str, local_format)))
-
 
 def change_to_human(_size):
     s = int(_size)
