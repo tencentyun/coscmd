@@ -24,6 +24,8 @@ if sys.version_info[0] >= 3:
 else:
     from cos_client import CoscmdConfig, CosS3Client
     from cos_global import Version
+    reload(sys)
+    sys.setdefaultencoding('utf-8')
 
 # Python 2/3 兼容性处理
 try:
